@@ -113,6 +113,16 @@ def _load_ids_from_url(url):
         res.append(td.text)
     return res
 
+# Callable from main
+# ------------------
+
+def rebuild_all():
+    start = time()
+    cols = get_collections(use_cache=False)
+    get_ids(list(cols.url), use_cache=False)
+    stop = time()
+    duration = stop - start
+    return duration
 
 # Test Runner
 # -----------
