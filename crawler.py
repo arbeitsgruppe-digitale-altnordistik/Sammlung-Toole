@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 import os
 from bs4 import BeautifulSoup
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import chain
 from time import time
 
@@ -14,6 +14,7 @@ from time import time
 
 _coll_path = 'data/collections.csv'
 _id_path = 'data/ms_ids.csv'
+_xml_url_path = 'data/xml_urls.csv'
 
 
 # Utlity Functions
@@ -77,7 +78,8 @@ def _load_collections() -> pd.DataFrame:
 # Crawl Manuscript IDs
 # -----------------
 
-def get_ids(urls: List[str], use_cache: bool=True, cache: bool=True, max_res: int=-1, aggressive_crawl: bool=True):
+def get_ids(urls: List[str], use_cache: bool=True, cache: bool=True, max_res: int=-1, aggressive_crawl: bool=True) -> List[str]:
+    # TODO: Docstring
     # print(*urls, sep='\n')
     if use_cache and os.path.exists(_id_path):
         ids = pd.read_csv(_id_path)
@@ -89,7 +91,7 @@ def get_ids(urls: List[str], use_cache: bool=True, cache: bool=True, max_res: in
     if cache:
         df = pd.DataFrame({'id': ids})
         df.to_csv(_id_path, encoding='utf-8', index=False)
-    return ids
+    return list(ids)
 
 
 def _load_ids(urls: List[str], max_res: int=-1, aggressive_crawl: bool=False) -> pd.DataFrame:
@@ -112,6 +114,54 @@ def _load_ids_from_url(url):
     for td in soup.find_all('td', attrs={'class': 'id'}):
         res.append(td.text)
     return res
+    
+
+# Crawl Manuscript IDs
+# -----------------
+
+def get_xml_urls(ids: List[str], use_cache: bool=True, cache: bool=True, max_res: int=-1, aggressive_crawl: bool=True) -> List[str]:
+    # TODO: Docstring
+    if use_cache and os.path.exists(_xml_url_path):
+        ids = pd.read_csv(_xml_url_path)
+        if ids is not None and not ids.empty:
+            return list(ids.url)
+    potential_urls = _get_potential_xml_urls(ids)
+    existing_urls = _get_existing_xml_urls(potential_urls, aggressive_crawl)  # TODO: implement
+    res = []
+    for i, url in enumerate(existing_urls):
+        if max_res > 0 and i >= max_res:
+            break
+        res.append(url)
+        print(url)
+    if cache:
+        df = pd.DataFrame({'url': res})
+        df.to_csv(_xml_url_path, encoding='utf-8', index=False)
+    return res
+
+
+def _get_potential_xml_urls(ids):
+    pref = 'https://handrit.is/en/manuscript/xml/'
+    return chain.from_iterable((f'{pref}{id}-en.xml', f'{pref}{id}-da.xml', f'{pref}{id}-is.xml') for id in ids)
+
+
+def _get_existing_xml_urls(potentials, aggressive):
+    if aggressive:
+        with ThreadPoolExecutor() as executor:
+            futures = [executor.submit(_get_url_if_exists, p) for p in potentials]
+            for f in as_completed(futures):
+                res = f.result()
+                if res:
+                    yield res
+    else:
+        for pot in potentials:
+            if _get_url_if_exists(pot):
+                yield pot
+
+
+def _get_url_if_exists(url):
+    status = requests.get(url).status_code
+    if status == 200:
+        return url
 
 
 # Test Runner
@@ -120,7 +170,8 @@ def _load_ids_from_url(url):
 if __name__ == "__main__":
     cols = get_collections()
     # print(cols)
+    ids = get_ids(list(cols.url))
     start = time()
-    get_ids(list(cols.url))
+    xml_urls = get_xml_urls(ids, aggressive_crawl=True, use_cache=False, max_res=50)
     stop = time()
     print(stop - start)
