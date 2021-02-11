@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import chain
 from time import time
+from datetime import datetime
 
 
 # Constants
@@ -126,13 +127,13 @@ def get_xml_urls(ids: List[str], use_cache: bool=True, cache: bool=True, max_res
         if ids is not None and not ids.empty:
             return list(ids.url)
     potential_urls = _get_potential_xml_urls(ids)
-    existing_urls = _get_existing_xml_urls(potential_urls, aggressive_crawl)  # TODO: implement
+    existing_urls = _get_existing_xml_urls(potential_urls, aggressive_crawl, max_res)  # TODO: implement
     res = []
     for i, url in enumerate(existing_urls):
         if max_res > 0 and i >= max_res:
             break
         res.append(url)
-        print(url)
+        print(len(res), end='\r')
     if cache:
         df = pd.DataFrame({'url': res})
         df.to_csv(_xml_url_path, encoding='utf-8', index=False)
@@ -144,22 +145,37 @@ def _get_potential_xml_urls(ids):
     return chain.from_iterable((f'{pref}{id}-en.xml', f'{pref}{id}-da.xml', f'{pref}{id}-is.xml') for id in ids)
 
 
-def _get_existing_xml_urls(potentials, aggressive):
+def _get_existing_xml_urls(potentials, aggressive, max):
     if aggressive:
-        with ThreadPoolExecutor() as executor:
-            futures = [executor.submit(_get_url_if_exists, p) for p in potentials]
-            for f in as_completed(futures):
-                res = f.result()
-                if res:
-                    yield res
+        for pot in _get_existing_xml_urls_aggressively(potentials, max):
+            if pot:
+                yield pot
     else:
         for pot in potentials:
             if _get_url_if_exists(pot):
                 yield pot
 
 
+def _get_existing_xml_urls_aggressively(potentials, max):
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(_get_url_if_exists, p) for p in potentials]
+        if max > 0:
+            i = 0
+            for f in as_completed(futures):
+                if i >= max:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
+                res = f.result()
+                if res:
+                    i += 1
+                    yield res
+        else:
+            for f in as_completed(futures):
+                yield f.result()
+
+
 def _get_url_if_exists(url):
-    status = requests.get(url).status_code
+    status = requests.head(url).status_code
     if status == 200:
         return url
 
@@ -168,10 +184,12 @@ def _get_url_if_exists(url):
 # -----------
 
 if __name__ == "__main__":
+    print(f'Start: {datetime.now()}')
     cols = get_collections()
     # print(cols)
     ids = get_ids(list(cols.url))
     start = time()
-    xml_urls = get_xml_urls(ids, aggressive_crawl=True, use_cache=False, max_res=50)
+    xml_urls = get_xml_urls(ids, use_cache=False)
     stop = time()
     print(stop - start)
+    print(f'Finished: {datetime.now()}')
