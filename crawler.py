@@ -1,4 +1,4 @@
-from typing import Generator, List, Tuple
+from typing import Dict, Generator, List, Tuple
 from numpy import empty
 import pandas as pd
 import requests
@@ -16,6 +16,7 @@ from datetime import datetime
 _coll_path = 'data/collections.csv'
 _id_path = 'data/ms_ids.csv'
 _xml_url_path = 'data/ms_urls.csv'
+_xml_data_prefix = 'data/xml/'
 
 _backspace_print = '                                     \r'
 
@@ -195,7 +196,7 @@ def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
 # --------------
 
 def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
-    """Load all manuscript URLsself.
+    """Load all manuscript URLs.
 
     The dataframe contains the following collumns:
     - Collection ID (`collection`)
@@ -323,16 +324,102 @@ def _get_url_if_exists(col, id_, l, url):
         return col, id_, l, url
 
 
+# Crawl XML URLs
+# --------------
+
+def get_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> int:
+    """Load XML data.
+
+    Args:
+        df (pd.DataFrame, optional): Dataframe containing the existing URLs. If `None` is passed, `get_xml_urls()` will be called. Defaults to None.
+        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
+        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
+        max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
+        aggressive_crawl (bool, optional): Aggressive crawling mode puts some strain on the server (and your bandwidth) but is much faster. Defaults to True.
+
+    Returns:
+        int: Number of XML files downloaded.
+    """
+    pass
+    # for row in df.iterrows():
+
+
+    # if use_cache and os.path.exists(_xml_url_path):
+    #     res = pd.read_csv(_xml_url_path)
+    #     if res is not None and not res.empty:
+    #         print('Loaded XML URLs from cache.')
+    #         return res
+    # if df is None:
+    #     df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
+    # if max_res > 0 and max_res < len(df.index):
+    #     df = df[:max_res]
+    # potential_urls = df.apply(_get_potential_xml_urls, axis=1)
+    # existing_urls = _get_existing_xml_urls(potential_urls, aggressive_crawl, max_res)
+    # if cache:
+    #     existing_urls.to_csv(_xml_url_path, encoding='utf-8', index=False)
+    # return existing_urls
+
+
+def load_xml(url: str, use_cache: bool = True, cache: bool = True) -> BeautifulSoup:
+    """Load XML from URL.
+
+    Args:
+        url (str): URL of an XML on handrit.is.
+        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
+        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
+
+    Returns:
+        BeautifulSoup: XML content.
+    """
+    filename = url.rsplit('/', 1)[1]
+    path = _xml_data_prefix + filename
+    print(path)
+    if use_cache and os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return BeautifulSoup(f, 'xml')
+    response = requests.get(url)
+    xml = response.text.encode(response.encoding).decode('utf-8')
+    if cache:
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(xml)
+    soup = BeautifulSoup(xml, 'xml')
+    return soup
+
+
+def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dict:
+    """Load XML(s) by manuscript ID.
+
+    Args:
+        id_ (str): Manuscript ID
+        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
+        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
+
+    Returns:
+        dict: dict of the XMLs found by this ID. Follows the structure `{language: BeautifulSoup}` (i.e. `{'da': 'soup', 'is': 'soup}`).
+    """
+    res = {}
+    df = get_xml_urls()
+    hits = df.loc[df['id'] == id_]
+    for _, row in hits.iterrows():
+        lang = row['lang']
+        url = row['xml_url']
+        res[lang] = load_xml(url, use_cache=use_cache, cache=cache)
+    return res
+
+
 # Test Runner
 # -----------
 
 if __name__ == "__main__":
     print(f'Start: {datetime.now()}')
-    cols = get_collections()
-    ids = get_ids(cols)
-    start = time()
-    xml_urls = get_xml_urls(ids, use_cache=True)
+    # cols = get_collections()
+    # ids = get_ids(cols)
+    # xml_urls = get_xml_urls(ids, use_cache=True)
     # print(xml_urls)
+    start = time()
+    # s = load_xml('https://handrit.is/en/manuscript/xml/AM02-0001-e-beta-I-en.xml')
+    # s = load_xmls_by_id('AM02-0162B-epsilon', use_cache=False)
+    s = load_xmls_by_id('AM02-0013', use_cache=False)
     stop = time()
     print(stop - start)
     print(f'Finished: {datetime.now()}')
