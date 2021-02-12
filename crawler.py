@@ -5,8 +5,6 @@ import requests
 import os
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from itertools import chain
-from time import time
 from datetime import datetime
 
 
@@ -342,12 +340,11 @@ def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: boo
     """
     if df is None:
         df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
-    if aggressive_crawl:  # TODO: max res
-        res = _cache_xml_aggressively(df, max_res, use_cache)  #TODO: implement
-        print('')
+    if aggressive_crawl:
+        res = _cache_xml_aggressively(df, max_res, use_cache)
     else:
         res = _cache_xml_chillfully(df, max_res, use_cache)
-        print('')
+    print('')
     return res
 
 
@@ -461,15 +458,26 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
 
 if __name__ == "__main__":
     print(f'Start: {datetime.now()}')
+
+    # loading CSVs
+    # ------------
+
     # cols = get_collections()
-    # ids = get_ids(cols)
-    # xml_urls = get_xml_urls(ids, use_cache=True)
-    # print(xml_urls)
-    start = time()
+    # ids = get_ids()
+    # xml_urls = get_xml_urls()
+
+
+    # Loading a manuscript as soup
+    # ----------------------------
+
     # s = load_xml('https://handrit.is/en/manuscript/xml/AM02-0001-e-beta-I-en.xml')
-    # s = load_xmls_by_id('AM02-0162B-epsilon', use_cache=False)
-    # s = load_xmls_by_id('AM02-0013', use_cache=False)
-    loaded = cache_all_xml_data(aggressive_crawl=True, max_res=-10)
-    stop = time()
-    print(stop - start)
+    # s = load_xmls_by_id('AM02-0162B-epsilon')
+    # s = load_xmls_by_id('AM02-0013')
+
+
+    # Cache XMLs for future use
+    # -------------------------
+
+    # Number_of_loaded = cache_all_xml_data(aggressive_crawl=True, max_res=-1)
+
     print(f'Finished: {datetime.now()}')
