@@ -59,6 +59,7 @@ def get_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFrame:
     if use_cache and os.path.exists(_coll_path):
         cols = pd.read_csv(_coll_path)
         if cols is not None and not cols.empty:
+            print('Loaded collections from cache.')
             return cols
     cols = _load_collections()
     if cache:
@@ -104,6 +105,7 @@ def get_ids(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, max_re
     if use_cache and os.path.exists(_id_path):
         ids = pd.read_csv(_id_path)
         if ids is not None and not ids.empty:
+            print('Loaded manuscript IDs from cache.')
             return ids
     ids = _load_ids(df, max_res=max_res, aggressive_crawl=aggressive_crawl)
     if max_res > 0 and len(ids.index) >= max_res:
@@ -212,6 +214,7 @@ def get_xml_urls(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, m
     if use_cache and os.path.exists(_xml_url_path):
         res = pd.read_csv(_xml_url_path)
         if res is not None and not res.empty:
+            print('Loaded XML URLs from cache.')
             return res
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
@@ -270,7 +273,7 @@ def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res) -> Gene
                 hits += 1
                 yield res
                 percents = hits / max_res * 100
-                print(f'checked {checked+1} \tfound {hits} of {max_res} ({percents:.2f}%)', end=_backspace_print)
+                print(f'Checked {checked+1} \tFound {hits} of {max_res} ({percents:.2f}%)', end=_backspace_print)
 
 
 
@@ -289,16 +292,16 @@ def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Ge
                 if res:
                     i += 1
                     yield res
-                    print(f'found {i}', end=_backspace_print)
+                    print(f'Found {i}', end=_backspace_print)
         else:
             for i, f in enumerate(as_completed(futures)):
                 res = f.result()
                 if res:
                     yield res
-                    print(f'found {i}', end=_backspace_print)
+                    print(f'Found {i}', end=_backspace_print)
 
 
-def _get_aggressive_options(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str]]:
+def _get_aggressive_options(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
     """Get linear generator of tuples with potentially existing URLs"""
     if len(potentials.index) > max_res:
         potentials = potentials[:max_res]
@@ -324,7 +327,7 @@ if __name__ == "__main__":
     cols = get_collections()
     ids = get_ids(cols)
     start = time()
-    xml_urls = get_xml_urls(ids, use_cache=False, aggressive_crawl=True, max_res=-1)
+    xml_urls = get_xml_urls(ids, use_cache=True)
     # print(xml_urls)
     stop = time()
     print(stop - start)
