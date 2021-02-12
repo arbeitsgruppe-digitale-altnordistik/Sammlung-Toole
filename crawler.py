@@ -327,8 +327,8 @@ def _get_url_if_exists(col, id_, l, url):
 # Crawl XML URLs
 # --------------
 
-def get_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> int:
-    """Load XML data.
+def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> int:
+    """Download all XML data.
 
     Args:
         df (pd.DataFrame, optional): Dataframe containing the existing URLs. If `None` is passed, `get_xml_urls()` will be called. Defaults to None.
@@ -340,24 +340,75 @@ def get_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool 
     Returns:
         int: Number of XML files downloaded.
     """
-    pass
-    # for row in df.iterrows():
+    if df is None:
+        df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
+    if aggressive_crawl:  # TODO: max res
+        res = _cache_xml_aggressively(df, max_res, use_cache)  #TODO: implement
+        print('')
+    else:
+        res = _cache_xml_chillfully(df, max_res, use_cache)
+        print('')
+    return res
 
 
-    # if use_cache and os.path.exists(_xml_url_path):
-    #     res = pd.read_csv(_xml_url_path)
-    #     if res is not None and not res.empty:
-    #         print('Loaded XML URLs from cache.')
-    #         return res
-    # if df is None:
-    #     df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
-    # if max_res > 0 and max_res < len(df.index):
-    #     df = df[:max_res]
-    # potential_urls = df.apply(_get_potential_xml_urls, axis=1)
-    # existing_urls = _get_existing_xml_urls(potential_urls, aggressive_crawl, max_res)
-    # if cache:
-    #     existing_urls.to_csv(_xml_url_path, encoding='utf-8', index=False)
-    # return existing_urls
+def _cache_xml_aggressively(df, max_res, use_cache):
+    tasks = _get_cache_tasks(df)
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(_cache_xml, *t, use_cache) for t in tasks]
+        res = 0
+        for f in as_completed(futures):
+            if max_res > 0 and res >= max_res:
+                executor.shutdown(wait=True, cancel_futures=True)
+                break
+            did_cache = f.result()
+            if did_cache:
+                res += 1
+                print(f'Cached {res}', end=_backspace_print)
+        return res
+
+
+def _get_cache_tasks(df: pd.DataFrame):
+    for _, row in df.iterrows():
+        url = row['xml_url']
+        filename = url.rsplit('/', 1)[1]
+        path = _xml_data_prefix + filename
+        yield path, url
+
+
+def _cache_xml_chillfully(df, max_res, use_cache):
+    res = 0
+    for _, row in df.iterrows():
+        if max_res > 0 and res >= max_res:
+            return res 
+        url = row['xml_url']
+        filename = url.rsplit('/', 1)[1]
+        path = _xml_data_prefix + filename
+        did_cache = _cache_xml(path, url, use_cache)
+        if did_cache:
+            res += 1
+            print(f'Cached {res}', end=_backspace_print)
+    return res
+
+
+def _cache_xml(path, url, use_cache) -> bool:
+    """Cache XML from URL. Return True, if it got cached, False if already existed."""
+    if use_cache and os.path.exists(path):
+        return False
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(_load_xml_content(url))
+        return True
+
+
+def _load_xml_content(url):
+    """Loade XML content from URL, ensuring the encoding is correct."""
+    response = requests.get(url)
+    try:
+        xml = response.text.encode(response.encoding).decode('utf-8')
+    except Exception:
+        xml = response.text
+    
+    return xml
+
 
 
 def load_xml(url: str, use_cache: bool = True, cache: bool = True) -> BeautifulSoup:
@@ -373,12 +424,10 @@ def load_xml(url: str, use_cache: bool = True, cache: bool = True) -> BeautifulS
     """
     filename = url.rsplit('/', 1)[1]
     path = _xml_data_prefix + filename
-    print(path)
     if use_cache and os.path.exists(path):
         with open(path, 'r', encoding='utf-8') as f:
             return BeautifulSoup(f, 'xml')
-    response = requests.get(url)
-    xml = response.text.encode(response.encoding).decode('utf-8')
+    xml = _load_xml_content(url)
     if cache:
         with open(path, 'w', encoding='utf-8') as f:
             f.write(xml)
@@ -419,7 +468,8 @@ if __name__ == "__main__":
     start = time()
     # s = load_xml('https://handrit.is/en/manuscript/xml/AM02-0001-e-beta-I-en.xml')
     # s = load_xmls_by_id('AM02-0162B-epsilon', use_cache=False)
-    s = load_xmls_by_id('AM02-0013', use_cache=False)
+    # s = load_xmls_by_id('AM02-0013', use_cache=False)
+    loaded = cache_all_xml_data(aggressive_crawl=True, max_res=-10)
     stop = time()
     print(stop - start)
     print(f'Finished: {datetime.now()}')
