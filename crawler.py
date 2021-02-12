@@ -91,7 +91,7 @@ def get_ids(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, max_re
     - Manuscript ID (`id`)
 
     Args:
-        df (pd.DataFrame): Dataframe containing the available collections on handrit. (Cf. `get_collections()`)
+        df (pd.DataFrame): Dataframe containing the available collections on handrit. If `None` is passed, `get_collections()` will be called. Defaults to None.
         use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). 
@@ -107,6 +107,8 @@ def get_ids(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, max_re
         if ids is not None and not ids.empty:
             print('Loaded manuscript IDs from cache.')
             return ids
+    if df is None:
+        df = get_collections(use_cache=use_cache, cache=cache)
     ids = _load_ids(df, max_res=max_res, aggressive_crawl=aggressive_crawl)
     if max_res > 0 and len(ids.index) >= max_res:
         ids = ids[:max_res]
@@ -192,7 +194,7 @@ def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
 # Crawl XML URLs
 # --------------
 
-def get_xml_urls(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
     """Load all manuscript URLsself.
 
     The dataframe contains the following collumns:
@@ -202,7 +204,7 @@ def get_xml_urls(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, m
     - URL to XML (`xml_url`)
 
     Args:
-        df (pd.DataFrame): Dataframe containing the available manuscript IDs. (Cf. `get_ids()`)
+        df (pd.DataFrame, optional): Dataframe containing the available manuscript IDs. If `None` is passed, `get_ids()` will be called. Defaults to None.
         use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
@@ -216,6 +218,8 @@ def get_xml_urls(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, m
         if res is not None and not res.empty:
             print('Loaded XML URLs from cache.')
             return res
+    if df is None:
+        df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
     potential_urls = df.apply(_get_potential_xml_urls, axis=1)
