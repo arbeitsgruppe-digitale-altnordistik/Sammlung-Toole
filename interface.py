@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-# import handrit_tamer as tame
 import crawler
 import csv
 import time
+import options
 
 
 # Constants
@@ -13,8 +13,9 @@ import time
 _coll_path = 'data/collections.csv'
 _id_path = 'data/ms_ids.csv'
 
+# Utility Functions
+# -----------------
 
-# Functions which make the page do stuff
 
 def rebuild_button():
     if st.sidebar.button("Rebuild meta-cache"):
@@ -25,16 +26,21 @@ def rebuild_button():
         crawler.get_xml_urls(use_cache=False)
         end = time.time()
         duration = end - start
-        print(f"It took {duration} to rebuild meta-cache!")
+        st.write(f"It took {duration} to rebuild meta-cache!")
 
 
 def redo_xmls_button():
     if st.sidebar.button("Rebuild XML cache"):
-        start = time.time()
-        noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)
-        end = time.time()
-        duration = end - start
-        print(f"Downloaded {noMSs} XML files in {duration}!")
+        st.write("This will download ALL XMLs from handrit.is and overwrite any and existing files. Do you want to continue? Warning! This will take somewhere between 30 minutes and several hours!")
+        if st.button("No"):
+            return
+        if st.button("Yes"):
+            st.spinner("In Progress")
+            start = time.time()
+            noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)
+            end = time.time()
+            duration = end - start
+            st.write(f"Downloaded {noMSs} XML files in {duration}!")
 
 def msNumber_button():
     if st.sidebar.button("Show number of MS IDs cached"):
@@ -49,12 +55,42 @@ def collections_button():
         st.write(cols)
 
 
+def test_button():
+    if st.sidebar.button("Test this shit"):
+        st.write("Fuck!")
+
+
+# Functions which create fake sub pages
+# --------------------------------------
+
+
+def mainPage():
+    st.title("Welcome to Sammlung Toole")
+    st.write("The Menu on the left has all the options")
+
+def adv_options():
+    st.title("Advanced Options Menu")
+    st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
+    collections_button()
+    msNumber_button()
+    redo_xmls_button()
+    rebuild_button()
+    test_button()
+
+
+# Menu Functions
+# --------------
+
+
+def full_menu():
+    MenuOptions = {"Home": "mainPage()", "Advanced Settings": "adv_options()"}
+    selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
+    selected = MenuOptions[selection]
+    eval(selected + "()")
+
+
 # Actual content and layout of the page
 # -------------------------------------
 
-st.write("Welcome to Sammlung Toole!")
-
-collections_button()
-msNumber_button()
-redo_xmls_button()
-rebuild_button()
+if __name__ == "__main__":
+    full_menu()
