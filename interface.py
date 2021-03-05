@@ -4,7 +4,11 @@ import numpy as np
 import crawler
 import csv
 import time
-import options
+import handrit_tamer as ht
+from handrit_tamer import get_data_from_search_url as hSr
+from handrit_tamer import get_data_from_browse_url as hBr
+import base64
+import matplotlib
 
 
 # Constants
@@ -42,6 +46,7 @@ def redo_xmls_button():
             duration = end - start
             st.write(f"Downloaded {noMSs} XML files in {duration}!")
 
+
 def msNumber_button():
     if st.sidebar.button("Show number of MS IDs cached"):
         with open(_id_path) as m:
@@ -58,6 +63,47 @@ def collections_button():
 def test_button():
     if st.sidebar.button("Test this shit"):
         st.write("Fuck!")
+
+
+def search_input():
+    inURL = st.text_input("Input search URL here")
+    dataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+    data = search_results(inURL, dataType)
+    st.write(data)
+    if st.button("Export to CSV"):
+        csv = data.to_csv(index=False)
+        b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        st.markdown(href, unsafe_allow_html=True)
+
+@st.cache(suppress_st_warning=True)
+def search_results(inURL, dataType):
+    data = hSr(inURL, dataType)    
+    return data
+
+
+def browse_input():
+    inURL = st.text_input("Input browse URL here")
+    dataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+    data = browse_results(inURL, dataType)
+    st.write(data)
+    if st.button("Plot dating"):
+        if dataType == "Metadata":
+            histo = np.histogram(data[['Terminus Postquem', 'Terminus Antequem']], bins='auto', range=(1200, 1900))
+            st.bar_chart(histo)
+        else:
+            st.write("Only works with metadata selected above.")
+    if st.button("Export to CSV"):
+        csv = data.to_csv(index=False)
+        b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        st.markdown(href, unsafe_allow_html=True)
+
+
+@st.cache(suppress_st_warning=True)
+def browse_results(inURL: str, dataType: str):
+    data = hBr(inURL, dataType)
+    return data
 
 
 # Functions which create fake sub pages
@@ -77,16 +123,31 @@ def adv_options():
     rebuild_button()
     test_button()
 
+def search_page():
+    st.title("Search Page")
+    st.write("Different search options")
+    searchOptions = {"Handrit Browse": "browse_input", "Handrit Search": "search_input"}
+    selection = st.sidebar.radio("Search Options", list(searchOptions.keys()), index=0)
+    selected = searchOptions[selection]
+    st.write(f"You chose {selection}")
+    eval(selected + "()")
 
 # Menu Functions
 # --------------
 
 
 def full_menu():
-    MenuOptions = {"Home": "mainPage()", "Advanced Settings": "adv_options()"}
+    MenuOptions = {"Home": "mainPage()", "Advanced Settings": "adv_options()", "Search Functions": "search_page"}
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
     selected = MenuOptions[selection]
     eval(selected + "()")
+
+
+# System settings
+# ---------------
+
+
+
 
 
 # Actual content and layout of the page

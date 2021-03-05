@@ -15,6 +15,7 @@ import urllib
 import pandas as pd
 import time
 import statistics
+import crawler
 
 """# Result URL to list of shelfmarks
 
@@ -320,6 +321,7 @@ def get_xml(urls):
     print(f'    Parsed XML {i + 1} of {len(urls)} ({perc}%)')
   return res
 
+
 def get_mstexts(soups):
 
   handritID = []
@@ -457,7 +459,7 @@ def get_msinfo(soups):
     #Original date: information rather in tag classes than as texts in tags!
     #Sometimes not before/not after, sometimes when
     tag = soup.origDate
-    date = ""
+    date = "" 
     ta = 0
     tp = 0
     meandate = 0
@@ -520,26 +522,33 @@ def get_msinfo(soups):
 
 """# Combine it all"""
 
-def get_data_from_browse_url(url):
+def get_data_from_browse_url(url: str, dataType: str):
   ids = efnisordResult(url)
   print(f'Got {len(ids)} IDs.')
   urls = idstourls(ids)
   print(f'Got {len(urls)} URLs.')
   xmls = get_xml(urls)
-  data = get_mstexts(xmls)
-  # data = get_msinfo(xmls)
+  if dataType == "Contents":
+    data = get_mstexts(xmls)
+  if dataType == "Metadata":
+    data = get_msinfo(xmls)
   return data
 
-def get_data_from_search_url(url):
+def get_data_from_search_url(url: str, dataType: str):
   pages = get_search_result_pages(url)
   print(f'Got {len(pages)} pages.')
   shelfmarks = get_shelfmarks_from_urls(pages)
   print(f'Got {len(shelfmarks)} shelfmarks.')
   urls = shelfmarkstourls(shelfmarks)
   print(f'Got {len(urls)} URLs.')
-  xmls = get_xml(urls)
-  data = get_mstexts(xmls)
-  # data = get_msinfo(xmls)
+  xmls = []
+  for i in urls:
+    xml = crawler.load_xml(i)
+    xmls.append(xml)
+  if dataType == "Contents":
+    data = get_mstexts(xmls)
+  if dataType == "Metadata":
+    data = get_msinfo(xmls)
   return data
 
 """# Do the Magic
@@ -580,82 +589,82 @@ Explanation:
 # browse_sample = "https://handrit.is/is/manuscript/list/keyword/bok"
 # browse_sample = "https://handrit.is/is/manuscript/list/keyword/lestur"
 # browse_sample = "https://handrit.is/en/manuscript/list/keyword/timat"
-browse_sample = "https://handrit.is/en/manuscript/list/keyword/lit"
+# browse_sample = "https://handrit.is/en/manuscript/list/keyword/lit"
 
-data = get_data_from_browse_url(browse_sample)
+# data = get_data_from_browse_url(browse_sample)
 
-print(data)
-CSVExport("Browse_results", data)
+# print(data)
+# CSVExport("Browse_results", data)
 
-"""## Search
+# """## Search
 
-The following code retrieves and analyzes the XMLs from one search result.  
-It works just like the browse code.
-"""
+# The following code retrieves and analyzes the XMLs from one search result.  
+# It works just like the browse code.
+# """
 
-# Search
+# # Search
 
-# search_sample = "https://handrit.is/en/search/results/WWbmHV"
-# search_sample = "https://handrit.is/en/search/results/BzDSqt"
-# search_sample = "https://handrit.is/en/search/results/CR9fkh"
-# search_sample = "https://handrit.is/is/search/results/hsWTp2"
-search_sample = "https://handrit.is/en/search/results/JvKG9g"
+# # search_sample = "https://handrit.is/en/search/results/WWbmHV"
+# # search_sample = "https://handrit.is/en/search/results/BzDSqt"
+# # search_sample = "https://handrit.is/en/search/results/CR9fkh"
+# # search_sample = "https://handrit.is/is/search/results/hsWTp2"
+# search_sample = "https://handrit.is/en/search/results/JvKG9g"
 
-data = get_data_from_search_url(search_sample)
+# data = get_data_from_search_url(search_sample)
 
-print(data)
-CSVExport("Search_results", data)
+# print(data)
+# CSVExport("Search_results", data)
 
-"""## Advanced
+# """## Advanced
 
-The following code blocks do some manual work, which allows more refined analysis more quickly.
+# The following code blocks do some manual work, which allows more refined analysis more quickly.
 
-In the first code block we combine the shelfmarks of Landnámabók and Íslendingabók manuscripts.
-"""
+# In the first code block we combine the shelfmarks of Landnámabók and Íslendingabók manuscripts.
+# """
 
-# Search results of Landnámabók and Íslendingabók
-landnama = "https://handrit.is/is/search/results/fgq5G8"
-islendinga = "https://handrit.is/is/search/results/RmNlh3"
-pages = get_search_result_pages(landnama)
-shelfmarks_lnb = get_shelfmarks_from_urls(pages)
-pages = get_search_result_pages(islendinga)
-shelfmarks_ib = get_shelfmarks_from_urls(pages)
+# # Search results of Landnámabók and Íslendingabók
+# landnama = "https://handrit.is/is/search/results/fgq5G8"
+# islendinga = "https://handrit.is/is/search/results/RmNlh3"
+# pages = get_search_result_pages(landnama)
+# shelfmarks_lnb = get_shelfmarks_from_urls(pages)
+# pages = get_search_result_pages(islendinga)
+# shelfmarks_ib = get_shelfmarks_from_urls(pages)
 
-# combine the shelfmarks
-shelfmarks_combined = shelfmarks_lnb + shelfmarks_ib
+# # combine the shelfmarks
+# shelfmarks_combined = shelfmarks_lnb + shelfmarks_ib
 
-# ensure each shelfmark only appears once
-shelfmarks_combined = list(set(shelfmarks_combined))
+# # ensure each shelfmark only appears once
+# shelfmarks_combined = list(set(shelfmarks_combined))
 
-print(f'Number of shelfmarks: {len(shelfmarks_combined)}')
+# print(f'Number of shelfmarks: {len(shelfmarks_combined)}')
 
-"""If we run the code, in the next block, `shelfmarks_combined` will still be available.
+# """If we run the code, in the next block, `shelfmarks_combined` will still be available.
 
-If we were to change something in the next block, we wouldn't have to re-run the first block.
+# If we were to change something in the next block, we wouldn't have to re-run the first block.
 
 
-"""
+# """
 
-urls = shelfmarkstourls(shelfmarks_combined)
-xmls_combined = get_xml(urls)
-print(f'Number of XML files loaded: {len(xmls_combined)}')
+# urls = shelfmarkstourls(shelfmarks_combined)
+# xmls_combined = get_xml(urls)
+# print(f'Number of XML files loaded: {len(xmls_combined)}')
 
-"""Finally, we can do all sorts of things with the XML, without having to reload it each time."""
+# """Finally, we can do all sorts of things with the XML, without having to reload it each time."""
 
-data = get_mstexts(xmls_combined)
-print(data)
-CSVExport("lnb_ib_combined_texts", data)
-data = get_msinfo(xmls_combined)
-print(data)
-CSVExport("lnb_ib_combined_metadata", data)
+# data = get_mstexts(xmls_combined)
+# print(data)
+# CSVExport("lnb_ib_combined_texts", data)
+# data = get_msinfo(xmls_combined)
+# print(data)
+# CSVExport("lnb_ib_combined_metadata", data)
 
-"""E.g. we can get only the manuscripts that are dated"""
+# """E.g. we can get only the manuscripts that are dated"""
 
-dated_data = data[data['Original Date'] != '']
-print(dated_data)
-CSVExport("lnb_ib_combined_metadata_dated", dated_data)
-dates = dated_data[['Original Date', 'Terminus Antequem', 'Terminus Postquem']]
-print(dates)
+# dated_data = data[data['Original Date'] != '']
+# print(dated_data)
+# CSVExport("lnb_ib_combined_metadata_dated", dated_data)
+# dates = dated_data[['Original Date', 'Terminus Antequem', 'Terminus Postquem']]
+# print(dates)
 
 # """We can even plot data"""
 
