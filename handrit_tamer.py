@@ -544,7 +544,8 @@ def get_data_from_search_url(url: str, dataType: str):
   xmls = []
   for i in urls:
     xml = crawler.load_xml(i)
-    xmls.append(xml)
+    if xml is not None:
+      xmls.append(xml)
   if dataType == "Contents":
     data = get_mstexts(xmls)
   if dataType == "Metadata":
