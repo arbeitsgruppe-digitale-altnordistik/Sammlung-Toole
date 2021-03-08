@@ -9,13 +9,60 @@ from handrit_tamer import get_data_from_search_url as hSr
 from handrit_tamer import get_data_from_browse_url as hBr
 import base64
 import matplotlib
-
+import plotly.figure_factory as ff
+from contextlib import contextmanager
+from io import StringIO
+from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
+from threading import current_thread
+import sys
+from bs4 import BeautifulSoup
+import os
 
 # Constants
 # ---------
 
 _coll_path = 'data/collections.csv'
 _id_path = 'data/ms_ids.csv'
+_xml_path = 'data/xml/'
+_dating_path = 'data/all_dates.csv'
+
+# System
+# ------
+
+@contextmanager
+def st_redirect(src, dst):
+    placeholder = st.empty()
+    output_func = getattr(placeholder, dst)
+
+    with StringIO() as buffer:
+        old_write = src.write
+
+        def new_write(b):
+            if getattr(current_thread(), REPORT_CONTEXT_ATTR_NAME, None):
+                buffer.write(b)
+                output_func(buffer.getvalue())
+            else:
+                old_write(b)
+
+        try:
+            src.write = new_write
+            yield
+        finally:
+            src.write = old_write
+
+
+@contextmanager
+def st_stdout(dst):
+    with st_redirect(sys.stdout, dst):
+        yield
+
+
+@contextmanager
+def st_stderr(dst):
+    with st_redirect(sys.stderr, dst):
+        yield
+
+
 
 # Utility Functions
 # -----------------
@@ -36,15 +83,12 @@ def rebuild_button():
 def redo_xmls_button():
     if st.sidebar.button("Rebuild XML cache"):
         st.write("This will download ALL XMLs from handrit.is and overwrite any and existing files. Do you want to continue? Warning! This will take somewhere between 30 minutes and several hours!")
-        if st.button("No"):
-            return
-        if st.button("Yes"):
-            st.spinner("In Progress")
-            start = time.time()
-            noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)
-            end = time.time()
-            duration = end - start
-            st.write(f"Downloaded {noMSs} XML files in {duration}!")
+        st.spinner("In Progress")
+        start = time.time()
+        noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)
+        end = time.time()
+        duration = end - start
+        st.write(f"Downloaded {noMSs} XML files in {duration}!")
 
 
 def msNumber_button():
@@ -67,32 +111,39 @@ def test_button():
 
 def search_input():
     inURL = st.text_input("Input search URL here")
-    dataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
-    data = search_results(inURL, dataType)
+    DataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+    if not inURL:
+        st.warning("No URL supplied!")
+    data = search_results(inURL, DataType)
     st.write(data)
+    if DataType == "Metadata":
+        if st.button("Plot dating"):
+            fig = date_plotting(data)
+            st.plotly_chart(fig, use_container_width=True)
     if st.button("Export to CSV"):
         csv = data.to_csv(index=False)
         b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
         href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
         st.markdown(href, unsafe_allow_html=True)
 
-@st.cache(suppress_st_warning=True)
-def search_results(inURL, dataType):
-    data = hSr(inURL, dataType)    
+
+@st.cache(suppress_st_warning=True) # -> won't work with stdout redirect
+def search_results(inURL, DataType):
+    data = hSr(inURL, DataType)    
     return data
 
 
 def browse_input():
     inURL = st.text_input("Input browse URL here")
-    dataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
-    data = browse_results(inURL, dataType)
+    DataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+    if not inURL:
+        st.warning("No URL supplied!")
+    data = browse_results(inURL, DataType)
     st.write(data)
-    if st.button("Plot dating"):
-        if dataType == "Metadata":
-            histo = np.histogram(data[['Terminus Postquem', 'Terminus Antequem']], bins='auto', range=(1200, 1900))
-            st.bar_chart(histo)
-        else:
-            st.write("Only works with metadata selected above.")
+    if DataType == "Metadata":
+        if st.button("Plot dating"):
+            fig = date_plotting(data)
+            st.plotly_chart(fig, use_container_width=True)
     if st.button("Export to CSV"):
         csv = data.to_csv(index=False)
         b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
@@ -101,18 +152,45 @@ def browse_input():
 
 
 @st.cache(suppress_st_warning=True)
-def browse_results(inURL: str, dataType: str):
-    data = hBr(inURL, dataType)
+def browse_results(inURL: str, DataType: str):
+    data = hBr(inURL, DataType)
     return data
 
 
-# Functions which create fake sub pages
+def date_plotting(inDF):
+    hist_data = [inDF['Terminus Antequem'], inDF['Terminus Postquem']]
+    group_labels = ['Terminus Antequem', 'Terminus Postquem']
+    fig_data = ff.create_distplot(hist_data, group_labels, bin_size=1, show_curve=False)
+    return fig_data
+
+
+def generate_reports():
+    if st.sidebar.button("Generate Reports"):
+        st.write("Statically generate expensive reports. The results will be stored in the data directory. Running these will take some time.")
+
+def generate_dating_all(use_cache: bool = True, cache: bool = True):
+    if use_cache and os.path.exists(_dating_path):
+        res = pd.read_csv(_dating_path)
+        if res is not None and not res.empty:
+            print('Loaded XML URLs from cache.')
+            return res
+        else:
+            for xml in _xml_path:
+                soup = BeautifulSoup(xml, 'lxml')
+                _id = soup.get('xml:id')
+
+    return
+
+
+
+# Functions which create sub pages
 # --------------------------------------
 
 
 def mainPage():
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
+
 
 def adv_options():
     st.title("Advanced Options Menu")
@@ -121,7 +199,8 @@ def adv_options():
     msNumber_button()
     redo_xmls_button()
     rebuild_button()
-    test_button()
+    generate_reports()
+
 
 def search_page():
     st.title("Search Page")
@@ -132,26 +211,20 @@ def search_page():
     st.write(f"You chose {selection}")
     eval(selected + "()")
 
+
 # Menu Functions
 # --------------
 
 
 def full_menu():
-    MenuOptions = {"Home": "mainPage()", "Advanced Settings": "adv_options()", "Search Functions": "search_page"}
+    MenuOptions = {"Home": "mainPage", "Search Functions": "search_page", "Advanced Settings": "adv_options"}
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
     selected = MenuOptions[selection]
     eval(selected + "()")
 
 
-# System settings
-# ---------------
-
-
-
-
-
-# Actual content and layout of the page
-# -------------------------------------
+# Main
+# ----
 
 if __name__ == "__main__":
     full_menu()

@@ -323,7 +323,6 @@ def get_xml(urls):
 
 
 def get_mstexts(soups):
-
   handritID = []
   handritList = []
   textmatrix = []
@@ -332,9 +331,14 @@ def get_mstexts(soups):
   for soup in soups:
     # Finds handritID for labelling the column
     tag = soup.msDesc
-    handritID = str(tag['xml:id'])
-    handritID = handritID[0:-3]
+    try:
+      handritID = str(tag['xml:id'])
+      handritID = handritID[0:-3]
+    except:
+      handritID = 'N/A'
     handritList.append(handritID)
+  
+      
 
     titlelist = []
     title = []
@@ -351,7 +355,7 @@ def get_mstexts(soups):
     for titleStmt in soup("titleStmt"):
         titleStmt.decompose()
 
-    # There, we noticed that sometimes the tag title is used even though it shoudlnt
+    # There, we noticed that sometimes the tag title is used even though it shoudn't
     for surrogates in soup("surrogates"):
         surrogates.decompose()
 
@@ -440,20 +444,39 @@ def get_msinfo(soups):
   data = pd.DataFrame(columns=['Handrit ID', 'Signature', 'Country',
                                'Settlement', 'Repository', 'Original Date', "Mean Date"])
 
-  for soup in soups:
+  for soup in soups: 
+
     #handrit-ID finder
     tag = soup.msDesc
-    handritID = str(tag['xml:id'])
-    handritID = handritID[0:-3]
+    try:
+      handritID = str(tag['xml:id'])
+      handritID = handritID[0:-3]
+    except:
+      handritID = 'N/A'
     
     #msIdentifier finder
-    msID = soup.find("msIdentifier")
+    try:
+      msID = soup.find("msIdentifier")
+    except:
+      msID = 'N/A'
 
     #msDetails finder
-    country = msID.find("country")
-    settlement = msID.find("settlement")
-    repository = msID.find("repository")
-    signature = msID.find("idno")
+    if msID == 'N/A':
+      country = 'N/A'
+      settlement = 'N/A'
+      repository = 'N/A'
+      signature = 'N/A'
+    else:
+      country = msID.find("country")
+      settlement = msID.find("settlement")
+      repository = msID.find("repository")
+      signature = msID.find("idno")
+      country = country.get_text()
+      settlement = settlement.get_text()
+      repository = repository.get_text()
+      signature = signature.get_text()
+      
+
 
     
     #Original date: information rather in tag classes than as texts in tags!
@@ -496,10 +519,7 @@ def get_msinfo(soups):
 
 
     #make plain text
-    country = country.get_text()
-    settlement = settlement.get_text()
-    repository = repository.get_text()
-    signature = signature.get_text()
+    
 
     data = data.append({'Handrit ID': handritID, 'Signature' : signature,
                         'Country' : country,
@@ -522,19 +542,19 @@ def get_msinfo(soups):
 
 """# Combine it all"""
 
-def get_data_from_browse_url(url: str, dataType: str):
+def get_data_from_browse_url(url: str, DataType: str):
   ids = efnisordResult(url)
   print(f'Got {len(ids)} IDs.')
   urls = idstourls(ids)
   print(f'Got {len(urls)} URLs.')
   xmls = get_xml(urls)
-  if dataType == "Contents":
+  if DataType == "Contents":
     data = get_mstexts(xmls)
-  if dataType == "Metadata":
+  if DataType == "Metadata":
     data = get_msinfo(xmls)
   return data
 
-def get_data_from_search_url(url: str, dataType: str):
+def get_data_from_search_url(url: str, DataType: str):
   pages = get_search_result_pages(url)
   print(f'Got {len(pages)} pages.')
   shelfmarks = get_shelfmarks_from_urls(pages)
@@ -544,11 +564,11 @@ def get_data_from_search_url(url: str, dataType: str):
   xmls = []
   for i in urls:
     xml = crawler.load_xml(i)
-    if xml is not None:
-      xmls.append(xml)
-  if dataType == "Contents":
+    xmls.append(xml)
+  print(f'Got {len(xmls)} XML files')
+  if DataType == "Contents":
     data = get_mstexts(xmls)
-  if dataType == "Metadata":
+  if DataType == "Metadata":
     data = get_msinfo(xmls)
   return data
 
