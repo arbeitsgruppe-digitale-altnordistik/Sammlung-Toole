@@ -14,7 +14,9 @@ from datetime import datetime
 _coll_path = 'data/collections.csv'
 _id_path = 'data/ms_ids.csv'
 _xml_url_path = 'data/ms_urls.csv'
+_shelfmark_path = 'data/ms_shelfmarks.csv'
 _xml_data_prefix = 'data/xml/'
+_xml_url_prefix = 'https://handrit.is/en/manuscript/xml/'
 
 _backspace_print = '                                     \r'
 
@@ -218,7 +220,7 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
             print('Loaded XML URLs from cache.')
             return res
     if df is None:
-        df = get_ids(df=None, use_cache=True, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)  # XXX
+        df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
     potential_urls = df.apply(_get_potential_xml_urls, axis=1)
@@ -231,10 +233,9 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
 def _get_potential_xml_urls(row: pd.Series):
     """Create dataframe with all possible xml URLs"""
     id_ = row.id
-    pref = 'https://handrit.is/en/manuscript/xml/'
-    row['en'] = f'{pref}{id_}-en.xml'
-    row['da'] = f'{pref}{id_}-da.xml'
-    row['is'] = f'{pref}{id_}-is.xml'
+    row['en'] = f'{_xml_url_prefix}{id_}-en.xml'
+    row['da'] = f'{_xml_url_prefix}{id_}-da.xml'
+    row['is'] = f'{_xml_url_prefix}{id_}-is.xml'
     return row
 
 
@@ -324,7 +325,8 @@ def _get_url_if_exists(col, id_, l, url: str):
         return col, id_, l, url, file
 
 
-# Crawl XML URLs
+
+# Cache XML data
 # --------------
 
 def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> int:
@@ -409,6 +411,67 @@ def _load_xml_content(url):
     return xml
 
 
+# Look up shelfmarks
+# ------------------
+
+def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+    """Look up all manuscript shelfmarks.
+
+    The dataframe contains the following collumns:
+    - Manuscript ID (`id`)
+    - Shelfmark (`shelfmark`)
+
+    Args:
+        df (pd.DataFrame, optional): Dataframe containing the available manuscript IDs. If `None` is passed, `get_ids()` will be called. Defaults to None.
+        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
+        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
+        max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
+        aggressive_crawl (bool, optional): Aggressive crawling mode puts some strain on the server (and your bandwidth) but is much faster. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Dataframe containing shelfmarks.
+    """
+    if use_cache and os.path.exists(_shelfmark_path):
+        res = pd.read_csv(_shelfmark_path)
+        if res is not None and not res.empty:
+            print('Loaded shelfmarks from cache.')
+            return res
+    if df is None:
+        df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
+    if max_res > 0 and max_res < len(df.index):
+        df = df[:max_res]
+
+    iter_ = _get_shelfmarks(df)
+    print()
+    res = pd.DataFrame(iter_, columns=['id', 'shelfmark'])
+    if cache:
+        res.to_csv(_shelfmark_path, encoding='utf-8', index=False)
+    return res
+
+
+def _get_shelfmarks(df: pd.DataFrame):
+    for _, row in df.iterrows():
+        shelfmark = _get_shelfmark(row['xml_file'])
+        yield row['id'], shelfmark
+
+
+def _get_shelfmark(file: str) -> str:
+    soup = load_xml_by_filename(file)
+    msid = soup.find('msIdentifier')
+    if msid:
+        idno = msid.idno
+        if idno:
+            sm = idno.getText()  # FIXME: wieso z.t. nichts?
+            # print(f'Shelfmark: {sm}', end=_backspace_print)
+            return sm
+        else:
+            print(msid)
+    else:
+        print(soup)
+
+
+# Access XML Directly
+# -------------------
 
 def load_xml(url: str, use_cache: bool = True, cache: bool = True) -> BeautifulSoup:
     """Load XML from URL.
@@ -422,11 +485,25 @@ def load_xml(url: str, use_cache: bool = True, cache: bool = True) -> BeautifulS
         BeautifulSoup: XML content.
     """
     filename = url.rsplit('/', 1)[1]
+    return load_xml_by_filename(filename=filename, use_cache=use_cache, cache=cache)
+
+
+def load_xml_by_filename(filename: str, use_cache: bool = True, cache: bool = True) -> BeautifulSoup:
+    """Load XML by file name.
+
+    Args:
+        filename (str): XML file name.
+        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
+        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
+
+    Returns:
+        BeautifulSoup: XML content.
+    """
     path = _xml_data_prefix + filename
     if use_cache and os.path.exists(path):
         with open(path, 'r', encoding='utf-8') as f:
             return BeautifulSoup(f, 'xml')
-    xml = _load_xml_content(url)
+    xml = _load_xml_content(_xml_url_prefix + filename)
     if cache:
         with open(path, 'w', encoding='utf-8') as f:
             f.write(xml)
@@ -466,7 +543,9 @@ if __name__ == "__main__":
 
     # cols = get_collections()
     # ids = get_ids()
-    xml_urls = get_xml_urls(use_cache=False)  # XXX
+    # xml_urls = get_xml_urls()
+    # shelfmarks = get_shelfmarks()
+    # print(shelfmarks)
 
 
     # Loading a manuscript as soup
