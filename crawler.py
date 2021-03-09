@@ -218,7 +218,7 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
             print('Loaded XML URLs from cache.')
             return res
     if df is None:
-        df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
+        df = get_ids(df=None, use_cache=True, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)  # XXX
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
     potential_urls = df.apply(_get_potential_xml_urls, axis=1)
@@ -245,7 +245,7 @@ def _get_existing_xml_urls(potentials: pd.DataFrame, aggressive, max_res) -> pd.
     else:
         iter_ = _get_existing_xml_urls_chillfully(potentials, max_res)
     if max_res > 0:
-        res = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url'])
+        res = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url', 'xml_file'])
         for tuple_ in iter_:
             if len(res.index) >= max_res:
                 break
@@ -254,9 +254,10 @@ def _get_existing_xml_urls(potentials: pd.DataFrame, aggressive, max_res) -> pd.
                 'id': tuple_[1],
                 'lang': tuple_[2],
                 'xml_url': tuple_[3],
+                'xml_file': tuple_[4],
             }, ignore_index=True)
     else:
-        res = pd.DataFrame(iter_, columns=['collection', 'id', 'lang', 'xml_url'])
+        res = pd.DataFrame(iter_, columns=['collection', 'id', 'lang', 'xml_url', 'xml_file'])
     print('')
     return res
 
@@ -315,11 +316,12 @@ def _get_aggressive_options(potentials: pd.DataFrame, max_res) -> Generator[Tupl
         for l in lang:
             yield col, id_, l, row[l]
 
-def _get_url_if_exists(col, id_, l, url):
+def _get_url_if_exists(col, id_, l, url: str):
     """Returns tuple, if URL returns 200, None otherwise."""
     status = requests.head(url).status_code
+    file = url.rsplit('/', 1)[1]
     if status == 200:
-        return col, id_, l, url
+        return col, id_, l, url, file
 
 
 # Crawl XML URLs
@@ -464,7 +466,7 @@ if __name__ == "__main__":
 
     # cols = get_collections()
     # ids = get_ids()
-    # xml_urls = get_xml_urls()
+    xml_urls = get_xml_urls(use_cache=False)  # XXX
 
 
     # Loading a manuscript as soup
