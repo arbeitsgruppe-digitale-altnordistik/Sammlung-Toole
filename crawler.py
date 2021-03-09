@@ -3,6 +3,7 @@ from numpy import empty
 import pandas as pd
 import requests
 import os
+import sys
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -396,19 +397,35 @@ def _cache_xml(path, url, use_cache) -> bool:
     if use_cache and os.path.exists(path):
         return False
     with open(path, 'w', encoding='utf-8') as f:
-        f.write(_load_xml_content(url))
+        data = _load_xml_content(url)
+        f.write(data)
+        if not data:
+            print(f'No data loaded for {url}', file=sys.stderr)
         return True
 
-
+import traceback
 def _load_xml_content(url):
     """Loade XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
-    try:
-        xml = response.text.encode(response.encoding).decode('utf-8')
-    except Exception:
-        xml = response.text
-    
-    return xml
+    bytes_ = response.text.encode(response.encoding)
+    if bytes_[0] == 255:
+        try:
+            bytes_ = bytes_[2:]
+            txt = bytes_.decode('utf-16le')
+            txt = txt.replace('UTF-16', 'UTF-8', 1)
+            return txt
+        except Exception:
+            # traceback.print_exc()
+            print(f'Issue with encoding in: {url}', file=sys.stderr)
+            return response.text.replace('iso-8859-1', 'UTF-8')
+    else:
+        try:
+            txt = bytes_.decode('utf-8')  # 0xe1
+            return txt
+        except Exception:
+            # traceback.print_exc()
+            print(f'Issue with encoding in: {url}', file=sys.stderr)
+            return response.text.replace('iso-8859-1', 'UTF-8')
 
 
 # Look up shelfmarks
@@ -461,13 +478,9 @@ def _get_shelfmark(file: str) -> str:
     if msid:
         idno = msid.idno
         if idno:
-            sm = idno.getText()  # FIXME: wieso z.t. nichts?
-            # print(f'Shelfmark: {sm}', end=_backspace_print)
+            sm = idno.getText()
+            print(f'Shelfmark: {sm}', end=_backspace_print)
             return sm
-        else:
-            print(msid)
-    else:
-        print(soup)
 
 
 # Access XML Directly
@@ -554,11 +567,22 @@ if __name__ == "__main__":
     # s = load_xml('https://handrit.is/en/manuscript/xml/AM02-0001-e-beta-I-en.xml')
     # s = load_xmls_by_id('AM02-0162B-epsilon')
     # s = load_xmls_by_id('AM02-0013')
+    # print('1)')
+    # s = load_xmls_by_id('AM04-0207a', use_cache=False)
+    # print(s)
+    # print('2)')
+    # s = load_xmls_by_id('Acc-0001-da', use_cache=False)
+    s = load_xmls_by_id('Lbs08-2064')
+    # print(s)
+    # load_xml('https://handrit.is/en/manuscript/xml/Acc-0001-da.xml', use_cache=False)
 
 
     # Cache XMLs for future use
     # -------------------------
 
-    # Number_of_loaded = cache_all_xml_data(aggressive_crawl=True, max_res=-1)
+    # Number_of_loaded = cache_all_xml_data()
+    # print(Number_of_loaded)
+
+    # shelfmarks = get_shelfmarks()
 
     print(f'Finished: {datetime.now()}')
