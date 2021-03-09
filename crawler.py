@@ -21,6 +21,7 @@ _xml_url_prefix = 'https://handrit.is/en/manuscript/xml/'
 
 _backspace_print = '                                     \r'
 
+verbose = True
 
 # Utlity Functions
 # ----------------
@@ -61,7 +62,8 @@ def get_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFrame:
     if use_cache and os.path.exists(_coll_path):
         cols = pd.read_csv(_coll_path)
         if cols is not None and not cols.empty:
-            print('Loaded collections from cache.')
+            if verbose:
+                print('Loaded collections from cache.')
             return cols
     cols = _load_collections()
     if cache:
@@ -85,7 +87,7 @@ def _load_collections() -> pd.DataFrame:
 # Crawl Manuscript IDs
 # --------------------
 
-def get_ids(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
     """Load all manuscript IDs.
 
     The dataframe contains the following collumns:
@@ -93,7 +95,7 @@ def get_ids(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, max_re
     - Manuscript ID (`id`)
 
     Args:
-        df (pd.DataFrame): Dataframe containing the available collections on handrit. If `None` is passed, `get_collections()` will be called. Defaults to None.
+        df (pd.DataFrame, optional): Dataframe containing the available collections on handrit. If `None` is passed, `get_collections()` will be called. Defaults to None.
         use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). 
@@ -107,7 +109,8 @@ def get_ids(df: pd.DataFrame, use_cache: bool = True, cache: bool = True, max_re
     if use_cache and os.path.exists(_id_path):
         ids = pd.read_csv(_id_path)
         if ids is not None and not ids.empty:
-            print('Loaded manuscript IDs from cache.')
+            if verbose:
+                print('Loaded manuscript IDs from cache.')
             return ids
     if df is None:
         df = get_collections(use_cache=use_cache, cache=cache)
@@ -167,21 +170,25 @@ def _download_ids_aggressively(df: pd.DataFrame, max_res: int) -> Generator[Tupl
                 if max_res > 0 and i >= max_res:
                     executor.shutdown(wait=False, cancel_futures=True)
                     return
-                print(i, end='\r')
+                if verbose:
+                    print(i, end=_backspace_print)
                 i += 1
                 yield tup
-        print('', end=_backspace_print)
+        if verbose:
+            print('', end=_backspace_print)
 
 
 def _load_ids_chillfully(df: pd.DataFrame) -> Generator[Tuple[str], None, None]:
     """Load IDs page by page"""
     cols = list(df.collection)
     for col in cols:
-        print(f'loading: {col}', end=_backspace_print)
+        if verbose:
+            print(f'loading: {col}', end=_backspace_print)
         url = df.loc[df.collection == col, 'url'].values[0]
         for res in _download_ids_from_url(url, col):
             yield res
-    print('', end=_backspace_print)
+    if verbose:
+        print('', end=_backspace_print)
 
 
 def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
@@ -218,7 +225,8 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
     if use_cache and os.path.exists(_xml_url_path):
         res = pd.read_csv(_xml_url_path)
         if res is not None and not res.empty:
-            print('Loaded XML URLs from cache.')
+            if verbose:
+                print('Loaded XML URLs from cache.')
             return res
     if df is None:
         df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
@@ -260,13 +268,15 @@ def _get_existing_xml_urls(potentials: pd.DataFrame, aggressive, max_res) -> pd.
             }, ignore_index=True)
     else:
         res = pd.DataFrame(iter_, columns=['collection', 'id', 'lang', 'xml_url', 'xml_file'])
-    print('')
+    if verbose:
+        print('')
     return res
 
 
 def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
     """Generator of slowly loaded rows for ms_urls dataframe."""
-    if len(potentials.index) > max_res:
+    print(potentials)
+    if max_res > 0 and len(potentials.index) > max_res:
         potentials = potentials[:max_res]
     hits = 0
     for checked, row in potentials.iterrows():
@@ -278,9 +288,9 @@ def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res) -> Gene
             if res:
                 hits += 1
                 yield res
-                percents = hits / max_res * 100
-                print(f'Checked {checked+1} \tFound {hits} of {max_res} ({percents:.2f}%)', end=_backspace_print)
-
+                if verbose:
+                    percents = hits / max_res * 100
+                    print(f'Checked {checked+1} \tFound {hits} of {max_res} ({percents:.2f}%)', end=_backspace_print)
 
 
 def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
@@ -298,13 +308,17 @@ def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Ge
                 if res:
                     i += 1
                     yield res
-                    print(f'Found {i}', end=_backspace_print)
+                    if verbose:
+                        print(f'Found {i}', end=_backspace_print)
         else:
-            for i, f in enumerate(as_completed(futures)):
+            i = 0
+            for f in as_completed(futures):
                 res = f.result()
                 if res:
+                    i += 1
                     yield res
-                    print(f'Found {i}', end=_backspace_print)
+                    if verbose:
+                        print(f'Found {i}', end=_backspace_print)
 
 
 def _get_aggressive_options(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
@@ -324,6 +338,8 @@ def _get_url_if_exists(col, id_, l, url: str):
     file = url.rsplit('/', 1)[1]
     if status == 200:
         return col, id_, l, url, file
+    else:
+        return False
 
 
 
@@ -349,7 +365,8 @@ def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: boo
         res = _cache_xml_aggressively(df, max_res, use_cache)
     else:
         res = _cache_xml_chillfully(df, max_res, use_cache)
-    print('')
+    if verbose:
+        print('')
     return res
 
 
@@ -365,7 +382,8 @@ def _cache_xml_aggressively(df, max_res, use_cache):
             did_cache = f.result()
             if did_cache:
                 res += 1
-                print(f'Cached {res}', end=_backspace_print)
+                if verbose:
+                    print(f'Cached {res}', end=_backspace_print)
         return res
 
 
@@ -388,7 +406,8 @@ def _cache_xml_chillfully(df, max_res, use_cache):
         did_cache = _cache_xml(path, url, use_cache)
         if did_cache:
             res += 1
-            print(f'Cached {res}', end=_backspace_print)
+            if verbose:
+                print(f'Cached {res}', end=_backspace_print)
     return res
 
 
@@ -451,7 +470,8 @@ def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = 
     if use_cache and os.path.exists(_shelfmark_path):
         res = pd.read_csv(_shelfmark_path)
         if res is not None and not res.empty:
-            print('Loaded shelfmarks from cache.')
+            if verbose:
+                print('Loaded shelfmarks from cache.')
             return res
     if df is None:
         df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
@@ -459,7 +479,8 @@ def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = 
         df = df[:max_res]
 
     iter_ = _get_shelfmarks(df)
-    print()
+    if verbose:
+        print()
     res = pd.DataFrame(iter_, columns=['id', 'shelfmark'])
     if cache:
         res.to_csv(_shelfmark_path, encoding='utf-8', index=False)
@@ -479,7 +500,8 @@ def _get_shelfmark(file: str) -> str:
         idno = msid.idno
         if idno:
             sm = idno.getText()
-            print(f'Shelfmark: {sm}', end=_backspace_print)
+            if verbose:
+                print(f'Shelfmark: {sm}', end=_backspace_print)
             return sm
 
 
@@ -545,6 +567,20 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
     return res
 
 
+# Tests
+# -----
+def test():
+    test_get_by_id()
+
+
+def test_get_by_id():
+    df = get_ids()
+    for _, row in df.iterrows():
+        id_ = row['id']
+        hits = load_xmls_by_id(id_)
+        if not hits:
+            print(f"Error: couldn't find {id_}")
+
 # Test Runner
 # -----------
 
@@ -572,7 +608,7 @@ if __name__ == "__main__":
     # print(s)
     # print('2)')
     # s = load_xmls_by_id('Acc-0001-da', use_cache=False)
-    s = load_xmls_by_id('Lbs08-2064')
+    # s = load_xmls_by_id('Lbs08-2064')
     # print(s)
     # load_xml('https://handrit.is/en/manuscript/xml/Acc-0001-da.xml', use_cache=False)
 
@@ -583,6 +619,9 @@ if __name__ == "__main__":
     # Number_of_loaded = cache_all_xml_data()
     # print(Number_of_loaded)
 
-    # shelfmarks = get_shelfmarks()
+    verbose = False
+    shelfmarks = get_shelfmarks()
+
+    # test()
 
     print(f'Finished: {datetime.now()}')
