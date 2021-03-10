@@ -117,6 +117,7 @@ def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True,
     ids = _load_ids(df, max_res=max_res, aggressive_crawl=aggressive_crawl)
     if max_res > 0 and len(ids.index) >= max_res:
         ids = ids[:max_res]
+    ids.sort_values(by=['collection', 'id'])
     if cache:
         ids.to_csv(_id_path, encoding='utf-8', index=False)
     return ids
@@ -245,7 +246,7 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
     potential_urls = df.apply(_get_potential_xml_urls, axis=1)
-    existing_urls = _get_existing_xml_urls(potential_urls, aggressive_crawl, max_res)
+    existing_urls = _get_existing_xml_urls(potential_urls, aggressive_crawl, max_res).sort_values(by=['collection', 'id'])
     if cache:
         existing_urls.to_csv(_xml_url_path, encoding='utf-8', index=False)
     return existing_urls
@@ -492,7 +493,7 @@ def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = 
     iter_ = _get_shelfmarks(df)
     if verbose:
         print()
-    res = pd.DataFrame(iter_, columns=['id', 'shelfmark'])
+    res = pd.DataFrame(iter_, columns=['id', 'shelfmark']).sort_values(by='id')
     if cache:
         res.to_csv(_shelfmark_path, encoding='utf-8', index=False)
     return res
