@@ -599,6 +599,12 @@ def test_get_by_id():
         if not hits:
             print(f"Error: couldn't find {id_}")
 
+
+def crawl():
+    """crawl everything as fast as possible"""
+    get_shelfmarks(use_cache=False)
+
+
 # Test Runner
 # -----------
 
@@ -638,7 +644,7 @@ if __name__ == "__main__":
     # print(Number_of_loaded)
 
     # verbose = False
-    shelfmarks = get_shelfmarks()
+    # shelfmarks = get_shelfmarks()
 
     # get_ids()
     # get_xml_urls()
