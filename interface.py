@@ -17,6 +17,11 @@ from threading import current_thread
 import sys
 from bs4 import BeautifulSoup
 import os
+import date_extractor
+import plotly.express as px
+import streamlit.components.v1 as comps
+
+
 
 # Constants
 # ---------
@@ -24,7 +29,9 @@ import os
 _coll_path = 'data/collections.csv'
 _id_path = 'data/ms_ids.csv'
 _xml_path = 'data/xml/'
-_dating_path = 'data/all_dates.csv'
+_date_path = 'data/dating_all.csv'
+_html_path = 'data/dating_all.html'
+
 
 # System
 # ------
@@ -40,7 +47,7 @@ def st_redirect(src, dst):
         def new_write(b):
             if getattr(current_thread(), REPORT_CONTEXT_ATTR_NAME, None):
                 buffer.write(b)
-                output_func(buffer.getvalue())
+                output_func(b)
             else:
                 old_write(b)
 
@@ -70,25 +77,33 @@ def st_stderr(dst):
 
 def rebuild_button():
     if st.sidebar.button("Rebuild meta-cache"):
-        st.spinner("In Progress")
-        start = time.time()
-        crawler.get_collections(use_cache=False)
-        crawler.get_ids(use_cache=False)
-        crawler.get_xml_urls(use_cache=False)
-        end = time.time()
-        duration = end - start
+        with st.spinner("In Progress"):
+            start = time.time()
+            with st_stdout('code'):
+                crawler.get_collections(use_cache=False)
+            with st_stdout('code'):
+                crawler.get_ids(use_cache=False)
+            with st_stdout('code'):    
+                crawler.get_xml_urls(use_cache=False)
+            end = time.time()
+            duration = end - start
         st.write(f"It took {duration} to rebuild meta-cache!")
 
 
 def redo_xmls_button():
     if st.sidebar.button("Rebuild XML cache"):
-        st.write("This will download ALL XMLs from handrit.is and overwrite any and existing files. Do you want to continue? Warning! This will take somewhere between 30 minutes and several hours!")
-        st.spinner("In Progress")
-        start = time.time()
-        noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)
-        end = time.time()
-        duration = end - start
+        with st.spinner("In Progress"):
+            start = time.time()
+            noMSs = redo_xmls_wrap()
+            end = time.time()
+            duration = end - start
         st.write(f"Downloaded {noMSs} XML files in {duration}!")
+
+
+def redo_xmls_wrap():
+    with st_stdout('code'):
+        noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)
+    return noMSs
 
 
 def msNumber_button():
@@ -102,11 +117,6 @@ def collections_button():
     if st.sidebar.button("Show all collections"):
         cols = crawler.get_collections()
         st.write(cols)
-
-
-def test_button():
-    if st.sidebar.button("Test this shit"):
-        st.write("Fuck!")
 
 
 def search_input():
@@ -127,7 +137,7 @@ def search_input():
         st.markdown(href, unsafe_allow_html=True)
 
 
-@st.cache(suppress_st_warning=True) # -> won't work with stdout redirect
+# @st.cache(suppress_st_warning=True) # -> won't work with stdout redirect
 def search_results(inURL, DataType):
     data = hSr(inURL, DataType)    
     return data
@@ -147,11 +157,11 @@ def browse_input():
     if st.button("Export to CSV"):
         csv = data.to_csv(index=False)
         b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.'
         st.markdown(href, unsafe_allow_html=True)
 
 
-@st.cache(suppress_st_warning=True)
+# @st.cache(suppress_st_warning=True)
 def browse_results(inURL: str, DataType: str):
     data = hBr(inURL, DataType)
     return data
@@ -167,19 +177,16 @@ def date_plotting(inDF):
 def generate_reports():
     if st.sidebar.button("Generate Reports"):
         st.write("Statically generate expensive reports. The results will be stored in the data directory. Running these will take some time.")
+        st.info("Currently dummy")
 
-def generate_dating_all(use_cache: bool = True, cache: bool = True):
-    if use_cache and os.path.exists(_dating_path):
-        res = pd.read_csv(_dating_path)
-        if res is not None and not res.empty:
-            print('Loaded XML URLs from cache.')
-            return res
-        else:
-            for xml in _xml_path:
-                soup = BeautifulSoup(xml, 'lxml')
-                _id = soup.get('xml:id')
 
-    return
+def all_MS_datings():
+    st.write("Displaying scatter plot of all available MS dates (post- and antequem) below")
+    inDF = pd.read_csv(_date_path).drop_duplicates(subset='Shelfmark')
+    st.write(inDF)
+    htmlf = open(_html_path, "r")
+    
+    comps.html(htmlf.read(), height=600)
 
 
 
@@ -195,6 +202,7 @@ def mainPage():
 def adv_options():
     st.title("Advanced Options Menu")
     st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
+    st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
     collections_button()
     msNumber_button()
     redo_xmls_button()
@@ -211,13 +219,18 @@ def search_page():
     st.write(f"You chose {selection}")
     eval(selected + "()")
 
+def static_reports():
+    reports = {"Dating of all MSs": "all_MS_datings"}
+    selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
+    selected = reports[selection]
+    eval(selected + "()")
 
 # Menu Functions
 # --------------
 
 
 def full_menu():
-    MenuOptions = {"Home": "mainPage", "Search Functions": "search_page", "Advanced Settings": "adv_options"}
+    MenuOptions = {"Home": "mainPage", "Search Functions": "search_page", "Reports": "static_reports", "Advanced Settings": "adv_options"}
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
     selected = MenuOptions[selection]
     eval(selected + "()")
