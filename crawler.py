@@ -108,7 +108,7 @@ def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True,
     """
     if use_cache and os.path.exists(_id_path):
         ids = pd.read_csv(_id_path)
-        if ids is not None and not ids.empty:
+        if ids is not None and not ids.empty and _is_ids_complete(ids):  # LATER: should work from that, in case of partially finished loading
             if verbose:
                 print('Loaded manuscript IDs from cache.')
             return ids
@@ -120,6 +120,16 @@ def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True,
     if cache:
         ids.to_csv(_id_path, encoding='utf-8', index=False)
     return ids
+
+
+def _is_ids_complete(ids: pd.DataFrame) -> bool:
+    """indicates if the number of IDs matches the number indicated by the collections"""
+    colls = get_collections()
+    if colls['ms_count'].sum() == len(ids.index):
+        return True
+    if verbose:
+        print('Number of manuscripts does not match the number indicated by collections')
+    return False
 
 
 def _load_ids(df: pd.DataFrame, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
@@ -162,18 +172,20 @@ def _load_ids_aggressively(df: pd.DataFrame, max_res: int = -1):
 def _download_ids_aggressively(df: pd.DataFrame, max_res: int) -> Generator[Tuple[str], None, None]:
     """Download IDs aggressively: launch Threads"""
     with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(
-            _download_ids_from_url, s.url, s.collection) for _, s in df.iterrows()]
-        i = 0
-        for f in as_completed(futures):
-            for tup in f.result():
-                if max_res > 0 and i >= max_res:
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    return
-                if verbose:
-                    print(i, end=_backspace_print)
-                i += 1
-                yield tup
+        futures = [executor.submit(_download_ids_from_url, s.url, s.collection) for _, s in df.iterrows()]
+        try:
+            i = 0
+            for f in as_completed(futures):
+                for tup in f.result():
+                    if max_res > 0 and i >= max_res:
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        return
+                    if verbose:
+                        print(i, end=_backspace_print)
+                    i += 1
+                    yield tup
+        except KeyboardInterrupt:
+            executor.shutdown(wait=False, cancel_futures=True)
         if verbose:
             print('', end=_backspace_print)
 
@@ -224,7 +236,7 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
     """
     if use_cache and os.path.exists(_xml_url_path):
         res = pd.read_csv(_xml_url_path)
-        if res is not None and not res.empty:
+        if res is not None and not res.empty and _is_urls_complete(res):  # LATER: should work from that, in case of partially finished loading
             if verbose:
                 print('Loaded XML URLs from cache.')
             return res
@@ -237,6 +249,12 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
     if cache:
         existing_urls.to_csv(_xml_url_path, encoding='utf-8', index=False)
     return existing_urls
+
+
+def _is_urls_complete(df: pd.DataFrame) -> bool:
+    ids_a = len(get_ids()['id'].unique())
+    ids_b = len(df['id'].unique())
+    return ids_a == ids_b
 
 
 def _get_potential_xml_urls(row: pd.Series):
@@ -298,10 +316,10 @@ def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Ge
     options = _get_aggressive_options(potentials, max_res)
     with ThreadPoolExecutor() as executor:
         futures = [executor.submit(_get_url_if_exists, *o) for o in options]
-        if max_res > 0:
+        try:
             i = 0
             for f in as_completed(futures):
-                if i >= max_res:
+                if max_res > 0 and i >= max_res:
                     executor.shutdown(wait=False, cancel_futures=True)
                     break
                 res = f.result()
@@ -310,15 +328,8 @@ def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Ge
                     yield res
                     if verbose:
                         print(f'Found {i}', end=_backspace_print)
-        else:
-            i = 0
-            for f in as_completed(futures):
-                res = f.result()
-                if res:
-                    i += 1
-                    yield res
-                    if verbose:
-                        print(f'Found {i}', end=_backspace_print)
+        except KeyboardInterrupt:
+            executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _get_aggressive_options(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
@@ -373,17 +384,20 @@ def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: boo
 def _cache_xml_aggressively(df, max_res, use_cache):
     tasks = _get_cache_tasks(df)
     with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(_cache_xml, *t, use_cache) for t in tasks]
         res = 0
-        for f in as_completed(futures):
-            if max_res > 0 and res >= max_res:
-                executor.shutdown(wait=True, cancel_futures=True)
-                break
-            did_cache = f.result()
-            if did_cache:
-                res += 1
-                if verbose:
-                    print(f'Cached {res}', end=_backspace_print)
+        futures = [executor.submit(_cache_xml, *t, use_cache) for t in tasks]
+        try:
+            for f in as_completed(futures):
+                if max_res > 0 and res >= max_res:
+                    executor.shutdown(wait=True, cancel_futures=True)
+                    break
+                did_cache = f.result()
+                if did_cache:
+                    res += 1
+                    if verbose:
+                        print(f'Cached {res}', end=_backspace_print)
+        except KeyboardInterrupt:
+            executor.shutdown(wait=True, cancel_futures=True)
         return res
 
 
@@ -422,7 +436,6 @@ def _cache_xml(path, url, use_cache) -> bool:
             print(f'No data loaded for {url}', file=sys.stderr)
         return True
 
-import traceback
 def _load_xml_content(url):
     """Loade XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
@@ -434,7 +447,6 @@ def _load_xml_content(url):
             txt = txt.replace('UTF-16', 'UTF-8', 1)
             return txt
         except Exception:
-            # traceback.print_exc()
             print(f'Issue with encoding in: {url}', file=sys.stderr)
             return response.text.replace('iso-8859-1', 'UTF-8')
     else:
@@ -442,7 +454,6 @@ def _load_xml_content(url):
             txt = bytes_.decode('utf-8')  # 0xe1
             return txt
         except Exception:
-            # traceback.print_exc()
             print(f'Issue with encoding in: {url}', file=sys.stderr)
             return response.text.replace('iso-8859-1', 'UTF-8')
 
@@ -469,7 +480,7 @@ def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = 
     """
     if use_cache and os.path.exists(_shelfmark_path):
         res = pd.read_csv(_shelfmark_path)
-        if res is not None and not res.empty:
+        if res is not None and not res.empty and _is_shelfmarks_complete(res):  # LATER: should work from that, in case of partially finished loading
             if verbose:
                 print('Loaded shelfmarks from cache.')
             return res
@@ -485,6 +496,12 @@ def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = 
     if cache:
         res.to_csv(_shelfmark_path, encoding='utf-8', index=False)
     return res
+
+
+def _is_shelfmarks_complete(df: pd.DataFrame) -> bool:
+    ids_a = len(get_ids()['id'].unique())
+    ids_b = len(df['id'].unique())
+    return ids_a == ids_b
 
 
 def _get_shelfmarks(df: pd.DataFrame):
@@ -619,8 +636,11 @@ if __name__ == "__main__":
     # Number_of_loaded = cache_all_xml_data()
     # print(Number_of_loaded)
 
-    verbose = False
+    # verbose = False
     shelfmarks = get_shelfmarks()
+
+    # get_ids()
+    # get_xml_urls()
 
     # test()
 
