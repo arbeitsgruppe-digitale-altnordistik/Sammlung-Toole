@@ -4,9 +4,11 @@ from bs4 import BeautifulSoup
 import urllib
 import pandas as pd
 import copy
+from crawler import load_xml
+from crawler import load_xmls_by_id
 
-#myURLList = "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml"
-myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0151-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
+myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml"]
+#myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0151-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
 
@@ -14,6 +16,7 @@ myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://
 
 # Es fehlt noch Ursprungsort und Datierung.
 
+# get_soup könnte getilgt werden, da dies mit dem Crawler nun bewerkstelligt wird.
 def get_soup(url):
     sauce = urllib.request.urlopen(url).read()
     soup = BeautifulSoup(sauce, "xml")
@@ -139,7 +142,14 @@ def get_location(soup):
 def get_list(links):
     mylist = []
     for url in links:
-        soup = get_soup(url)
+        soup = load_xml(url)
+
+        #soup = load_xmls_by_id(id)
+
+
+        #gets soup from url (without crawler)
+        #soup = get_soup(url)
+        
 
         tag = soup.msDesc
         handritID = str(tag['xml:id'])
