@@ -59,3 +59,42 @@ If a package needs to be installed, this most likely means that it's required. I
 
 <!-- TODO: How to run it? -->
 
+
+## Getting Data
+
+Use the `crawler.py` to get data.  
+On top of your python file, add `import crawler`, then you can access methids from the crawler with e.g. `crawler.load_xml(url)`.
+
+It's best to cache everything locally, so you get data quickly. See below for more information.
+
+The following functions are meant to be used:
+
+- `load_xml(url)`
+- `load_xml_by_filename(filename)`
+- `load_xmls_by_id(idno)`
+
+More can be added at any point.
+
+
+## Crawling Data
+
+The crawler by default caches data locally, storing information in CSV files and saving all the XML files in a separate folder.
+
+It's best to crawl the intire set of data at the beginning, so afterwards, operations run a lot quicker.  
+Be sure to repeat this step, so that your cached data is up to date.  
+To cache everything, call
+
+```python
+import crawler
+crawler.crawl()
+```
+
+You can do more specific tasks with the following functions:
+
+- `get_collections()`
+- `get_ids()`
+- `get_xml_urls()`
+- `cache_all_xml_data()`
+- `get_shelfmarks()`
+
+For details on usage and parameters, see the docstring. (In VSCode, hover over the function after typing it, and you'll get a popup. Otherwise, look at the comments in the code.)
