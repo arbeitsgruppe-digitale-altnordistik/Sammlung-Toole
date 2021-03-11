@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 import urllib
 import pandas as pd
 import time
+import statistics
 
 """# Result URL to list of shelfmarks
 
@@ -431,10 +432,11 @@ def get_msinfo(soups):
   noteBefore = []
   notAfter = []
   when = []
+  meandate = []
 
   data = []
   data = pd.DataFrame(columns=['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date'])
+                               'Settlement', 'Repository', 'Original Date', "Mean Date", "Range"])
 
   for soup in soups:
     #handrit-ID finder
@@ -458,6 +460,8 @@ def get_msinfo(soups):
     date = ""
     ta = 0
     tp = 0
+    meandate = 0
+    yearrange = 0
     if tag:
       if tag.get('notBefore') and tag.get('notAfter'):
         notBefore = str(tag['notBefore'])
@@ -474,16 +478,25 @@ def get_msinfo(soups):
         date = str(notBefore + "-" + notAfter)
         tp = int(notBefore)
         ta = int(notAfter)
+        meandate = int(statistics.mean([int(tp), int(ta)]))
+        yearrange = int(ta)-int(tp)
+        
       elif tag.get('when'):
         date = str(tag['when'])
         tp = int(date)
         ta = int(date)
+        meandate = int(statistics.mean([int(tp), int(ta)]))
+        yearrange = int(ta)-int(tp)
+
       elif tag.get('from') and tag.get('to'):
         fr = str(tag['from'])
         to = str(tag['to'])
         date = str(fr + "-" + to)
         tp = int(fr)
         ta = int(to)
+        meandate = int(statistics.mean([int(tp), int(ta)]))
+        yearrange = int(ta)-int(tp)
+
 
     #make plain text
     country = country.get_text()
@@ -497,7 +510,9 @@ def get_msinfo(soups):
                         'Repository' : repository,
                         'Original Date' : date,
                         'Terminus Postquem' : tp,
-                        'Terminus Antequem' : ta}, 
+                        'Terminus Antequem' : ta,
+                        'Mean Date' : meandate,
+                        'Range' : yearrange}, 
                        ignore_index=True)
  
 
@@ -605,8 +620,8 @@ In the first code block we combine the shelfmarks of Landnámabók and Íslendin
 """
 
 # Search results of Landnámabók and Íslendingabók
-landnama = "https://handrit.is/is/search/results/KFg2Vv"
-islendinga = "https://handrit.is/is/search/results/rvNDL5"
+landnama = "https://handrit.is/is/search/results/fgq5G8"
+islendinga = "https://handrit.is/is/search/results/RmNlh3"
 pages = get_search_result_pages(landnama)
 shelfmarks_lnb = get_shelfmarks_from_urls(pages)
 pages = get_search_result_pages(islendinga)
@@ -648,11 +663,11 @@ CSVExport("lnb_ib_combined_metadata_dated", dated_data)
 dates = dated_data[['Original Date', 'Terminus Antequem', 'Terminus Postquem']]
 print(dates)
 
-"""We can even plot data"""
+# """We can even plot data"""
 
-dates['Terminus Antequem'].plot.hist(bins=60)
+# dates['Terminus Antequem'].plot.hist(bins=60)
 
-dates['Terminus Antequem'].plot.hist(bins=60)
-dates['Terminus Postquem'].plot.hist(bins=60)
+# dates['Terminus Antequem'].plot.hist(bins=60)
+# dates['Terminus Postquem'].plot.hist(bins=60)
 
-dates[['Terminus Postquem', 'Terminus Antequem']].plot.hist(bins=60, alpha=0.5)
+# dates[['Terminus Postquem', 'Terminus Antequem']].plot.hist(bins=60, alpha=0.5)
