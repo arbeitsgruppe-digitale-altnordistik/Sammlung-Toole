@@ -7,11 +7,16 @@ import copy
 from crawler import load_xml
 from crawler import load_xmls_by_id
 
-myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml"]
-#myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0151-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
+
+
+myURLList = ["https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
+
+#myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
 
+# Hier Probleme noch:
+#myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0151-is.xml"]
 
 
 # Es fehlt noch Ursprungsort und Datierung.
@@ -76,12 +81,62 @@ def get_shorttitle(soup):
 
     return pretty_shorttitle
 
-def get_description(soup):
-    support = soup.find('support')
-    pretty_support = get_cleaned_text(support)
 
+def get_support(soup):
+    supportDesc = soup.find('supportDesc')
+    if supportDesc:
+        support = supportDesc.get('material')
+        if support == "chart":
+            pretty_support = "Paper"
+        elif support == "perg":
+            pretty_support = "Parchment"
+        else:
+            pretty_support = support
+    else:
+        support = soup.find("country")
+        try:
+            pretty_support = get_cleaned_text(support)
+        except:
+            pretty_support = ""
+    
+    return(pretty_support)
+
+# hier in get_extent zieht er nur string zwischen tags, aber keine info aus tag selbst, gilt auch für unit
+def get_extent(soup):
     extent = soup.find('extent')
-    if extent:
+
+    extent_copy = copy.copy(extent)
+
+    dimensions = extent_copy.find('dimensions')
+
+    while dimensions:
+        height = dimensions.height
+        width = dimensions.width
+
+        height.string = height.string + " x"
+        width.string = width.string + " mm"
+        
+        extent_copy.dimensions.unwrap()
+        dimensions = extent_copy.find('dimensions')
+
+    pretty_extent = get_cleaned_text(extent_copy)
+
+    if not pretty_extent:
+        pretty_extent = ""
+    
+    return(pretty_extent)
+
+
+# ÜBERARBEITEN: get_dimensions
+def get_dimensions(soup):
+    extent = soup.find('extent')
+
+    # Gibt Fall, dass extent/
+    extent_check = get_cleaned_text(extent)
+
+    #if extent:
+    #
+    if extent_check:
         try:
             dimensions = soup.dimensions
             
@@ -100,11 +155,22 @@ def get_description(soup):
         except:
             pretty_dimensions = ""
         
-        pretty_extent = get_cleaned_text(extent)
+        pretty_extension = get_cleaned_text(extent)
     else:
-        pretty_extent = ""         
+        pretty_extent = ""
+        pretty_dimensions = ""
+    
+    return(pretty_extent)
 
-    pretty_description = pretty_support + " / " + pretty_extent + " / " + pretty_dimensions
+
+
+def get_description(soup):
+    pretty_support = get_support(soup)
+    pretty_extent = get_extent(soup)
+   
+    pretty_description = pretty_support + " / "  + pretty_extent    
+
+    print(pretty_description)
 
     return(pretty_description)
 
@@ -146,10 +212,8 @@ def get_list(links):
 
         #soup = load_xmls_by_id(id)
 
-
         #gets soup from url (without crawler)
         #soup = get_soup(url)
-        
 
         tag = soup.msDesc
         handritID = str(tag['xml:id'])
@@ -182,7 +246,7 @@ def CSVExport(FileName, DataFrame):
     return
 
 #CSVExport("Meta", data)
-print(data)
+#print(data)
 
 
 
