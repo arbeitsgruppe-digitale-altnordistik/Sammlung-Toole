@@ -15,3 +15,4 @@ streamlit==0.78.0
 matplotlib==3.3.4
 streamlit-pandas-profiling==0.1.1
 plotly==4.14.3
+html5lib==1.1
