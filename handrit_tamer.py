@@ -433,6 +433,7 @@ def get_msinfo(soups):
   notAfter = []
   when = []
   meandate = []
+  yearrange = []
 
   data = []
   data = pd.DataFrame(columns=['Handrit ID', 'Signature', 'Country',
