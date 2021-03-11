@@ -237,7 +237,7 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
     """
     if use_cache and os.path.exists(_xml_url_path):
         res = pd.read_csv(_xml_url_path)
-        if res is not None and not res.empty and _is_urls_complete(res):  # LATER: should work from that, in case of partially finished loading
+        if res is not None and not res.empty: # and _is_urls_complete(res):  LATER: should work from that, in case of partially finished loading
             if verbose:
                 print('Loaded XML URLs from cache.')
             return res
@@ -493,7 +493,7 @@ def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = 
     iter_ = _get_shelfmarks(df)
     if verbose:
         print()
-    res = pd.DataFrame(iter_, columns=['id', 'shelfmark']).sort_values(by='id')
+    res = pd.DataFrame(iter_, columns=['id', 'shelfmark']).sort_values(by='id').drop_duplicates()
     if cache:
         res.to_csv(_shelfmark_path, encoding='utf-8', index=False)
     return res

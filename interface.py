@@ -20,6 +20,7 @@ import os
 import date_extractor
 import plotly.express as px
 import streamlit.components.v1 as comps
+from handrit_tamer import get_from_search_list as multiSearch
 
 
 
@@ -31,6 +32,7 @@ _id_path = 'data/ms_ids.csv'
 _xml_path = 'data/xml/'
 _date_path = 'data/dating_all.csv'
 _html_path = 'data/dating_all.html'
+_home_image = 'data/title.png'
 
 
 # System
@@ -122,10 +124,18 @@ def collections_button():
 def search_input():
     inURL = st.text_input("Input search URL here")
     DataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+    searchType = st.radio("Work with a single search or combine multiple searches? Separate multiple search result urls by comma.", ['Single', 'Multiple'], index=0)
+    if searchType == "Multiple":
+        joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=0)
     if not inURL:
         st.warning("No URL supplied!")
-    data = search_results(inURL, DataType)
-    st.write(data)
+    if inURL and searchType == 'Single':
+        data = search_results(inURL, DataType)
+        st.write(data)
+    if inURL and searchType == 'Multiple':
+        baseList = [x.strip() for x in inURL.split(',')]
+        data = multiSearch(baseList, DataType, joinMode)
+        st.write(data)
     if DataType == "Metadata":
         if st.button("Plot dating"):
             fig = date_plotting(data)
@@ -148,8 +158,9 @@ def browse_input():
     DataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
     if not inURL:
         st.warning("No URL supplied!")
-    data = browse_results(inURL, DataType)
-    st.write(data)
+    if inURL:
+        data = browse_results(inURL, DataType)
+        st.write(data)
     if DataType == "Metadata":
         if st.button("Plot dating"):
             fig = date_plotting(data)
@@ -197,6 +208,7 @@ def all_MS_datings():
 def mainPage():
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
+    st.image(_home_image)
 
 
 def adv_options():
@@ -239,5 +251,10 @@ def full_menu():
 # Main
 # ----
 
-if __name__ == "__main__":
+def main():
     full_menu()
+
+# Run
+#----
+
+main()

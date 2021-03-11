@@ -106,6 +106,10 @@ def get_search_result_pages(url):
 
 def get_shelfmarks_from_urls(urls):
   results = []
+  if len(urls) == 1:
+    url = urls[0]
+    results += get_shelfmarks(url)
+    return list(set(results))
   for url in urls:
     results += get_shelfmarks(url)
     time.sleep(0.5)
@@ -320,7 +324,7 @@ def get_xml(urls):
     perc = (i + 1) / len(urls) * 100
     print(f'    Parsed XML {i + 1} of {len(urls)} ({perc}%)')
   return res
-
+ 
 
 def get_mstexts(soups):
   handritID = []
@@ -533,7 +537,14 @@ def get_msinfo(soups):
  
 
   return data
-    
+
+def get_id_from_shelfmark_local(shelfmarks: list) -> list:
+  _shelfmark_path = 'data/ms_shelfmarks.csv'
+  shelfIDPD = pd.read_csv(_shelfmark_path)
+  shelfIDPD = shelfIDPD[shelfIDPD['shelfmark'].isin(shelfmarks)]
+  idList = shelfIDPD['id'].tolist()
+  return idList
+
 
 # Hier müsse noch die Funktion von Eline kommen, wie aus ner Signatur eine URL (myURL) werden kann
 # myURLList = ["https://handrit.is/is/manuscript/xml/JS08-0407-is.xml", "https://handrit.is/is/manuscript/xml/AM04-0666-a-en.xml",  "https://handrit.is/is/manuscript/xml/IB04-0070-is.xml", "https://handrit.is/is/manuscript/xml/AM04-0666-b-da.xml"]
@@ -559,18 +570,44 @@ def get_data_from_search_url(url: str, DataType: str):
   print(f'Got {len(pages)} pages.')
   shelfmarks = get_shelfmarks_from_urls(pages)
   print(f'Got {len(shelfmarks)} shelfmarks.')
-  urls = shelfmarkstourls(shelfmarks)
-  print(f'Got {len(urls)} URLs.')
+  ids = get_id_from_shelfmark_local(shelfmarks)
   xmls = []
-  for i in urls:
-    xml = crawler.load_xml(i)
-    xmls.append(xml)
+  for i in ids:
+    xml = crawler.load_xmls_by_id(i)
+    xmlList = list(xml.values())
+    for x in xmlList:
+      xmls.append(x)
   print(f'Got {len(xmls)} XML files')
   if DataType == "Contents":
     data = get_mstexts(xmls)
   if DataType == "Metadata":
     data = get_msinfo(xmls)
   return data
+
+
+def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
+  listList = []
+  for url in inURLs:
+    pages = get_search_result_pages(url)
+    print(f'Got {len(pages)} pages.')
+    shelfmarks = get_shelfmarks_from_urls(pages)
+    listList.append(shelfmarks)
+  shared_MSs = list(set.intersection(*map(set, listList)))
+  ids = get_id_from_shelfmark_local(shared_MSs)
+  xmls = []
+  for i in ids:
+    xml = crawler.load_xmls_by_id(i)
+    xmlList = list(xml.values())
+    for x in xmlList:
+      xmls.append(x)
+  print(f'Got {len(xmls)} XML files')
+  if DataType == "Contents":
+    data = get_mstexts(xmls)
+  if DataType == "Metadata":
+    data = get_msinfo(xmls)
+  return data
+
+
 
 """# Do the Magic
 
@@ -629,9 +666,9 @@ Explanation:
 # # search_sample = "https://handrit.is/en/search/results/BzDSqt"
 # # search_sample = "https://handrit.is/en/search/results/CR9fkh"
 # # search_sample = "https://handrit.is/is/search/results/hsWTp2"
-# search_sample = "https://handrit.is/en/search/results/JvKG9g"
+# search_sample = "https://handrit.is/en/search/results/Wwf4t3"
 
-# data = get_data_from_search_url(search_sample)
+# data = get_data_from_search_url(search_sample, DataType="Contents")
 
 # print(data)
 # CSVExport("Search_results", data)
@@ -695,3 +732,10 @@ Explanation:
 # dates['Terminus Postquem'].plot.hist(bins=60)
 
 # dates[['Terminus Postquem', 'Terminus Antequem']].plot.hist(bins=60, alpha=0.5)
+
+# Test
+# ----
+
+# inList = ['https://handrit.is/en/search/results/L0tPvR', 'https://handrit.is/en/search/results/1HdG84']
+# data = get_from_search_list(inList, "Contents")
+# print(data)
