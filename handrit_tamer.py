@@ -436,7 +436,7 @@ def get_msinfo(soups):
 
   data = []
   data = pd.DataFrame(columns=['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', "Mean Date"])
+                               'Settlement', 'Repository', 'Original Date', "Mean Date", "Range"])
 
   for soup in soups:
     #handrit-ID finder
@@ -461,6 +461,7 @@ def get_msinfo(soups):
     ta = 0
     tp = 0
     meandate = 0
+    yearrange = 0
     if tag:
       if tag.get('notBefore') and tag.get('notAfter'):
         notBefore = str(tag['notBefore'])
@@ -478,12 +479,15 @@ def get_msinfo(soups):
         tp = int(notBefore)
         ta = int(notAfter)
         meandate = int(statistics.mean([int(tp), int(ta)]))
+        yearrange = int(ta)-int(tp)
         
       elif tag.get('when'):
         date = str(tag['when'])
         tp = int(date)
         ta = int(date)
         meandate = int(statistics.mean([int(tp), int(ta)]))
+        yearrange = int(ta)-int(tp)
+
       elif tag.get('from') and tag.get('to'):
         fr = str(tag['from'])
         to = str(tag['to'])
@@ -491,6 +495,7 @@ def get_msinfo(soups):
         tp = int(fr)
         ta = int(to)
         meandate = int(statistics.mean([int(tp), int(ta)]))
+        yearrange = int(ta)-int(tp)
 
 
     #make plain text
@@ -506,7 +511,8 @@ def get_msinfo(soups):
                         'Original Date' : date,
                         'Terminus Postquem' : tp,
                         'Terminus Antequem' : ta,
-                        'Mean Date' : meandate}, 
+                        'Mean Date' : meandate,
+                        'Range' : yearrange}, 
                        ignore_index=True)
  
 
