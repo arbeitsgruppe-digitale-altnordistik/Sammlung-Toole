@@ -9,14 +9,14 @@ from crawler import load_xmls_by_id
 
 
 
-myURLList = ["https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
+#myURLList = ["https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
 
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
 
 # Hier Probleme noch:
-#myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0151-is.xml"]
+myURLList = ["https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml"]
 
 
 # Es fehlt noch Ursprungsort und Datierung.
@@ -208,12 +208,11 @@ def get_location(soup):
 def get_list(links):
     mylist = []
     for url in links:
-        soup = load_xml(url)
-
+        #soup = load_xml(url)
         #soup = load_xmls_by_id(id)
 
         #gets soup from url (without crawler)
-        #soup = get_soup(url)
+        soup = get_soup(url)
 
         tag = soup.msDesc
         handritID = str(tag['xml:id'])
