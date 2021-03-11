@@ -157,17 +157,17 @@ def browse_input():
         st.markdown(href, unsafe_allow_html=True)
 
 
-# @st.cache(suppress_st_warning=True)
+# @st.cache(suppress_st_warning=True) -> currently not working
 def browse_results(inURL: str, DataType: str):
     data = hBr(inURL, DataType)
     return data
 
 
 def date_plotting(inDF):
-    hist_data = [inDF['Terminus Antequem'], inDF['Terminus Postquem']]
-    group_labels = ['Terminus Antequem', 'Terminus Postquem']
-    fig_data = ff.create_distplot(hist_data, group_labels, bin_size=1, show_curve=False)
-    return fig_data
+    inDF = inDF[inDF['Terminus Antequem'] != 0]
+    inDF = inDF[inDF['Terminus Postquem'] != 0]
+    fig = px.scatter(inDF, x='Terminus Postquem', y='Terminus Antequem', color='Signature')
+    return fig
 
 
 def generate_reports():
@@ -199,6 +199,7 @@ def mainPage():
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
     st.image(_home_image)
+    st.balloons()
 
 
 def adv_options():

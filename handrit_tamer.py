@@ -556,9 +556,12 @@ def get_id_from_shelfmark_local(shelfmarks: list) -> list:
 def get_data_from_browse_url(url: str, DataType: str):
   ids = efnisordResult(url)
   print(f'Got {len(ids)} IDs.')
-  urls = idstourls(ids)
-  print(f'Got {len(urls)} URLs.')
-  xmls = get_xml(urls)
+  xmls = []
+  for i in ids:
+    xml = crawler.load_xmls_by_id(i)
+    xmlList = list(xml.values())
+    for x in xmlList:
+      xmls.append(x)
   if DataType == "Contents":
     data = get_mstexts(xmls)
   if DataType == "Metadata":
@@ -592,8 +595,12 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
     print(f'Got {len(pages)} pages.')
     shelfmarks = get_shelfmarks_from_urls(pages)
     listList.append(shelfmarks)
-  shared_MSs = list(set.intersection(*map(set, listList)))
-  ids = get_id_from_shelfmark_local(shared_MSs)
+  if joinMode == 'Shared':
+    finalMSs = list(set.intersection(*map(set, listList)))
+  if joinMode == 'All':
+    allTheStuff = [i for x in listList for i in x]
+    finalMSs = list(set(allTheStuff))
+  ids = get_id_from_shelfmark_local(finalMSs)
   xmls = []
   for i in ids:
     xml = crawler.load_xmls_by_id(i)
