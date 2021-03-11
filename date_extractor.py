@@ -52,11 +52,13 @@ def all_date_data(use_cache: bool = True):
     datingPD.to_csv(_date_path, encoding='utf-8', index=False)
     return datingPD
 
-
-if __name__ == "__main__":
-    datePD = all_date_data()
+def do_plot(use_cache: bool = True):
+    datePD = all_date_data(use_cache=use_cache)
     inDF = datePD.drop_duplicates(subset='Shelfmark')
     print("Doing scatter plot")
     fig = px.scatter(inDF, x='Terminus Postquem', y='Terminus Antequem', color='Shelfmark')
     fig.write_html(_html_path)
-    print("Done")
+    print("Done") 
+
+if __name__ == "__main__":
+    do_plot()

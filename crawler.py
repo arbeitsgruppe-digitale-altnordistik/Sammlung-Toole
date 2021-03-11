@@ -600,9 +600,9 @@ def test_get_by_id():
             print(f"Error: couldn't find {id_}")
 
 
-def crawl():
+def crawl(use_cache: bool = False):
     """crawl everything as fast as possible"""
-    get_shelfmarks(use_cache=True)
+    get_shelfmarks(use_cache=use_cache)
 
 
 # Test Runner
@@ -651,6 +651,8 @@ if __name__ == "__main__":
 
     # test()
 
-    # print(f'Finished: {datetime.now()}')
-
     crawl()
+
+    print(f'Finished: {datetime.now()}')
+
+    

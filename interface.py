@@ -21,6 +21,7 @@ import date_extractor
 import plotly.express as px
 import streamlit.components.v1 as comps
 from handrit_tamer import get_from_search_list as multiSearch
+from datetime import datetime
 
 
 
@@ -78,28 +79,12 @@ def st_stderr(dst):
 
 
 def rebuild_button():
-    if st.sidebar.button("Rebuild meta-cache"):
+    if st.sidebar.button("Download everything"):
         with st.spinner("In Progress"):
-            start = time.time()
+            st.write(f'Start: {datetime.now()}')
             with st_stdout('code'):
-                crawler.get_collections(use_cache=False)
-            with st_stdout('code'):
-                crawler.get_ids(use_cache=False)
-            with st_stdout('code'):    
-                crawler.get_xml_urls(use_cache=False)
-            end = time.time()
-            duration = end - start
-        st.write(f"It took {duration} to rebuild meta-cache!")
-
-
-def redo_xmls_button():
-    if st.sidebar.button("Rebuild XML cache"):
-        with st.spinner("In Progress"):
-            start = time.time()
-            noMSs = redo_xmls_wrap()
-            end = time.time()
-            duration = end - start
-        st.write(f"Downloaded {noMSs} XML files in {duration}!")
+                crawler.crawl(use_cache=False)
+        st.write(f'Finished: {datetime.now()}')
 
 
 def redo_xmls_wrap():
@@ -188,7 +173,12 @@ def date_plotting(inDF):
 def generate_reports():
     if st.sidebar.button("Generate Reports"):
         st.write("Statically generate expensive reports. The results will be stored in the data directory. Running these will take some time.")
-        st.info("Currently dummy")
+        with st.spinner("In progress"):
+            st.write(f'Start: {datetime.now()}')
+            with st_stdout('code'):
+                date_extractor.do_plot(use_cache=False)
+            st.write(f'Finished: {datetime.now()}')
+
 
 
 def all_MS_datings():
@@ -217,7 +207,6 @@ def adv_options():
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
     collections_button()
     msNumber_button()
-    redo_xmls_button()
     rebuild_button()
     generate_reports()
 
