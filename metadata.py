@@ -7,19 +7,17 @@ import copy
 from crawler import load_xml
 from crawler import load_xmls_by_id
 
+import re
 
 
-#myURLList = ["https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
 
+myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
+
+#myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
 
-# Hier Probleme noch:
-myURLList = ["https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml"]
-
-
-# Es fehlt noch Ursprungsort und Datierung.
 
 # get_soup könnte getilgt werden, da dies mit dem Crawler nun bewerkstelligt wird.
 def get_soup(url):
@@ -41,16 +39,18 @@ def get_cleaned_text(soup):
 def get_creator(soup):
     pretty_creators = ""
     hands = soup.handDesc
-    creators = hands.find_all('name', {'type':'person'}) 
-    if not creators:
-        pretty_creators = "Scribe unknown"
-    
+    if hands:
+        creators = hands.find_all('name', {'type':'person'}) 
+        if not creators:
+            pretty_creators = "Scribe unknown"
+        else:
+            for creator in creators:
+                pretty_creator = get_cleaned_text(creator)
+                pretty_creators = pretty_creators + "; " + pretty_creator
+            pretty_creators = pretty_creators[2:]    
     else:
-        for creator in creators:
-            pretty_creator = get_cleaned_text(creator)
-            pretty_creators = pretty_creators + "; " + pretty_creator
-        pretty_creators = pretty_creators[2:]    
-    
+        pretty_creators = "Scribe unknown"
+
     return pretty_creators
 
 def get_shorttitle(soup):
@@ -81,7 +81,6 @@ def get_shorttitle(soup):
 
     return pretty_shorttitle
 
-
 def get_support(soup):
     supportDesc = soup.find('supportDesc')
     if supportDesc:
@@ -92,29 +91,117 @@ def get_support(soup):
             pretty_support = "Parchment"
         else:
             pretty_support = support
+            try:
+                pretty_support = get_cleaned_text(support)
+            except:
+                pretty_support = ""
     else:
-        support = soup.find("country")
-        try:
-            pretty_support = get_cleaned_text(support)
-        except:
-            pretty_support = ""
+        pretty_support = ""
+        
     
     return(pretty_support)
 
-# hier in get_extent zieht er nur string zwischen tags, aber keine info aus tag selbst, gilt auch für unit
+def get_folio(soup):
+
+    extent = soup.find('extent')
+    extent_copy = copy.copy(extent)
+
+    # get rid of info that might bias number of folio
+    dimensions = extent_copy.find('dimensions')
+
+    while dimensions:
+        dimensions.decompose()
+        dimensions = extent_copy.find('dimensions')
+
+    locus = extent_copy.find('locus')
+
+    while locus:
+        locus.decompose()
+        locus = extent_copy.find('locus')
+
+
+    # get folio
+    extent_copy = get_cleaned_text(extent_copy)
+
+    try:
+        # is total of folio given?
+        given_total = extent_copy.find("blöð alls")
+        if given_total > 0:
+            extent_copy = extent_copy[:given_total]
+            folio_total = get_digits(extent_copy)
+
+        else:
+
+            # get rid of pages refering to empty pages
+            given_emptiness = extent_copy.find("Auð blöð")
+            if given_emptiness > 0:
+                extent_copy = extent_copy[:given_emptiness]
+            else:
+                pass
+            
+            # get rid of further unnecessary info about the ms in brackets, possibly containing digits
+            extent_copy = re.sub(r"\([^()]*\)", "()", extent_copy)
+
+            brackets = extent_copy.find("()")
+            folio_total = 0
+            while brackets > 0:
+                first_bit= extent_copy[:brackets]           
+                extent_copy = extent_copy[brackets+2:]
+                brackets = extent_copy.find("()")
+                folio_n = get_digits(first_bit)
+                if folio_n: folio_total = folio_total+folio_n
+
+            folio_z = get_digits(extent_copy)
+            if folio_z: folio_total = folio_total+folio_z
+
+        # check whether calculated number of folio is reasonable (< 1.000) - add [?] if not -
+        # or whether it is 0 - write n/a.
+
+        folio_check = str(folio_total)
+        if len(folio_check) > 3: folio_total = str(folio_total) + " [?]"
+        elif folio_total == 0: folio_total = "n/a"
+
+    except:
+        folio_total = "n/a"
+    
+    return(folio_total)
+
+
+
+def get_digits(text):
+    i = ""
+
+    for x in text:
+        if x.isdigit():
+            i += x
+        else:
+            pass    
+    if i:
+        i = int(i)
+    else:
+        i = ""
+    return(i)
+
+
 def get_extent(soup):
     extent = soup.find('extent')
 
     extent_copy = copy.copy(extent)
 
+    # print(extent_copy)
+
     dimensions = extent_copy.find('dimensions')
 
-    while dimensions:
+
+    while dimensions:        
+     
         height = dimensions.height
         width = dimensions.width
 
+        unit = dimensions.get('unit')
+        if not unit: unit = "[mm?]"
         height.string = height.string + " x"
-        width.string = width.string + " mm"
+        width.string = width.string + " " + unit
         
         extent_copy.dimensions.unwrap()
         dimensions = extent_copy.find('dimensions')
@@ -122,7 +209,7 @@ def get_extent(soup):
     pretty_extent = get_cleaned_text(extent_copy)
 
     if not pretty_extent:
-        pretty_extent = ""
+        pretty_extent = "no dimensions given"
     
     return(pretty_extent)
 
@@ -162,33 +249,31 @@ def get_dimensions(soup):
     
     return(pretty_extent)
 
-
-
 def get_description(soup):
     pretty_support = get_support(soup)
     pretty_extent = get_extent(soup)
    
-    pretty_description = pretty_support + " / "  + pretty_extent    
-
-    print(pretty_description)
+    pretty_description = pretty_support + " / "  + pretty_extent
 
     return(pretty_description)
 
 def get_location(soup):
-    country = soup.find('country', {'key':'IS'})
+
+    country = soup.find('country')
     if country:
-        country = country.get('key')
-        if country == "IS":
-            pretty_country = "Iceland"
-        elif country == "DK":
-            pretty_country = "Denmark"
-        elif country == "FO":
-            pretty_country = "Faroe Islands"
+        country_key = country.get('key')
+        if country_key:
+            if country_key == "IS":
+                pretty_country = "Iceland"
+            elif country_key == "DK":
+                pretty_country = "Denmark"
+            elif country_key == "FO":
+                pretty_country = "Faroe Islands"
         else:
-            pretty_country = country
+            pretty_country = get_cleaned_text(country)
     else:
-        country = soup.find("country")
-        pretty_country = get_cleaned_text(country)
+        pretty_country = ""
+
    
 ## Für Citavi müsste hier für Archiv-Eingabefläche zusammen gefasst werden (Achtung. Abhängig von Institution)
     settlement = soup.find('settlement')
@@ -208,11 +293,11 @@ def get_location(soup):
 def get_list(links):
     mylist = []
     for url in links:
-        #soup = load_xml(url)
+        soup = load_xml(url)
         #soup = load_xmls_by_id(id)
 
         #gets soup from url (without crawler)
-        soup = get_soup(url)
+        #soup = get_soup(url)
 
         tag = soup.msDesc
         handritID = str(tag['xml:id'])
@@ -222,8 +307,10 @@ def get_list(links):
         shorttitle = get_shorttitle(soup)
         creator = get_creator(soup)    
         description = get_description(soup)
+        folio = get_folio(soup)
 
-        mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + location
+
+        mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + location + (folio,)
 
         structure = get_structure(mylist, mytuple) 
 
@@ -237,7 +324,7 @@ def get_structure(mylist, mytuple):
 result = get_list(myURLList) 
 data = []
 data = pd.DataFrame(result)
-data.columns = ["ID", "Handrit-ID", "Creator", "Short title", "Description", "Country", "Settlement", "Repository", "Collection", "Signature"]
+data.columns = ["Handrit-ID", "Creator", "Short title", "Description", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Folio"]
  
 def CSVExport(FileName, DataFrame):
     DataFrame.to_csv(FileName+".csv", encoding='utf-8')
