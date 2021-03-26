@@ -55,12 +55,14 @@ If a package needs to be installed, this most likely means that it's required. I
 
 ## Run the tool
 
-...
+From the directory containing this repository, run `python -m streamlit run interface.py`
+This will start everything neccessary and open the interface in your default browser. It will also
+display how to access the interface (local and remote URL). When running certain parts of the 
+script(s), it will show their CLI output there as well.
 
-<!-- TODO: How to run it? -->
 
 
-## Getting Data
+## Getting Data Manually
 
 Use the `crawler.py` to get data.  
 On top of your python file, add `import crawler`, then you can access methids from the crawler with e.g. `crawler.load_xml(url)`.

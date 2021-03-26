@@ -4,6 +4,7 @@ import pandas as pd
 import requests
 import os
 import sys
+import glob
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -172,7 +173,7 @@ def _load_ids_aggressively(df: pd.DataFrame, max_res: int = -1):
 
 def _download_ids_aggressively(df: pd.DataFrame, max_res: int) -> Generator[Tuple[str], None, None]:
     """Download IDs aggressively: launch Threads"""
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=120) as executor:
         futures = [executor.submit(_download_ids_from_url, s.url, s.collection) for _, s in df.iterrows()]
         try:
             i = 0
@@ -315,7 +316,7 @@ def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res) -> Gene
 def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
     """Generator of multi-thread loaded rows for ms_urls dataframe."""
     options = _get_aggressive_options(potentials, max_res)
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=120) as executor:
         futures = [executor.submit(_get_url_if_exists, *o) for o in options]
         try:
             i = 0
@@ -384,7 +385,7 @@ def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: boo
 
 def _cache_xml_aggressively(df, max_res, use_cache):
     tasks = _get_cache_tasks(df)
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=120) as executor:
         res = 0
         futures = [executor.submit(_cache_xml, *t, use_cache) for t in tasks]
         try:
@@ -434,7 +435,7 @@ def _cache_xml(path, url, use_cache) -> bool:
         data = _load_xml_content(url)
         f.write(data)
         if not data:
-            print(f'No data loaded for {url}', file=sys.stderr)
+            print(f'No data loaded for {url}')
         return True
 
 def _load_xml_content(url):
@@ -448,16 +449,65 @@ def _load_xml_content(url):
             txt = txt.replace('UTF-16', 'UTF-8', 1)
             return txt
         except Exception:
-            print(f'Issue with encoding in: {url}', file=sys.stderr)
             return response.text.replace('iso-8859-1', 'UTF-8')
     else:
         try:
             txt = bytes_.decode('utf-8')  # 0xe1
             return txt
         except Exception:
-            print(f'Issue with encoding in: {url}', file=sys.stderr)
             return response.text.replace('iso-8859-1', 'UTF-8')
 
+
+# Look up shelfmarks
+# ------------------
+
+def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+    """Look up all manuscript shelfmarks.
+
+    The dataframe contains the following collumns:
+    - Manuscript ID (`id`)
+    - Shelfmark (`shelfmark`)
+
+    Args:
+        df (pd.DataFrame, optional): Dataframe containing the available XML URLs. If `None` is passed, `get_xml_urls()` will be called. Defaults to None.
+        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
+        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
+        max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
+        aggressive_crawl (bool, optional): Aggressive crawling mode puts some strain on the server (and your bandwidth) but is much faster. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Dataframe containing shelfmarks.
+    """
+    if use_cache and os.path.exists(_shelfmark_path):
+        res = pd.read_csv(_shelfmark_path)
+        if res is not None and not res.empty and _is_shelfmarks_complete(res):  # LATER: should work from that, in case of partially finished loading
+            if verbose:
+                print('Loaded shelfmarks from cache.')
+            return res
+    if df is None:
+        df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
+    if max_res > 0 and max_res < len(df.index):
+        df = df[:max_res]
+
+    iter_ = _get_shelfmarks(df)
+    if verbose:
+        print()
+    res = pd.DataFrame(iter_, columns=['id', 'shelfmark']).sort_values(by='id').drop_duplicates()
+    if cache:
+        res.to_csv(_shelfmark_path, encoding='utf-8', index=False)
+    return res
+
+
+def _is_shelfmarks_complete(df: pd.DataFrame) -> bool:
+    ids_a = len(get_ids()['id'].unique())
+    ids_b = len(df['id'].unique())
+    return ids_a == ids_b
+
+
+def _get_shelfmarks(df: pd.DataFrame):
+    for _, row in df.iterrows():
+        shelfmark = _get_shelfmark(row['xml_file'])
+        yield row['id'], shelfmark
 
 # Look up shelfmarks
 # ------------------
@@ -510,6 +560,21 @@ def _get_shelfmarks(df: pd.DataFrame):
         shelfmark = _get_shelfmark(row['xml_file'])
         yield row['id'], shelfmark
 
+
+def _get_shelfmark(file: str) -> str:
+    soup = load_xml_by_filename(file)
+    msid = soup.find('msIdentifier')
+    if msid:
+        idno = msid.idno
+        if idno:
+            sm = idno.getText()
+            if verbose:
+                print(f'Shelfmark: {sm}', end=_backspace_print)
+            return sm
+
+
+# Access XML Directly
+# -------------------
 
 def _get_shelfmark(file: str) -> str:
     soup = load_xml_by_filename(file)
@@ -600,9 +665,53 @@ def test_get_by_id():
             print(f"Error: couldn't find {id_}")
 
 
-def crawl():
+def crawl(use_cache: bool = False, verbose_output: bool = True):
     """crawl everything as fast as possible"""
-    get_shelfmarks(use_cache=False)
+    verbose = verbose_output
+    if verbose:
+        print(f'Start: {datetime.now()}')
+    if not use_cache:
+        if verbose:
+            print('Removing cache...')
+        _wipe_cache()
+        if verbose:
+            print('Done removing cache.')
+    if verbose:
+        print('Loading collections...')
+    colls = get_collections()
+    if verbose:
+        print(f"Done loading collections. Found {len(colls.index)} collections containing {colls['ms_count'].sum()} manuscripts.")
+        print("Loading Manuscript IDs...")
+    ids = get_ids(df=colls)
+    if verbose:
+        print(f"Done loading Manuscript IDs. Found {len(ids.index)} unique identifiers.")
+        print("Loading XML URLs...")
+    urls = get_xml_urls(df=ids)
+    if verbose:
+        print(f"Done loading URLs. Found {len(urls.index)} URLs.")
+        print("Downloading XML Data...")
+    loaded_xmls = cache_all_xml_data(df=urls)
+    if verbose:
+        print(f"Done loading XMLs. Downloaded {loaded_xmls} files.")
+        print("Extracting shelfmarks...")
+    shelfmarks = get_shelfmarks(df=urls)
+    if verbose:
+        print(f"Done extracting shelfmarks. Found {len(shelfmarks.index)} shelfmarks.")
+        print(f'Finished: {datetime.now()}')
+
+    
+def _wipe_cache():
+    xmls = glob.glob(_xml_data_prefix + '*.xml')
+    for xml in xmls:
+        os.remove(xml)
+    if os.path.exists(_coll_path):
+        os.remove(_coll_path)
+    if os.path.exists(_id_path):
+        os.remove(_id_path)
+    if os.path.exists(_xml_url_path):
+        os.remove(_xml_url_path)
+    if os.path.exists(_shelfmark_path):
+        os.remove(_shelfmark_path)
 
 
 # Test Runner
@@ -651,4 +760,8 @@ if __name__ == "__main__":
 
     # test()
 
+    crawl()
+
     print(f'Finished: {datetime.now()}')
+
+    
