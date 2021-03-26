@@ -558,9 +558,28 @@ def get_id_from_shelfmark_local(shelfmarks: list) -> list:
 
 # resultingDataframe = get_msinfo(myURLList)
 
-"""# Combine it all"""
+"""Combine it all"""
 
 def get_data_from_browse_url(url: str, DataType: str):
+  '''Get the desired data from a handrit browse URL.
+    The data frame to be returned depends on the DataType variable (cf. below).
+    If DataType = Contents:
+        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
+        witnesses listed in the MS description/XML.
+
+    If DataType = Metadata:
+        Data frame contains the following columns:
+        ['Handrit ID', 'Signature', 'Country',
+                                'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
+    
+  Args:
+      inURL(str, required): A URL pointing to a handrit browse result page.
+      DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
+      such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
+
+  Returns:
+      pd.DataFrame: DataFrame containing MS contents or meta data.
+  '''
   ids = efnisordResult(url)
   print(f'Got {len(ids)} IDs.')
   xmls = []
@@ -576,6 +595,26 @@ def get_data_from_browse_url(url: str, DataType: str):
   return data
 
 def get_data_from_search_url(url: str, DataType: str):
+  '''This will get the requested data from the corresponding XML files and return it as a data frame.
+  
+  The data frame to be returned depends on the DataType variable (cf. below).
+    If DataType = Contents:
+        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
+        witnesses listed in the MS description/XML.
+
+    If DataType = Metadata:
+        Data frame contains the following columns:
+        ['Handrit ID', 'Signature', 'Country',
+                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
+    
+  Args:
+      inURL(str, required): A URL pointing to a handrit search result page.
+      DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
+      such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
+
+  Returns:
+      pd.DataFrame: DataFrame containing MS contents or meta data.
+  '''
   pages = get_search_result_pages(url)
   print(f'Got {len(pages)} pages.')
   shelfmarks = get_shelfmarks_from_urls(pages)
@@ -588,7 +627,7 @@ def get_data_from_search_url(url: str, DataType: str):
     for x in xmlList:
       xmls.append(x)
   print(f'Got {len(xmls)} XML files')
-  if DataType == "Contents":
+  if DataType == "Contents": 
     data = get_mstexts(xmls)
   if DataType == "Metadata":
     data = get_msinfo(xmls)
@@ -596,6 +635,30 @@ def get_data_from_search_url(url: str, DataType: str):
 
 
 def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
+  '''This will get the requested data from the corresponding XML files and return it as a data frame.
+  
+  The data frame to be returned depends on the DataType variable (cf. below).
+    If DataType = Contents:
+        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
+        witnesses listed in the MS description/XML.
+
+    If DataType = Metadata:
+        Data frame contains the following columns:
+        ['Handrit ID', 'Signature', 'Country',
+                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
+    
+  Args:
+      inURLs(list, required): A URL pointing to a handrit search result page.
+      DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
+        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
+      joinMode(str, required): Whether you want all info or only those that occur in the results of all
+        search URLs passed as input. If 'shared' returns empty, it means there is no overlap.
+        Set 'All' if you want to return all MSs and their data (duplicates will be removed).
+        Set 'Shared' if you only want the MSs occuring in all search result URLs.
+
+  Returns:
+      pd.DataFrame: DataFrame containing MS contents or meta data.
+  '''
   listList = []
   for url in inURLs:
     pages = get_search_result_pages(url)
@@ -623,7 +686,7 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
 
 
 
-"""# Do the Magic
+"""Do the Magic
 
 To be able to run the program, all code blocks before this text need to be run once to initialize everything.  
 Simply click in this text and then hit "Runtime" > "Run before" in the menu on top.
