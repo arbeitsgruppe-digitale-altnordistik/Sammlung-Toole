@@ -131,11 +131,4 @@ dmypy.json
 # VS Code settings
 .vscode/
 quickTest.py
-data/collections.csv
-data/ms_ids.csv
-data/collections.csv
-data/ms_ids.csv
-data/ms_urls.csv
-data/ms_ids.csv
-*.csv
-data/ms_urls.csv
+
