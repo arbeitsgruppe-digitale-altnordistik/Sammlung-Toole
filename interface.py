@@ -132,7 +132,7 @@ def search_input():
         st.markdown(href, unsafe_allow_html=True)
 
 
-# @st.cache(suppress_st_warning=True) # -> won't work with stdout redirect
+@st.cache(suppress_st_warning=True) # -> won't work with stdout redirect
 def search_results(inURL, DataType):
     data = hSr(inURL, DataType)    
     return data
@@ -157,7 +157,7 @@ def browse_input():
         st.markdown(href, unsafe_allow_html=True)
 
 
-# @st.cache(suppress_st_warning=True) -> currently not working
+@st.cache(suppress_st_warning=True)
 def browse_results(inURL: str, DataType: str):
     data = hBr(inURL, DataType)
     return data
