@@ -330,15 +330,13 @@ def get_structure(mylist, mytuple):
 
 
 
-# citavi-nice #
+# Citavify #
 
 def citavify (links):
     mylist = []
     for url in links:
         soup = load_xml(url)
         #soup = load_xmls_by_id(id)
-
-        #urheber, kurzbetreff, quellenbeschrieb, datierung, ursprungsort, archiv, ort des archivs, signatur
 
         tag = soup.msDesc
         handritID = str(tag['xml:id'])
@@ -381,23 +379,26 @@ def citavify (links):
     return structure
 
 
+# Citavify my data ! #
+
 citavi_result = citavify(myURLList)
 data = []
 data = pd.DataFrame(citavi_result)
 data.columns = ["Handrit-ID", "Creator", "Short title", "Description",  "Settlement", "Archive", "Signature"]
-
+file_name = "metadata_citavified"
 
 #result = get_list(myURLList) 
 #data = []
 #data = pd.DataFrame(result)
 #data.columns = ["Handrit-ID", "Creator", "Short title", "Description", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Folio"]
- 
+#file_name = "metadata"
+
 def CSVExport(FileName, DataFrame):
-    DataFrame.to_csv(FileName+".csv", sep ='\t', encoding='utf-8')
+    DataFrame.to_csv(FileName+".csv", sep ='\t', encoding='utf-8', index=False)
     print("File exported")
     return
 
-CSVExport("Citavi", data)
+CSVExport(file_name, data)
 #print(data)
 
 
