@@ -12,9 +12,9 @@ import re
 
 
 myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
-
+#myURLList = ["https://handrit.is/da/manuscript/xml/Acc-0001-da.xml"]
 #myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
-#myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml"]
+#myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
 
@@ -35,6 +35,7 @@ def get_cleaned_text(soup):
     res = res.replace('\t', ' ')
     res = ' '.join(res.split())
     return res
+
 
 def get_creator(soup):
     pretty_creators = ""
@@ -274,13 +275,13 @@ def get_location(soup):
     else:
         pretty_country = ""
 
-   
-## Für Citavi müsste hier für Archiv-Eingabefläche zusammen gefasst werden (Achtung. Abhängig von Institution)
+
     settlement = soup.find('settlement')
     institution = soup.find("institution")
     repository = soup.find("repository")
     collection = soup.find("collection")
     signature = soup.find("idno")
+
     
     pretty_settlement = get_cleaned_text(settlement)
     pretty_institution = get_cleaned_text(institution)
@@ -289,6 +290,10 @@ def get_location(soup):
     pretty_signature = get_cleaned_text(signature)
 
     return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature 
+
+
+
+# allrounder-list
 
 def get_list(links):
     mylist = []
@@ -321,17 +326,78 @@ def get_structure(mylist, mytuple):
     mylist.append(mytuple)
     return mylist
 
-result = get_list(myURLList) 
+####
+
+
+
+# citavi-nice #
+
+def citavify (links):
+    mylist = []
+    for url in links:
+        soup = load_xml(url)
+        #soup = load_xmls_by_id(id)
+
+        #urheber, kurzbetreff, quellenbeschrieb, datierung, ursprungsort, archiv, ort des archivs, signatur
+
+        tag = soup.msDesc
+        handritID = str(tag['xml:id'])
+        name = handritID[0:-3]
+    
+        creator = get_creator(soup)  
+        shorttitle = get_shorttitle(soup)
+        description = get_description(soup)
+        date = "Eline?"
+        #origin = get_origin(soup)
+        location = get_location(soup)
+
+        location_list = list(location)
+        for i in range(len(location_list)):
+
+            if not location_list[i]:
+                location_list[i] = ""
+                continue
+
+            location_list[i] = location_list[i] + ", "
+
+        try:
+            settlement = location_list[1] + location_list[0]
+            settlement = settlement[:-2]
+        except:
+            settlement = "unknown"
+
+        try:
+            archive = location_list[2] + location_list[3] + location_list[4]
+            archive = archive[:-2]
+        except:
+            archive = "unknown"
+        
+        signature = location_list[5]
+        signature = signature[:-2]
+        
+        mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + (settlement,) + (archive,) + (signature,)
+        structure = get_structure(mylist, mytuple) 
+
+    return structure
+
+
+citavi_result = citavify(myURLList)
 data = []
-data = pd.DataFrame(result)
-data.columns = ["Handrit-ID", "Creator", "Short title", "Description", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Folio"]
+data = pd.DataFrame(citavi_result)
+data.columns = ["Handrit-ID", "Creator", "Short title", "Description",  "Settlement", "Archive", "Signature"]
+
+
+#result = get_list(myURLList) 
+#data = []
+#data = pd.DataFrame(result)
+#data.columns = ["Handrit-ID", "Creator", "Short title", "Description", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Folio"]
  
 def CSVExport(FileName, DataFrame):
-    DataFrame.to_csv(FileName+".csv", encoding='utf-8')
+    DataFrame.to_csv(FileName+".csv", sep ='\t', encoding='utf-8')
     print("File exported")
     return
 
-#CSVExport("Meta", data)
+CSVExport("Citavi", data)
 #print(data)
 
 
