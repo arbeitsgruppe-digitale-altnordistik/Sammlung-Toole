@@ -10,16 +10,15 @@ from crawler import load_xmls_by_id
 import re
 
 
-
 myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
-#myURLList = ["https://handrit.is/da/manuscript/xml/Acc-0001-da.xml"]
+#myURLList = ["https://handrit.is/is/manuscript/xml/AM04-1056-XVII-en.xml", "https://handrit.is/is/manuscript/xml/IB08-0174-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0344-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
 
 
-# get_soup könnte getilgt werden, da dies mit dem Crawler nun bewerkstelligt wird.
+# bedarf es noch für Personen-Name
 def get_soup(url):
     sauce = urllib.request.urlopen(url).read()
     soup = BeautifulSoup(sauce, "xml")
@@ -36,21 +35,62 @@ def get_cleaned_text(soup):
     res = ' '.join(res.split())
     return res
 
+def get_key(mirepoix):
+
+    key = mirepoix.get('key')
+    if key:
+        if key == "IS":
+            pretty_key = "Iceland"
+        elif key == "DK":
+            pretty_key = "Denmark"
+        elif key == "FO":
+            pretty_key = "Faroe Islands"
+        else:
+            pretty_key = "!! unknown country key"
+    else:
+        pretty_key = None
+
+    return pretty_key
+
+
+def get_origin(soup):
+    origPlace = soup.origPlace
+
+    try:
+        pretty_origPlace = get_key(origPlace)
+        if not pretty_origPlace:
+            pretty_origPlace = get_cleaned_text(origPlace)    
+    except:
+        pretty_origPlace = "Origin unknown"
+
+    return pretty_origPlace
+
+
+def get_persName(id):
+    url = "https://handrit.is/is/biography/xml/" + id
+    stew = get_soup(url)
+    persName = stew.find('persName')
+    pretty_persName = get_cleaned_text(persName)
+    return pretty_persName
 
 def get_creator(soup):
-    pretty_creators = ""
     hands = soup.handDesc
+
     if hands:
-        creators = hands.find_all('name', {'type':'person'}) 
-        if not creators:
-            pretty_creators = "Scribe unknown"
+        creators = hands.find_all('name', {'type':'person'})
+
+        if not creators: pretty_creators = "Scribe(s) unknown"
         else:
+            pretty_creators = ""
             for creator in creators:
-                pretty_creator = get_cleaned_text(creator)
+                key = creator.get('key')
+                if key: pretty_creator = get_persName(key)
+                else: pretty_creator = get_cleaned_text(creator)
                 pretty_creators = pretty_creators + "; " + pretty_creator
-            pretty_creators = pretty_creators[2:]    
+            pretty_creators = pretty_creators[2:]
+                
     else:
-        pretty_creators = "Scribe unknown"
+        pretty_creators = "Scribe(s) unknown"
 
     return pretty_creators
 
@@ -189,8 +229,6 @@ def get_extent(soup):
 
     extent_copy = copy.copy(extent)
 
-    # print(extent_copy)
-
     dimensions = extent_copy.find('dimensions')
 
 
@@ -260,21 +298,13 @@ def get_description(soup):
 
 def get_location(soup):
 
-    country = soup.find('country')
-    if country:
-        country_key = country.get('key')
-        if country_key:
-            if country_key == "IS":
-                pretty_country = "Iceland"
-            elif country_key == "DK":
-                pretty_country = "Denmark"
-            elif country_key == "FO":
-                pretty_country = "Faroe Islands"
-        else:
-            pretty_country = get_cleaned_text(country)
-    else:
-        pretty_country = ""
-
+    country = soup.country
+    try:
+        pretty_country = get_key(country)
+        if not pretty_country:
+            pretty_country = get_cleaned_text(country)    
+    except:
+        pretty_country = "Country unknown"
 
     settlement = soup.find('settlement')
     institution = soup.find("institution")
@@ -282,7 +312,6 @@ def get_location(soup):
     collection = soup.find("collection")
     signature = soup.find("idno")
 
-    
     pretty_settlement = get_cleaned_text(settlement)
     pretty_institution = get_cleaned_text(institution)
     pretty_repository = get_cleaned_text(repository)
@@ -346,7 +375,7 @@ def citavify (links):
         shorttitle = get_shorttitle(soup)
         description = get_description(soup)
         date = "Eline?"
-        #origin = get_origin(soup)
+        origin = get_origin(soup)
         location = get_location(soup)
 
         location_list = list(location)
@@ -373,7 +402,7 @@ def citavify (links):
         signature = location_list[5]
         signature = signature[:-2]
         
-        mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + (settlement,) + (archive,) + (signature,)
+        mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + (date,) + (origin,) + (settlement,) + (archive,) + (signature,)
         structure = get_structure(mylist, mytuple) 
 
     return structure
@@ -384,7 +413,7 @@ def citavify (links):
 citavi_result = citavify(myURLList)
 data = []
 data = pd.DataFrame(citavi_result)
-data.columns = ["Handrit-ID", "Creator", "Short title", "Description",  "Settlement", "Archive", "Signature"]
+data.columns = ["Handrit-ID", "Creator", "Short title", "Description", "Dating", "Origin",  "Settlement", "Archive", "Signature"]
 file_name = "metadata_citavified"
 
 #result = get_list(myURLList) 
@@ -398,7 +427,7 @@ def CSVExport(FileName, DataFrame):
     print("File exported")
     return
 
-CSVExport(file_name, data)
+#CSVExport(file_name, data)
 #print(data)
 
 
