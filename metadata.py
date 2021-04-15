@@ -10,15 +10,15 @@ from crawler import load_xmls_by_id
 import re
 
 
-myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
+#myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/AM04-1056-XVII-en.xml", "https://handrit.is/is/manuscript/xml/IB08-0174-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0344-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
-#myURLList = ["https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
+myURLList = ["https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 #myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
 
 
-# bedarf es noch für Personen-Name
+# Dieser Funktion bedarf es noch für die Schreiber-Namen
 def get_soup(url):
     sauce = urllib.request.urlopen(url).read()
     soup = BeautifulSoup(sauce, "xml")
@@ -34,9 +34,13 @@ def get_cleaned_text(soup):
     res = res.replace('\t', ' ')
     res = ' '.join(res.split())
     return res
+    
+def get_structure(mylist, mytuple):
+    mylist.append(mytuple)
+    return mylist
 
+# country key => country name
 def get_key(mirepoix):
-
     key = mirepoix.get('key')
     if key:
         if key == "IS":
@@ -160,7 +164,6 @@ def get_folio(soup):
         locus.decompose()
         locus = extent_copy.find('locus')
 
-
     # get folio
     extent_copy = get_cleaned_text(extent_copy)
 
@@ -172,7 +175,6 @@ def get_folio(soup):
             folio_total = get_digits(extent_copy)
 
         else:
-
             # get rid of pages refering to empty pages
             given_emptiness = extent_copy.find("Auð blöð")
             if given_emptiness > 0:
@@ -206,8 +208,6 @@ def get_folio(soup):
         folio_total = "n/a"
     
     return(folio_total)
-
-
 
 def get_digits(text):
     i = ""
@@ -322,14 +322,14 @@ def get_location(soup):
 
 
 
-# allrounder-list
+# Get all data #
 
 def get_list(links):
     mylist = []
     for url in links:
         soup = load_xml(url)
-        #soup = load_xmls_by_id(id)
 
+        #soup = load_xmls_by_id(id)
         #gets soup from url (without crawler)
         #soup = get_soup(url)
 
@@ -342,24 +342,43 @@ def get_list(links):
         creator = get_creator(soup)    
         description = get_description(soup)
         folio = get_folio(soup)
+        origin = get_origin(soup)
 
 
-        mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + location + (folio,)
+        mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + (description,) + location + (folio,)
 
         structure = get_structure(mylist, mytuple) 
 
     return structure
 
 
-def get_structure(mylist, mytuple):
-    mylist.append(mytuple)
-    return mylist
+# Citavify my data #
 
-####
+def summarize_location(location):
+    location_list = list(location)
+    for i in range(len(location_list)):
+        if not location_list[i]:
+            location_list[i] = ""
+            continue
+        location_list[i] = location_list[i] + ", "
 
+    try:
+        settlement = location_list[1] + location_list[0]
+        settlement = settlement[:-2]
 
+    except:
+        settlement = "unknown"
 
-# Citavify #
+    try:
+        archive = location_list[2] + location_list[3] + location_list[4]
+        archive = archive[:-2]
+    except:
+        archive = "unknown"
+    
+    signature = location_list[5]
+    signature = signature[:-2]
+
+    return settlement, archive, signature
 
 def citavify (links):
     mylist = []
@@ -377,60 +396,39 @@ def citavify (links):
         date = "Eline?"
         origin = get_origin(soup)
         location = get_location(soup)
-
-        location_list = list(location)
-        for i in range(len(location_list)):
-
-            if not location_list[i]:
-                location_list[i] = ""
-                continue
-
-            location_list[i] = location_list[i] + ", "
-
-        try:
-            settlement = location_list[1] + location_list[0]
-            settlement = settlement[:-2]
-        except:
-            settlement = "unknown"
-
-        try:
-            archive = location_list[2] + location_list[3] + location_list[4]
-            archive = archive[:-2]
-        except:
-            archive = "unknown"
-        
-        signature = location_list[5]
-        signature = signature[:-2]
+        settlement, archive, signature = summarize_location(location)
         
         mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + (date,) + (origin,) + (settlement,) + (archive,) + (signature,)
         structure = get_structure(mylist, mytuple) 
 
     return structure
 
+def citavi_panda (citavi_result):
+    data = []
+    data = pd.DataFrame(citavi_result)
+    data.columns = ["Handrit-ID", "Creator", "Short title", "Description", "Dating", "Origin",  "Settlement", "Archive", "Signature"]
+    file_name = "metadata_citavified"
+    return data, file_name
 
-# Citavify my data ! #
+def all_panda (result):
+    data = []
+    data = pd.DataFrame(result)
+    data.columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Description", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Folio"]
+    file_name = "metadata"
+    return data, file_name
 
-citavi_result = citavify(myURLList)
-data = []
-data = pd.DataFrame(citavi_result)
-data.columns = ["Handrit-ID", "Creator", "Short title", "Description", "Dating", "Origin",  "Settlement", "Archive", "Signature"]
-file_name = "metadata_citavified"
+# pandafy citavified data #
+# citavi_result = citavify(myURLList)
+# data, file_name = citavi_panda(citavi_result)
 
-#result = get_list(myURLList) 
-#data = []
-#data = pd.DataFrame(result)
-#data.columns = ["Handrit-ID", "Creator", "Short title", "Description", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Folio"]
-#file_name = "metadata"
+# pandafy all data #
+result = get_list(myURLList) 
+data, file_name = all_panda(result)
 
 def CSVExport(FileName, DataFrame):
     DataFrame.to_csv(FileName+".csv", sep ='\t', encoding='utf-8', index=False)
     print("File exported")
     return
 
-#CSVExport(file_name, data)
-#print(data)
-
-
-
-
-
+CSVExport(file_name, data)
+print(data)
