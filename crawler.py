@@ -238,10 +238,11 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
     """
     if use_cache and os.path.exists(_xml_url_path):
         res = pd.read_csv(_xml_url_path)
-        if res is not None and not res.empty and _is_urls_complete(res):  # LATER: should work from that, in case of partially finished loading
-            if verbose:
-                print('Loaded XML URLs from cache.')
-            return res
+        return res
+        # if res is not None and not res.empty and _is_urls_complete(res):  # LATER: should work from that, in case of partially finished loading
+        #    if verbose:
+        #         print('Loaded XML URLs from cache.')
+        #     return res
     if df is None:
         df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res, aggressive_crawl=aggressive_crawl)
     if max_res > 0 and max_res < len(df.index):
@@ -439,7 +440,7 @@ def _cache_xml(path, url, use_cache) -> bool:
         return True
 
 def _load_xml_content(url):
-    """Loade XML content from URL, ensuring the encoding is correct."""
+    """Load XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
     bytes_ = response.text.encode(response.encoding)
     if bytes_[0] == 255:
@@ -515,7 +516,7 @@ def _get_shelfmarks(df: pd.DataFrame):
 def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
     """Look up all manuscript shelfmarks.
 
-    The dataframe contains the following collumns:
+    The dataframe contains the following columns:
     - Manuscript ID (`id`)
     - Shelfmark (`shelfmark`)
 
@@ -734,11 +735,11 @@ if __name__ == "__main__":
     # ----------------------------
 
     # s = load_xml('https://handrit.is/en/manuscript/xml/AM02-0001-e-beta-I-en.xml')
-    # s = load_xmls_by_id('AM02-0162B-epsilon')
+    s = load_xmls_by_id('Lbs04-0530')
     # s = load_xmls_by_id('AM02-0013')
     # print('1)')
     # s = load_xmls_by_id('AM04-0207a', use_cache=False)
-    # print(s)
+    print(s)
     # print('2)')
     # s = load_xmls_by_id('Acc-0001-da', use_cache=False)
     # s = load_xmls_by_id('Lbs08-2064')
@@ -760,7 +761,7 @@ if __name__ == "__main__":
 
     # test()
 
-    crawl()
+    # crawl()
 
     print(f'Finished: {datetime.now()}')
 

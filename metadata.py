@@ -15,20 +15,22 @@ import re
 
 # Test URLs
 # ------------------
-myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml"]
-#myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
-#myURLList = ["https://handrit.is/is/manuscript/xml/AM04-1056-XVII-en.xml", "https://handrit.is/is/manuscript/xml/IB08-0174-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0344-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
-#myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
-#myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
-#myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
-#myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
+# myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml"]
+# myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
+# myURLList = ["https://handrit.is/is/manuscript/xml/AM04-1056-XVII-en.xml", "https://handrit.is/is/manuscript/xml/IB08-0174-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0344-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
+# myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
+# myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
+# myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
+# myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
 
 # Constants
 # ---------
+
 _backspace_print = '                                     \r'
 
 # Utlity Functions
 # ----------------
+
 
 """ Anmerkung: Folgender Funktion bedarf es noch für get_creator resp. get_persName. Ggf. streichen """
 def get_soup(url: str) -> BeautifulSoup:
@@ -45,6 +47,7 @@ def get_soup(url: str) -> BeautifulSoup:
     soup = BeautifulSoup(sauce, "xml")
 
     return soup
+
 
 def get_cleaned_text(carrot: Tag) -> str:
     """Get human-readable text from xml-tag.
@@ -66,7 +69,8 @@ def get_cleaned_text(carrot: Tag) -> str:
     res = ' '.join(res.split())
 
     return res
-    
+
+
 def get_structure(mylist: List[tuple], mytuple: Tuple[str]):
     """Adds tuple to list.
 
@@ -108,11 +112,13 @@ def get_digits(text: str) -> int:
 # Pull meta data
 # ---------------
 
+
 def get_tag(soup):
     tag = soup.msDesc
     handritID = str(tag['xml:id'])
     name = handritID[0:-3]
     return name
+
 
 def get_key(leek: Tag) -> str:
     """Find key identifying the country and return country name.
@@ -140,6 +146,7 @@ def get_key(leek: Tag) -> str:
 
     return pretty_key
 
+
 def get_origin(soup: BeautifulSoup) -> str:
     """Get manuscript's place of origin.
 
@@ -160,6 +167,7 @@ def get_origin(soup: BeautifulSoup) -> str:
 
     return pretty_origPlace
 
+
 def get_persName(id: str) -> str:
     """Get person name in nominative case.
 
@@ -175,6 +183,7 @@ def get_persName(id: str) -> str:
     persName = stew.find('persName')
     pretty_persName = get_cleaned_text(persName)
     return pretty_persName
+
 
 def get_creator(soup: BeautifulSoup) -> str:
     """Get creator(s).
@@ -205,6 +214,7 @@ def get_creator(soup: BeautifulSoup) -> str:
         pretty_creators = "Scribe(s) unknown"
 
     return pretty_creators
+
 
 def get_shorttitle(soup: BeautifulSoup) -> str:
     """Get short title to describe (NOT identify) a manuscript.
@@ -243,6 +253,7 @@ def get_shorttitle(soup: BeautifulSoup) -> str:
 
     return pretty_shorttitle
 
+
 def get_support(soup: BeautifulSoup) -> str:
     """Get supporting material (paper or parchment).
 
@@ -270,6 +281,7 @@ def get_support(soup: BeautifulSoup) -> str:
         pretty_support = ""
         
     return pretty_support
+
 
 def get_folio(soup: BeautifulSoup) -> int:
     """Returns: total of folios.
@@ -353,6 +365,7 @@ def get_folio(soup: BeautifulSoup) -> int:
 
     return folio_total
 
+
 def get_dimensions(soup: BeautifulSoup) -> tuple:
     """Get dimensions. If more than one volume, it calculates average dimensions. For quantitative usage.
     Args:
@@ -394,6 +407,7 @@ def get_dimensions(soup: BeautifulSoup) -> tuple:
     
     return perfect_height, perfect_width
 
+
 def get_length(txt: str) -> int:
     """Get length. If length is given as range, calculates average.
 
@@ -415,6 +429,7 @@ def get_length(txt: str) -> int:
         pretty_length = int(pretty_length)
 
     return pretty_length
+
 
 def get_extent(soup: BeautifulSoup) -> str:
     """Get extent of manuscript. For qualitative usage.
@@ -453,8 +468,6 @@ def get_extent(soup: BeautifulSoup) -> str:
     return pretty_extent
 
 
-
-
 def get_description(soup):
     """Summarizes support and dimensions for usage in citavi.
 
@@ -473,7 +486,7 @@ def get_description(soup):
     return pretty_description
 
 
-def get_location(soup: BeautifulSoup) -> tuple[str, str, str, str, str]:
+def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str]:
     """Get data of the manuscript's location.
 
     Args:
@@ -508,11 +521,12 @@ def get_location(soup: BeautifulSoup) -> tuple[str, str, str, str, str]:
 # Get all metadata
 # ----------------
 
+
 def get_all_data(links: list) -> tuple:    
     """ Create dataframe for usage in interface
 
     The dataframe contains the following collumns:
-    ...
+    "Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"
 
     Args:
         links (list): list of urls
@@ -550,15 +564,15 @@ def get_all_data(links: list) -> tuple:
         columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"]
         data = pandafy_data(structure, columns)
 
-        file_name = "metadata"
     
     print(f'Loaded:  {i}',)
 
-    return data, file_name
+    return data
 
 
 # Get metadata and citavify
 # -------------------------
+
 
 def summarize_location(location: Tuple[str, str, str, str, str, str]) -> Tuple[str, str, str]:
     """ Get manuscript location and summarize for usage in citavi
@@ -594,6 +608,7 @@ def summarize_location(location: Tuple[str, str, str, str, str, str]) -> Tuple[s
 
     return settlement, archive, signature
 
+
 def get_citavified_data (links: list) -> tuple:  
     """ Create dataframe for usage in interface
 
@@ -623,7 +638,7 @@ def get_citavified_data (links: list) -> tuple:
         i += 1
 
         soup = load_xml(url)
-        #soup = load_xmls_by_id(id)
+        # soup = load_xmls_by_id(id)
 
         name = get_tag(soup)    
         creator = get_creator(soup)  
@@ -646,18 +661,22 @@ def get_citavified_data (links: list) -> tuple:
 
     return data, file_name
 
+
 # Get titles (by Balduin)
 # -----------------------
+
 def clean_msitems(soups):
     for soup in soups:
         for sub in soup.find_all('msItem'):
             sub.decompose()
         yield soup
 
+
 def get_title(item):
     title = item.find('title')
     rubric = item.find('rubric')
     return title, rubric
+
 
 def dictionarize(items):
     res = []
@@ -668,6 +687,7 @@ def dictionarize(items):
         pretty_rubric = get_cleaned_text(rubric)
         res.append((number, pretty_title, pretty_rubric,))
     return res
+
 
 def do_it_my_way(links):
     for url in links:
@@ -682,7 +702,8 @@ def do_it_my_way(links):
 # Pandas and CSV export
 # ---------------------
 
-def pandafy_data(result: list, columns: list[str]) -> DataFrame:
+
+def pandafy_data(result: list, columns: list) -> DataFrame:
     """Creates panda dataframe.
 
     Args:
@@ -699,6 +720,7 @@ def pandafy_data(result: list, columns: list[str]) -> DataFrame:
 
     return data
 
+
 def CSVExport(FileName: str, DataFrame):
     DataFrame.to_csv(FileName+".csv", sep ='\t', encoding='utf-8', index=False)
     print("File exported")
@@ -707,6 +729,7 @@ def CSVExport(FileName: str, DataFrame):
 
 # Test Runner
 # -----------
+
 
 if __name__ == "__main__":
     print("Test Runner:")
