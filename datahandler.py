@@ -59,6 +59,13 @@ class DataHandler:
 
     @classmethod
     def get_handler(cls) -> DataHandler:
+        """Get a DataHandler
+
+        Factory method to get a DataHandler object.
+
+        Returns:
+            DataHandler: A DataHandler, either loaded from cache or created anew.
+        """
         print("Getting DataHandler")
         res = cls._from_pickle()
         if res:
