@@ -154,7 +154,7 @@ def _load_ids(df: pd.DataFrame, max_res: int = -1, aggressive_crawl: bool = Fals
         return res
 
 
-def _load_ids_aggressively(df: pd.DataFrame, max_res: int = -1):
+def _load_ids_aggressively(df: pd.DataFrame, max_res: int = -1):  # TODO: remove aggressive crawling
     """load IDs aggressively"""
     iterator_ = _download_ids_aggressively(df, max_res)
     if max_res > 0:
@@ -171,7 +171,7 @@ def _load_ids_aggressively(df: pd.DataFrame, max_res: int = -1):
     return res.sort_values(by=['collection', 'id'], inplace=False)
 
 
-def _download_ids_aggressively(df: pd.DataFrame, max_res: int) -> Generator[Tuple[str], None, None]:
+def _download_ids_aggressively(df: pd.DataFrame, max_res: int) -> Generator[Tuple[str], None, None]:  # TODO: remove aggressive crawling
     """Download IDs aggressively: launch Threads"""
     with ThreadPoolExecutor(max_workers=120) as executor:
         futures = [executor.submit(_download_ids_from_url, s.url, s.collection) for _, s in df.iterrows()]
@@ -254,7 +254,7 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
     return existing_urls
 
 
-def _is_urls_complete(df: pd.DataFrame) -> bool:
+def _is_urls_complete(df: pd.DataFrame) -> bool:  # TODO: remove?
     ids_a = len(get_ids()['id'].unique())
     ids_b = len(df['id'].unique())
     return ids_a == ids_b
@@ -311,10 +311,10 @@ def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res) -> Gene
                 yield res
                 if verbose:
                     percents = hits / max_res * 100
-                    print(f'Checked {checked+1} \tFound {hits} of {max_res} ({percents:.2f}%)', end=_backspace_print)
+                    print(f'Checked {checked+1} \tFound {hits} of {max_res} ({percents:.2f}%)', end=_backspace_print)  # FIXME: maxres can be -1
 
 
-def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
+def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:  # TODO: remove aggressive crawling
     """Generator of multi-thread loaded rows for ms_urls dataframe."""
     options = _get_aggressive_options(potentials, max_res)
     with ThreadPoolExecutor(max_workers=120) as executor:
@@ -335,7 +335,7 @@ def _get_existing_xml_urls_aggressively(potentials: pd.DataFrame, max_res) -> Ge
             executor.shutdown(wait=False, cancel_futures=True)
 
 
-def _get_aggressive_options(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
+def _get_aggressive_options(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:  # TODO: remove aggressive crawling
     """Get linear generator of tuples with potentially existing URLs"""
     if len(potentials.index) > max_res:
         potentials = potentials[:max_res]
@@ -348,7 +348,7 @@ def _get_aggressive_options(potentials: pd.DataFrame, max_res) -> Generator[Tupl
 
 def _get_url_if_exists(col, id_, l, url: str):
     """Returns tuple, if URL returns 200, None otherwise."""
-    status = requests.head(url).status_code
+    status = requests.head(url).status_code  # TODO: get rid of the 'head' thing, to avoid double requests
     file = url.rsplit('/', 1)[1]
     if status == 200:
         return col, id_, l, url, file
@@ -384,7 +384,7 @@ def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: boo
     return res
 
 
-def _cache_xml_aggressively(df, max_res, use_cache):
+def _cache_xml_aggressively(df, max_res, use_cache):  # TODO: remove aggressive crawling
     tasks = _get_cache_tasks(df)
     with ThreadPoolExecutor(max_workers=120) as executor:
         res = 0
@@ -439,7 +439,7 @@ def _cache_xml(path, url, use_cache) -> bool:
             print(f'No data loaded for {url}')
         return True
 
-def _load_xml_content(url):
+def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is actually XML
     """Load XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
     bytes_ = response.text.encode(response.encoding)
@@ -653,7 +653,7 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
 
 # Tests
 # -----
-def test():
+def test():  # TODO: is all of this still needed?
     test_get_by_id()
 
 
@@ -735,11 +735,11 @@ if __name__ == "__main__":
     # ----------------------------
 
     # s = load_xml('https://handrit.is/en/manuscript/xml/AM02-0001-e-beta-I-en.xml')
-    s = load_xmls_by_id('Lbs04-0530')
+    # s = load_xmls_by_id('Lbs04-0530')
     # s = load_xmls_by_id('AM02-0013')
     # print('1)')
     # s = load_xmls_by_id('AM04-0207a', use_cache=False)
-    print(s)
+    # print(s)
     # print('2)')
     # s = load_xmls_by_id('Acc-0001-da', use_cache=False)
     # s = load_xmls_by_id('Lbs08-2064')
@@ -761,7 +761,7 @@ if __name__ == "__main__":
 
     # test()
 
-    # crawl()
+    crawl()
 
     print(f'Finished: {datetime.now()}')
 

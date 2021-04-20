@@ -3,7 +3,7 @@ This module handles data and provides convenient and efficient access to it.
 """
 
 from __future__ import annotations
-from typing import Optional
+from typing import List, Optional, Union
 import pandas as pd
 import pickle
 import os
@@ -11,24 +11,31 @@ import crawler
 import handrit_tamer_2 as tamer
 import matplotlib.pyplot as plt
 
+PICKLE_PATH = "data/cache.pickle"
+
 
 class DataHandler:
     def __init__(self,
                  manuscripts: pd.DataFrame = None,
                  texts: pd.DataFrame = None,
                  persons: pd.DataFrame = None):
+        """"""  # CHORE: documentation
         print("Creating new handler")
         self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info()
         self.texts = texts if texts else pd.DataFrame()  # TODO
         self.persons = persons if persons else pd.DataFrame()  # TODO
         self.subcorpora = []  # TODO: discuss how/what we want
 
+    # Static Methods
+    # ==============
+
     @staticmethod
     def _from_pickle() -> Optional[DataHandler]:
-        if os.path.exists("data/cache.pickle"):
-            obj = pickle.load("data/cache.pickle")
-            if isinstance(obj, DataHandler):
-                return obj
+        if os.path.exists(PICKLE_PATH):
+            with open(PICKLE_PATH, mode='rb') as file:
+                obj = pickle.load(file)
+                if isinstance(obj, DataHandler):
+                    return obj
         return None
 
     @staticmethod
@@ -57,6 +64,9 @@ class DataHandler:
         df.drop(columns=['soup'], inplace=True)  # TODO: here or later? or store soups for quick access?
         return df
 
+    # Class Methods
+    # =============
+
     @classmethod
     def get_handler(cls) -> DataHandler:
         """Get a DataHandler
@@ -77,6 +87,47 @@ class DataHandler:
         print("Could not get DataHandler from backup")
         return cls()
 
+    # Instance Methods
+    # ================
+
+    def _to_pickle(self):
+        with open(PICKLE_PATH, mode='wb') as file:
+            pickle.dump(self, file)
+
+    def _backup(self):
+        pass  # TODO: implement to csv/json
+
+    # API Methods
+    # -----------
+
+    def get_all_manuscript_data(self) -> pd.DataFrame:
+        # CHORE: documentation
+        return self.manuscripts
+
+    def get_manuscript_data(self,
+                            ids: Union[List, pd.Series, pd.DataFrame] = None,
+                            urls: Union[List, pd.Series, pd.DataFrame] = None,
+                            filenames: Union[List, pd.Series, pd.DataFrame] = None) -> pd.DataFrame:
+        # CHORE: documentation: one of these arguments must be passed, return df to mss
+        pass  # TODO: implement
+
+    # TODO: more API
+    # - more options how to get ms data
+    # - options to get texts
+    # - options to get persons
+    # - options to work with subcorpora?
+
+    # TODO: even more stuff:
+    # - logging
+    # - improve crawler
+    # - tidy up everything
+    # - ...
+    #
+    # .
+
+
+# Test Runner
+# ===========
 
 if __name__ == "__main__":
     handler = DataHandler.get_handler()
