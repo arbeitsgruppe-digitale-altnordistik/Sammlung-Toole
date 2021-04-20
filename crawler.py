@@ -88,7 +88,7 @@ def _load_collections() -> pd.DataFrame:
 # Crawl Manuscript IDs
 # --------------------
 
-def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Load all manuscript IDs.
 
     The dataframe contains the following collumns:
@@ -134,7 +134,7 @@ def _is_ids_complete(ids: pd.DataFrame) -> bool:
     return False
 
 
-def _load_ids(df: pd.DataFrame, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def _load_ids(df: pd.DataFrame, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Load IDs"""
     if aggressive_crawl:
         return _load_ids_aggressively(df, max_res)
@@ -217,7 +217,7 @@ def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
 # Crawl XML URLs
 # --------------
 
-def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Load all manuscript URLs.
 
     The dataframe contains the following collumns:
@@ -360,7 +360,7 @@ def _get_url_if_exists(col, id_, l, url: str):
 # Cache XML data
 # --------------
 
-def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> int:
+def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> int:
     """Download all XML data.
 
     Args:
@@ -462,7 +462,7 @@ def _load_xml_content(url):
 # Look up shelfmarks
 # ------------------
 
-def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Look up all manuscript shelfmarks.
 
     The dataframe contains the following collumns:
@@ -513,7 +513,7 @@ def _get_shelfmarks(df: pd.DataFrame):
 # Look up shelfmarks
 # ------------------
 
-def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Look up all manuscript shelfmarks.
 
     The dataframe contains the following columns:
