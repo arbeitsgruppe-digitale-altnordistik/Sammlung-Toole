@@ -88,7 +88,7 @@ def _load_collections() -> pd.DataFrame:
 # Crawl Manuscript IDs
 # --------------------
 
-def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Load all manuscript IDs.
 
     The dataframe contains the following collumns:
@@ -134,7 +134,7 @@ def _is_ids_complete(ids: pd.DataFrame) -> bool:
     return False
 
 
-def _load_ids(df: pd.DataFrame, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def _load_ids(df: pd.DataFrame, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Load IDs"""
     if aggressive_crawl:
         return _load_ids_aggressively(df, max_res)
@@ -217,7 +217,7 @@ def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
 # Crawl XML URLs
 # --------------
 
-def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Load all manuscript URLs.
 
     The dataframe contains the following collumns:
@@ -240,7 +240,7 @@ def get_xml_urls(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = Tr
         res = pd.read_csv(_xml_url_path)
         return res
         # if res is not None and not res.empty and _is_urls_complete(res):  # LATER: should work from that, in case of partially finished loading
-        #     if verbose:
+        #    if verbose:
         #         print('Loaded XML URLs from cache.')
         #     return res
     if df is None:
@@ -360,7 +360,7 @@ def _get_url_if_exists(col, id_, l, url: str):
 # Cache XML data
 # --------------
 
-def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> int:
+def cache_all_xml_data(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> int:
     """Download all XML data.
 
     Args:
@@ -440,7 +440,7 @@ def _cache_xml(path, url, use_cache) -> bool:
         return True
 
 def _load_xml_content(url):
-    """Loade XML content from URL, ensuring the encoding is correct."""
+    """Load XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
     bytes_ = response.text.encode(response.encoding)
     if bytes_[0] == 255:
@@ -462,7 +462,7 @@ def _load_xml_content(url):
 # Look up shelfmarks
 # ------------------
 
-def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = True) -> pd.DataFrame:
+def get_shelfmarks(df: pd.DataFrame=None, use_cache: bool = True, cache: bool = True, max_res: int = -1, aggressive_crawl: bool = False) -> pd.DataFrame:
     """Look up all manuscript shelfmarks.
 
     The dataframe contains the following collumns:
@@ -735,11 +735,11 @@ if __name__ == "__main__":
     # ----------------------------
 
     # s = load_xml('https://handrit.is/en/manuscript/xml/AM02-0001-e-beta-I-en.xml')
-    # s = load_xmls_by_id('AM02-0162B-epsilon')
+    s = load_xmls_by_id('Lbs04-0530')
     # s = load_xmls_by_id('AM02-0013')
     # print('1)')
     # s = load_xmls_by_id('AM04-0207a', use_cache=False)
-    # print(s)
+    print(s)
     # print('2)')
     # s = load_xmls_by_id('Acc-0001-da', use_cache=False)
     # s = load_xmls_by_id('Lbs08-2064')
@@ -761,7 +761,7 @@ if __name__ == "__main__":
 
     # test()
 
-    crawl()
+    # crawl()
 
     print(f'Finished: {datetime.now()}')
 

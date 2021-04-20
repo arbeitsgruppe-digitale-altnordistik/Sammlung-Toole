@@ -122,6 +122,166 @@ def collections_button():
         st.write(cols)
 
 
+def search_input():
+    '''Serves the contents of the Handrit Search option. Takes a search URL as input from the user,
+    can handle multiple URLs separated by comma.
+    '''
+    inURL = st.text_input("Input search URL here")
+    DataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+    searchType = st.radio("Work with a single search or combine multiple searches? Separate multiple search result urls by comma.", ['Single', 'Multiple'], index=0)
+    if searchType == "Multiple":
+        joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=0)
+    if not inURL:
+        st.warning("No URL supplied!")
+    if inURL and searchType == 'Single':
+        data = search_results(inURL, DataType)
+        st.write(data)
+    if inURL and searchType == 'Multiple':
+        baseList = [x.strip() for x in inURL.split(',')]
+        data = multiSearch(baseList, DataType, joinMode)
+        st.write(data)
+    if DataType == "Metadata":
+        if st.button("Plot dating"):
+            fig = date_plotting(data)
+            st.plotly_chart(fig, use_container_width=True)
+    if st.button("Export to CSV"):
+        csv = data.to_csv(index=False)
+        b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        st.markdown(href, unsafe_allow_html=True)
+
+
+@st.cache(suppress_st_warning=True) # -> won't work with stdout redirect
+def search_results(inURL: str, DataType: str):
+    ''' Actual call to handrit tamer to get the desired results from the search URL.
+
+    The data frame to be returned depends on the DataType variable (cf. below).
+    If DataType = Contents:
+        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
+        witnesses listed in the MS description/XML.
+
+    If DataType = Metadata:
+        Data frame contains the following columns:
+        ['Handrit ID', 'Signature', 'Country',
+                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
+    
+    Args:
+        inURL(str, required): A URL pointing to a handrit search result page.
+        DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
+        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
+
+    Returns:
+        pd.DataFrame: DataFrame containing MS contents or meta data.
+    '''
+    data = hSr(inURL, DataType)    
+    return data
+
+
+def browse_input():
+    '''Serves content of the Handrit Browse option, taking a URL of a handrit browse page as input
+    in the text input box below
+    '''
+    inURL = st.text_input("Input browse URL here")
+    DataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+    if not inURL:
+        st.warning("No URL supplied!")
+    if inURL:
+        data = browse_results(inURL, DataType)
+        st.write(data)
+    if DataType == "Metadata":
+        if st.button("Plot dating"):
+            fig = date_plotting(data)
+            st.plotly_chart(fig, use_container_width=True)
+    if st.button("Export to CSV"):
+        _csvExporter(data)
+
+
+def _csvExporter(data):
+    csv = data.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.'
+    st.markdown(href, unsafe_allow_html=True)
+
+
+@st.cache(suppress_st_warning=True)
+def browse_results(inURL: str, DataType: str):
+    ''' Actual call to handrit tamer to get the desired results from the browse URL.
+
+    The data frame to be returned depends on the DataType variable (cf. below).
+    If DataType = Contents:
+        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
+        witnesses listed in the MS description/XML.
+
+    If DataType = Metadata:
+        Data frame contains the following columns:
+        ['Handrit ID', 'Signature', 'Country',
+                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
+    
+    Args:
+        inURL(str, required): A URL pointing to a handrit search result page.
+        DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
+        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
+
+    Returns:
+        pd.DataFrame: DataFrame containing MS contents or meta data.
+    '''
+
+    data = hBr(inURL, DataType)
+    return data
+
+
+def date_plotting(inDF):
+    ''' Plots the data of a given set of MSs. Used with MS metadata results. Returns scatterplot.
+
+    Args:
+        inDF(dataFrame, required): pandas DataFrame
+
+    Returns:
+        scatterplot data for plotly to be drawn with corresponding function
+    '''
+
+    inDF = inDF[inDF['Terminus Antequem'] != 0]
+    inDF = inDF[inDF['Terminus Postquem'] != 0]
+    fig = px.scatter(inDF, x='Terminus Postquem', y='Terminus Antequem', color='Signature')
+    return fig
+
+
+def generate_reports():
+    '''This is to be used for all sorts of reports which can be generated from the data.
+    As of yet only has one option: Scatter plot of all MSs dating info. Takes a few minutes.
+    Doesn't need anything, calls the date_extractor module.
+    '''
+
+    if st.sidebar.button("Generate Reports"):
+        st.write("Statically generate expensive reports. The results will be stored in the data directory. Running these will take some time.")
+        with st.spinner("In progress"):
+            st.write(f'Start: {datetime.now()}')
+            with st_stdout('code'):
+                date_extractor.do_plot(use_cache=False)
+            st.write(f'Finished: {datetime.now()}')
+
+
+def all_MS_datings():
+    ''' Displays a previously rendered scatter plot of all MS dating info and the corresponding DF
+    from a csv.
+    '''
+
+    st.write("Displaying scatter plot of all available MS dates (post- and antequem) below")
+    inDF = pd.read_csv(_date_path).drop_duplicates(subset='Shelfmark')
+    st.write(inDF)
+    st.image(_big_plot)
+
+
+def maddyMeta():
+    st.write("Maditas Metadata Functions")
+    st.write("Currently testing session states here. Current username:")
+    st.write(state.username)
+    updateName = st.text_input("Input new username:")
+    if st.button("Update"):
+        state.username = updateName
+
+
+
 
 # Functions which create sub pages
 # --------------------------------------
@@ -151,82 +311,13 @@ def adv_options():
 def search_page():
     '''Basic page for handrit search/browse operations. Only used to select either search or browse'''
 
-    st.title("Result Workflow Builder")
-    st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
-    state.currentSURL = st.text_input("Input handrit search URL here")
-    state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False, help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
-    state.currentBURL = st.text_input("Input handrit browse URL here")
-    state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False, help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
-    state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata', 'Maditadata'], index=0)
-    state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=0)
-    if st.button("Run"):
-        if state.currentSURL and state.multiSearch == False:
-            dataS = search_results(state.currentSURL, state.resultMode)
-        if state.currentSURL and state.multiSearch == True:
-            baseList = [x.strip() for x in state.currentSURL.split(',')]
-            dataS = multiSearch(baseList, DataType=state.resultMode, joinMode=state.joinMode)
-        if state.currentBURL and state.multiBrowse == False:
-            dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
-        if state.currentSURL and state.currentBURL:
-            data = pd.concat([dataS, dataB], axis=1)
-            st.write(data)
-        if state.currentSURL and not state.currentBURL:
-            st.write(dataS)
-        if state.currentBURL and not state.currentSURL:
-            st.write(dataB)
-
-
-
-
-def search_results(inURL: str, DataType: str):
-    ''' Actual call to handrit tamer to get the desired results from the search URL.
-
-    The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-    
-    Args:
-        inURL(str, required): A URL pointing to a handrit search result page.
-        DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-
-    Returns:
-        pd.DataFrame: DataFrame containing MS contents or meta data.
-    '''
-    data = hSr(inURL, DataType)    
-    return data
-
-
-def browse_results(inURL: str, DataType: str):
-    ''' Actual call to handrit tamer to get the desired results from the browse URL.
-
-    The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-    
-    Args:
-        inURL(str, required): A URL pointing to a handrit search result page.
-        DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-
-    Returns:
-        pd.DataFrame: DataFrame containing MS contents or meta data.
-    '''
-
-    data = hBr(inURL, DataType)
-    return data
+    st.title("Search Page")
+    st.write("Different search options")
+    searchOptions = {"Handrit Browse": "browse_input", "Handrit Search": "search_input", "Maditas XML Spielwiese": "maddyMeta"}
+    selection = st.sidebar.radio("Search Options", list(searchOptions.keys()), index=0)
+    selected = searchOptions[selection]
+    st.write(f"You chose {selection}")
+    eval(selected + "()")
 
 
 def static_reports():
@@ -256,13 +347,5 @@ def full_menu():
 # Run
 #----
 if __name__ == '__main__':
-    state = sessionState.get(currentData='', 
-                            resultMode='', 
-                            currentSURL='', 
-                            currentBURL='', 
-                            URLType='', 
-                            multiSearch='False', 
-                            multiBrowse='False', 
-                            joinMode='All'
-                            )
+    state = sessionState.get(username='', color='', currentData='')
     full_menu()

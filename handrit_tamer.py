@@ -76,8 +76,11 @@ def get_shelfmarks(url):
     htm = requests.get(url).text
     soup = BeautifulSoup(htm, 'lxml')
     subsoups = soup.select("td.shelfmark")
+    print(subsoups)
     shelfmarks = [ss.get_text() for ss in subsoups]
     shelfmarks = [sm.strip() for sm in shelfmarks]
+    print(f"At 'get_shelfmarks', I still have {len(shelfmarks)}, and these are:")
+    print(shelfmarks)
     return shelfmarks
   
 
@@ -104,7 +107,7 @@ def get_search_result_pages(url):
     return res
 
 
-def get_shelfmarks_from_urls(urls):
+def get_shelfmarks_from_urls(urls): # -> somethings fucky
   results = []
   if len(urls) == 1:
     url = urls[0]
@@ -471,7 +474,7 @@ def get_msinfo(soups):
       settlement = 'N/A'
       repository = 'N/A'
       signature = 'N/A'
-    else:
+    try:
       country = msID.find("country")
       settlement = msID.find("settlement")
       repository = msID.find("repository")
@@ -480,7 +483,12 @@ def get_msinfo(soups):
       settlement = settlement.get_text()
       repository = repository.get_text()
       signature = signature.get_text()
-      
+    except:
+      msID == 'N/A'
+      country = 'N/A'
+      settlement = 'N/A'
+      repository = 'N/A'
+      signature = 'N/A'  
 
 
     
@@ -619,6 +627,7 @@ def get_data_from_search_url(url: str, DataType: str):
   print(f'Got {len(pages)} pages.')
   shelfmarks = get_shelfmarks_from_urls(pages)
   print(f'Got {len(shelfmarks)} shelfmarks.')
+  print(shelfmarks)
   ids = get_id_from_shelfmark_local(shelfmarks)
   xmls = []
   for i in ids:
@@ -672,6 +681,8 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
     finalMSs = list(set(allTheStuff))
   ids = get_id_from_shelfmark_local(finalMSs)
   xmls = []
+  if DataType == "Maditadata":
+    
   for i in ids:
     xml = crawler.load_xmls_by_id(i)
     xmlList = list(xml.values())
@@ -683,7 +694,6 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
   if DataType == "Metadata":
     data = get_msinfo(xmls)
   return data
-
 
 
 """Do the Magic
