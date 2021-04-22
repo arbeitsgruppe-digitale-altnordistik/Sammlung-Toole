@@ -22,6 +22,8 @@ import plotly.express as px
 import streamlit.components.v1 as comps
 from handrit_tamer import get_from_search_list as multiSearch
 from datetime import datetime
+import metadata
+import sessionState
 
 
 
@@ -38,10 +40,10 @@ _home_image = 'data/title.png'      # Image displayed on home page
 
 # System
 # ------
-'''
-These three functions can be used as wrapper functions to redirect prints from terminal to the
-web interface. This will not work directly with cached functions.
-'''
+
+# These three functions can be used as wrapper functions to redirect prints from terminal to the
+# web interface. This will not work directly with cached functions.
+
 
 
 @contextmanager
@@ -120,36 +122,152 @@ def collections_button():
         st.write(cols)
 
 
-def search_input():
-    '''Serves the contents of the Handrit Search option. Takes a search URL as input from the user,
-    can handle multiple URLs separated by comma.
-    '''
-    inURL = st.text_input("Input search URL here")
-    DataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
-    searchType = st.radio("Work with a single search or combine multiple searches? Separate multiple search result urls by comma.", ['Single', 'Multiple'], index=0)
-    if searchType == "Multiple":
-        joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=0)
-    if not inURL:
-        st.warning("No URL supplied!")
-    if inURL and searchType == 'Single':
-        data = search_results(inURL, DataType)
-        st.write(data)
-    if inURL and searchType == 'Multiple':
-        baseList = [x.strip() for x in inURL.split(',')]
-        data = multiSearch(baseList, DataType, joinMode)
-        st.write(data)
-    if DataType == "Metadata":
-        if st.button("Plot dating"):
-            fig = date_plotting(data)
-            st.plotly_chart(fig, use_container_width=True)
-    if st.button("Export to CSV"):
-        csv = data.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+
+# Functions which create sub pages
+# --------------------------------------
+
+
+def mainPage():
+    '''Landing page'''
+
+    st.title("Welcome to Sammlung Toole")
+    st.write("The Menu on the left has all the options")
+    st.image(_home_image)
+
+
+def adv_options():
+    '''Shows the advanced options menu'''
+
+    st.title("Advanced Options Menu")
+    st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
+    st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
+    collections_button()
+    msNumber_button()
+    rebuild_button()
+    # generate_reports()
+
+
+def search_page():
+    '''Workbench. Proper doc to follow soon.'''
+
+    st.title("Result Workflow Builder")
+    if state.CurrentStep == 'Preprocessing':
+        st.header("Preprocessing")
+        st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
+        state.currentSURL = st.text_input("Input handrit search URL here")
+        state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False, help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
+        state.currentBURL = st.text_input("Input handrit browse URL here")
+        state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False, help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
+        state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata', 'Maditadata'], index=0)
+        state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
+        if st.button("Run"):
+            state.didRun = 'Started, dnf.'
+            state.CurrentStep = 'Processing'
+            # This block handles data delivery
+            if state.currentSURL and state.multiSearch == False:
+                dataS = search_results(state.currentSURL, state.resultMode)
+            if state.currentSURL and state.multiSearch == True:
+                baseList = [x.strip() for x in state.currentSURL.split(',')]
+                dataS = multiSearch(baseList, DataType=state.resultMode, joinMode=state.joinMode)
+            if state.currentBURL and state.multiBrowse == False:
+                dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
+            
+            # This block will check the data the got delivered and display it
+            if state.resultMode == 'Contents':
+                if state.currentSURL and state.currentBURL:
+                    state.currentData = pd.concat([dataS, dataB], axis=1)
+                if state.currentSURL and not state.currentBURL:
+                    state.currentData = dataS
+                if state.currentBURL and not state.currentSURL:
+                    state.currentData = dataB
+            if state.resultMode == 'Maditadata':
+                if state.currentSURL and state.currentBURL:
+                    state.currentData = pd.concat([dataS, dataB], axis=0).drop_duplicates().reset_index(drop=True)
+                if state.currentSURL and not state.currentBURL:
+                    state.currentData = dataS
+                if state.currentBURL and not state.currentSURL:
+                    state.currentData = dataB
+            if state.resultMode == 'Metadata':
+                if state.currentSURL and state.currentBURL:
+                    state.currentData = pd.concat([dataS, dataB], axis=1)
+                if state.currentSURL and not state.currentBURL:
+                    state.currentData = dataS
+                if state.currentBURL and not state.currentSURL:
+                    state.currentData = dataB
+            if not state.currentData.empty:
+                state.didRun = 'OK'   
+        if state.didRun == 'OK':
+            st.header('Results')
+            st.write(state.currentData)
+    if state.didRun == 'OK': 
+        if st.button("Go to postprocessing"):
+            state.CurrentStep = 'Postprocessing'
+    if state.CurrentStep == 'Postprocessing':
+        postprocessing()
+        if st.button("Go back to preprocessing"):
+            state.CurrentStep = 'Preprocessing'
+        
+
+
+def citaviExporter():
+    foundListList = list(state.currentData.columns)
+    foundList = [i for x in foundListList for i in x]
+    state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList, help="This will export your selected references as a CSV file for Citavi.")
+    if st.button('Export'):
+        state.currentCitaviData, sink = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
+        st.write(state.currentCitaviData)
+        csv = state.currentCitaviData.to_csv(index=False)
+        b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
         href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
         st.markdown(href, unsafe_allow_html=True)
 
 
-@st.cache(suppress_st_warning=True) # -> won't work with stdout redirect
+def postprocessing():
+    st.header("Postprocessing menu")
+    st.header("Current result data set")
+    st.write(state.currentData)
+    if st.button("Export to CSV"):
+        state.postStep = 'CSV'
+    if state.postStep == 'CSV':
+        csv = state.currentData.to_csv(index=False)
+        b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        st.markdown(href, unsafe_allow_html=True)
+    if st.button("Export references to Citavi"):
+        state.postStep = 'Citavi'
+    if state.postStep == 'Citavi':
+        citaviExporter()
+    if st.button("Clean data"):
+        state.postStep = 'Cleaning'
+    if state.postStep == 'Cleaning':
+        dataCleaner()
+
+
+# def dataInspector():
+    
+
+def dataCleaner():
+    if state.resultMode == 'Maditadata':
+        index = state.currentData.index
+        itemsPrev = len(index)
+        newDF = state.currentData.dropna()
+        index1 = newDF.index
+        itemsAfter = len(index1)
+        diff = itemsPrev - itemsAfter
+        st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values.")
+    else:
+        itemsPrev = len(state.currentData.columns)
+        # newDF = 
+        itemsAfter = len(newDF.columns)
+        newDF = newDF.loc[:,~newDF.columns.duplicated()]
+        itemsAfter1 = len(newDF.columns)
+        diff0 = itemsPrev - itemsAfter
+        diff1 = itemsAfter - itemsAfter1
+        st.write(f"Started out with {itemsPrev} results, dropped {diff0} NaN values, dropped {diff1} duplicates. Remaining unique results: {itemsAfter1}")
+    st.write(newDF)
+    if st.button("Keep cleaned data"):
+        state.currentData = newDF
+
 def search_results(inURL: str, DataType: str):
     ''' Actual call to handrit tamer to get the desired results from the search URL.
 
@@ -175,29 +293,6 @@ def search_results(inURL: str, DataType: str):
     return data
 
 
-def browse_input():
-    '''Serves content of the Handrit Browse option, taking a URL of a handrit browse page as input
-    in the text input box below
-    '''
-    inURL = st.text_input("Input browse URL here")
-    DataType = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
-    if not inURL:
-        st.warning("No URL supplied!")
-    if inURL:
-        data = browse_results(inURL, DataType)
-        st.write(data)
-    if DataType == "Metadata":
-        if st.button("Plot dating"):
-            fig = date_plotting(data)
-            st.plotly_chart(fig, use_container_width=True)
-    if st.button("Export to CSV"):
-        csv = data.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.'
-        st.markdown(href, unsafe_allow_html=True)
-
-
-@st.cache(suppress_st_warning=True)
 def browse_results(inURL: str, DataType: str):
     ''' Actual call to handrit tamer to get the desired results from the browse URL.
 
@@ -219,86 +314,14 @@ def browse_results(inURL: str, DataType: str):
     Returns:
         pd.DataFrame: DataFrame containing MS contents or meta data.
     '''
+
     data = hBr(inURL, DataType)
     return data
 
 
-def date_plotting(inDF):
-    ''' Plots the data of a given set of MSs. Used with MS metadata results. Returns scatterplot.
-
-    Args:
-        inDF(dataFrame, required): pandas DataFrame
-
-    Returns:
-        scatterplot data for plotly to be drawn with corresponding function
-    '''
-    inDF = inDF[inDF['Terminus Antequem'] != 0]
-    inDF = inDF[inDF['Terminus Postquem'] != 0]
-    fig = px.scatter(inDF, x='Terminus Postquem', y='Terminus Antequem', color='Signature')
-    return fig
-
-
-def generate_reports():
-    '''This is to be used for all sorts of reports which can be generated from the data.
-    As of yet only has one option: Scatter plot of all MSs dating info. Takes a few minutes.
-    Doesn't need anything, calls the date_extractor module.
-    '''
-    if st.sidebar.button("Generate Reports"):
-        st.write("Statically generate expensive reports. The results will be stored in the data directory. Running these will take some time.")
-        with st.spinner("In progress"):
-            st.write(f'Start: {datetime.now()}')
-            with st_stdout('code'):
-                date_extractor.do_plot(use_cache=False)
-            st.write(f'Finished: {datetime.now()}')
-
-
-def all_MS_datings():
-    ''' Displays a previously rendered scatter plot of all MS dating info and the corresponding DF
-    from a csv.
-    '''
-    st.write("Displaying scatter plot of all available MS dates (post- and antequem) below")
-    inDF = pd.read_csv(_date_path).drop_duplicates(subset='Shelfmark')
-    st.write(inDF)
-    st.image(_big_plot)
-
-
-
-# Functions which create sub pages
-# --------------------------------------
-
-
-def mainPage():
-    '''Landing page'''
-    st.title("Welcome to Sammlung Toole")
-    st.write("The Menu on the left has all the options")
-    st.image(_home_image)
-    st.balloons()
-
-
-def adv_options():
-    '''Shows the advanced options menu'''
-    st.title("Advanced Options Menu")
-    st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
-    st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
-    collections_button()
-    msNumber_button()
-    rebuild_button()
-    generate_reports()
-
-
-def search_page():
-    '''Basic page for handrit search/browse operations. Only used to select either search or browse'''
-    st.title("Search Page")
-    st.write("Different search options")
-    searchOptions = {"Handrit Browse": "browse_input", "Handrit Search": "search_input"}
-    selection = st.sidebar.radio("Search Options", list(searchOptions.keys()), index=0)
-    selected = searchOptions[selection]
-    st.write(f"You chose {selection}")
-    eval(selected + "()")
-
-
 def static_reports():
     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
+
     reports = {"Dating of all MSs": "all_MS_datings"}
     selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
     selected = reports[selection]
@@ -313,6 +336,7 @@ def full_menu():
     '''This is basically the main() and will load and display the full menu, which in turn calls
     all the other functions containing sub pages.
     '''
+
     MenuOptions = {"Home": "mainPage", "Search Functions": "search_page", "Reports": "static_reports", "Advanced Settings": "adv_options"}
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
     selected = MenuOptions[selection]
@@ -321,5 +345,19 @@ def full_menu():
 
 # Run
 #----
-
-full_menu()
+if __name__ == '__main__':
+    state = sessionState.get(currentData=pd.DataFrame(),
+                            resultMode='', 
+                            currentSURL='', 
+                            currentBURL='', 
+                            URLType='', 
+                            multiSearch='False', 
+                            multiBrowse='False', 
+                            joinMode='All',
+                            didRun='dnr',
+                            CitaviSelect=[],
+                            CurrentStep = 'Preprocessing',
+                            postStep = '',
+                            currentCitaviData = pd.DataFrame()
+                            )
+    full_menu()

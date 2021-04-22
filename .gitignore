@@ -1,3 +1,6 @@
+# Maddy
+maddy-erinner-mich.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -132,3 +135,6 @@ dmypy.json
 .vscode/
 quickTest.py
 *.csv
+
+# pickled data
+*.pickle
