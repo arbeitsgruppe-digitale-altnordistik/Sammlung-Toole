@@ -133,7 +133,6 @@ def mainPage():
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
     st.image(_home_image)
-    st.balloons()
 
 
 def adv_options():
@@ -145,7 +144,7 @@ def adv_options():
     collections_button()
     msNumber_button()
     rebuild_button()
-    generate_reports()
+    # generate_reports()
 
 
 def search_page():
@@ -244,6 +243,9 @@ def postprocessing():
         dataCleaner()
 
 
+# def dataInspector():
+    
+
 def dataCleaner():
     if state.resultMode == 'Maditadata':
         index = state.currentData.index
@@ -255,7 +257,7 @@ def dataCleaner():
         st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values.")
     else:
         itemsPrev = len(state.currentData.columns)
-        newDF = state.currentData.dropna()
+        # newDF = 
         itemsAfter = len(newDF.columns)
         newDF = newDF.loc[:,~newDF.columns.duplicated()]
         itemsAfter1 = len(newDF.columns)
