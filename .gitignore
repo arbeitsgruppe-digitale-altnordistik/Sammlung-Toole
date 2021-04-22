@@ -135,3 +135,6 @@ dmypy.json
 .vscode/
 quickTest.py
 *.csv
+
+# pickled data
+*.pickle

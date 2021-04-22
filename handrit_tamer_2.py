@@ -53,13 +53,17 @@ def get_msinfo(soup: BeautifulSoup):
     if not msID:
         country, settlement, repository, signature = "", "", "", ""
     else:
-        country = msID.find("country").get_text()
-        settlement = msID.find("settlement").get_text()
-        repository = msID.find("repository").get_text()
-        signature = msID.find("idno").get_text()
+        c = msID.find("country")
+        country = c.get_text() if c else ""
+        s = msID.find("settlement")
+        settlement = s.get_text() if s else ""
+        r = msID.find("repository")
+        repository = r.get_text() if r else ""
+        si = msID.find("idno")
+        signature = si.get_text() if si else ""
 
     date, tp, ta, meandate, yearrange = get_date(soup)
-    
+
     return pd.Series({"country": country,
                       "settlement": settlement,
                       "repository": repository,
@@ -102,8 +106,11 @@ def get_date(soup: BeautifulSoup):
 
     elif tag.get("when"):
         date = str(tag["when"])
-        tp = int(date)
-        ta = int(date)
+        normalized_date = date
+        if len(normalized_date) > 4:
+            normalized_date = normalized_date[:4]
+        tp = int(normalized_date)
+        ta = int(normalized_date)
         meandate = tp
         yearrange = 0
 
@@ -111,8 +118,14 @@ def get_date(soup: BeautifulSoup):
         fr = str(tag["from"])
         to = str(tag["to"])
         date = f"{fr}-{to}"
-        tp = int(fr)
-        ta = int(to)
+        n = fr
+        if len(n) > 4:
+            n = n[:4]
+        tp = int(n)
+        n = to
+        if len(n) > 4:
+            n = n[:4]
+        ta = int(n)
         meandate = int(statistics.mean([int(tp), int(ta)]))
         yearrange = int(ta) - int(tp)
 
