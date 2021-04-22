@@ -9,7 +9,6 @@ import pickle
 import os
 import crawler
 import handrit_tamer_2 as tamer
-import matplotlib.pyplot as plt
 
 PICKLE_PATH = "data/cache.pickle"
 
@@ -18,10 +17,11 @@ class DataHandler:
     def __init__(self,
                  manuscripts: pd.DataFrame = None,
                  texts: pd.DataFrame = None,
-                 persons: pd.DataFrame = None):
+                 persons: pd.DataFrame = None,
+                 max_res: int = -1):
         """"""  # CHORE: documentation
         print("Creating new handler")
-        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info()
+        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res)
         self.texts = texts if texts else pd.DataFrame()  # TODO
         self.persons = persons if persons else pd.DataFrame()  # TODO
         self.subcorpora = []  # TODO: discuss how/what we want
@@ -57,8 +57,10 @@ class DataHandler:
         return None
 
     @staticmethod
-    def _load_ms_info() -> pd.DataFrame:
-        df = crawler.get_xml_urls()
+    def _load_ms_info(max_res: int = -1) -> pd.DataFrame:
+        df = crawler.get_xml_urls(max_res=max_res)
+        if max_res > 0 and len(df.index) > max_res:
+            df = df[:max_res]
         df['soup'] = df['xml_url'].apply(crawler.load_xml)
         df = df.join(df['soup'].apply(tamer.get_msinfo))
         df.drop(columns=['soup'], inplace=True)  # TODO: here or later? or store soups for quick access?
@@ -68,24 +70,31 @@ class DataHandler:
     # =============
 
     @classmethod
-    def get_handler(cls) -> DataHandler:
+    def get_handler(cls, max_res: int = -1) -> DataHandler:
         """Get a DataHandler
 
         Factory method to get a DataHandler object.
+
+        Args:
+            max_res (int, optional): maximum number of results, mostly for testing purposes. Defaults to -1.
 
         Returns:
             DataHandler: A DataHandler, either loaded from cache or created anew.
         """
         print("Getting DataHandler")
-        res = cls._from_pickle()
+        res = cls._from_pickle()  # TODO: max_res
         if res:
             return res
         print("Could not get DataHandler from pickle")
-        res = cls._from_backup()
+        res = cls._from_backup()  # TODO: max_res
         if res:
+            res._to_pickle()
             return res
         print("Could not get DataHandler from backup")
-        return cls()
+        res = cls(max_res=max_res)
+        res._to_pickle()
+        res._backup()
+        return res
 
     # Instance Methods
     # ================
@@ -124,22 +133,3 @@ class DataHandler:
     # - ...
     #
     # .
-
-
-# Test Runner
-# ===========
-
-if __name__ == "__main__":
-    handler = DataHandler.get_handler()
-    print("got handler")
-    mss = handler.manuscripts
-    mss.plot(x='meandate')  # TODO: remove
-    plt.show()
-    # print(mss.shape)
-    # print(mss.head())
-    # print(mss['meandate'])
-    # print(mss['meandate'].dtypes)
-    # print(mss['meandate'][0])
-    # print(type(mss['meandate'][0]))
-    # conv = mss['meandate'].astype(int)
-    # print(conv.dtype)
