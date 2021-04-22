@@ -22,7 +22,7 @@ import re
 # myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 # myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
 # myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
-
+myURLList = ['AM02-0002', 'AM02-0022', 'AM02-190-b']
 # Constants
 # ---------
 
@@ -198,18 +198,22 @@ def get_creator(soup: BeautifulSoup) -> str:
     hands = soup.handDesc
 
     if hands:
-        creators = hands.find_all('name', {'type':'person'})
+        try:
+            creators = hands.find_all('name', {'type':'person'})
 
-        if not creators: pretty_creators = "Scribe(s) unknown"
-        else:
-            pretty_creators = ""
-            for creator in creators:
-                key = creator.get('key')
-                if key: pretty_creator = get_persName(key)
-                else: pretty_creator = get_cleaned_text(creator)
-                pretty_creators = pretty_creators + "; " + pretty_creator
-            pretty_creators = pretty_creators[2:]
-                
+            if not creators: 
+                pretty_creators = "Scribe(s) unknown"
+            else:
+                pretty_creators = ""
+                for creator in creators:
+                    key = creator.get('key')
+                    if key: 
+                        pretty_creator = get_persName(key)
+                    else: pretty_creator = get_cleaned_text(creator)
+                    pretty_creators = pretty_creators + "; " + pretty_creator
+                pretty_creators = pretty_creators[2:]
+        except:
+            pretty_creators = "Scribe(s) unknown"       
     else:
         pretty_creators = "Scribe(s) unknown"
 
@@ -419,14 +423,19 @@ def get_length(txt: str) -> int:
     """   
 
     length: str = get_cleaned_text(txt)
-    x: int = length.find("-")
-    if x == -1: pretty_length: int = int(length)
-    else:
-        mylist = length.split("-")
-        int_map = map(int, mylist)
-        int_list = list(int_map)
-        pretty_length = sum(int_list) / len(int_list)
-        pretty_length = int(pretty_length)
+    try:
+        x: int = length.find("-")
+        if x == -1: pretty_length: int = int(length)
+        else:
+            mylist = length.split("-")
+            int_map = map(int, mylist)
+            int_list = list(int_map)
+            pretty_length = sum(int_list) / len(int_list)
+            pretty_length = int(pretty_length)
+    except:
+        print("Curr MS missing length!")
+        pretty_length = 0
+
 
     return pretty_length
 
@@ -522,14 +531,15 @@ def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str]:
 # ----------------
 
 
-def get_all_data(links: list) -> tuple:    
+def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    
     """ Create dataframe for usage in interface
 
     The dataframe contains the following collumns:
     "Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"
 
     Args:
-        links (list): list of urls
+        inData (list): list of urls or ids
+        DataType: Whether its a list of URLs or IDs. Allowed: 'urls', 'ids'
 
     Returns:
         tuple: pd.DataFrame (containing manuscript meta data), file_name
@@ -538,16 +548,19 @@ def get_all_data(links: list) -> tuple:
     mylist = []
      
     i = 0
-    for url in links:
+    for thing in inData:
 
-        print(f'Loading: {i}', end=_backspace_print)
+        print(f'Loading: {i}, which is {thing}', end=_backspace_print)
         i += 1
-
-        soup = load_xml(url)
-
-        #soup = load_xmls_by_id(id)
-        #gets soup from url (without crawler)
-        #soup = get_soup(url)
+        if DataType == 'urls':
+            soup = load_xml(thing)
+        
+        if DataType == 'ids':
+            presoup = load_xmls_by_id(thing)
+            soup = list(presoup.values())[0]
+            
+        # gets soup from url (without crawler)
+        # soup = get_soup(url)
 
         name = get_tag(soup)
         location = get_location(soup)
@@ -564,7 +577,7 @@ def get_all_data(links: list) -> tuple:
         columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"]
         data = pandafy_data(structure, columns)
 
-    
+
     print(f'Loaded:  {i}',)
 
     return data
@@ -609,10 +622,10 @@ def summarize_location(location: Tuple[str, str, str, str, str, str]) -> Tuple[s
     return settlement, archive, signature
 
 
-def get_citavified_data (links: list) -> tuple:  
+def get_citavified_data (inData: list, DataType: str = 'urls') -> tuple:  
     """ Create dataframe for usage in interface
 
-    The dataframe contains the following collumns:
+    The dataframe contains the following columns:
     - Handrit ID (`Handrit-ID`)
     - Creators / scribes (`Creator`)
     - Short title (`Short title`)
@@ -624,7 +637,8 @@ def get_citavified_data (links: list) -> tuple:
     - Signature (`Signature`)
 
     Args:
-        links (list): list of urls
+        inData (list): list of urls or ids
+        DataType (str): Whether the list consists of URLs or IDs. Allowed: 'urls', 'ids'
 
     Returns:
         tuple: pd.DataFrame (containing manuscript meta data), file_name
@@ -633,12 +647,16 @@ def get_citavified_data (links: list) -> tuple:
     i = 0
 
     mylist = []
-    for url in links:
+    for thing in inData:
         print(f'Loading: {i}', end=_backspace_print)
         i += 1
 
-        soup = load_xml(url)
-        # soup = load_xmls_by_id(id)
+        if DataType == 'urls':
+            soup = load_xml(thing)
+        if DataType == 'ids':
+            presoup = load_xmls_by_id(thing)
+            soup = list(presoup.values())[0]
+        
 
         name = get_tag(soup)    
         creator = get_creator(soup)  
@@ -744,7 +762,8 @@ if __name__ == "__main__":
 
     # Get all data
     # ----------------
-    #data, file_name = get_all_data(myURLList) 
+    # data = get_all_data(myURLList, DataType='ids')
+    # print(data) 
 
 
     '''Hier ist noch Balduins Titel-Finder. Allerdings noch nicht in einem richtigen Dataframe oder dergleichen!'''
@@ -760,8 +779,8 @@ if __name__ == "__main__":
 
     # CSV exports
     # ----------
-    CSVExport(file_name_c, data_c)
-    #CSVExport(file_name, data)
+    # CSVExport(file_name_c, data_c)
+    # CSVExport(file_name, data)
 
     print(f'Finished: {datetime.now()}')
     print("------------")

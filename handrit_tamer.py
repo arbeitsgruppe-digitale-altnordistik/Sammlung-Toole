@@ -16,6 +16,7 @@ import pandas as pd
 import time
 import statistics
 import crawler
+from metadata import get_all_data as maddyData
 
 """# Result URL to list of shelfmarks
 
@@ -590,6 +591,9 @@ def get_data_from_browse_url(url: str, DataType: str):
   '''
   ids = efnisordResult(url)
   print(f'Got {len(ids)} IDs.')
+  if DataType == "Maditadata":
+    data = maddyData(inData=ids, DataType='ids')
+    return data
   xmls = []
   for i in ids:
     xml = crawler.load_xmls_by_id(i)
@@ -629,6 +633,9 @@ def get_data_from_search_url(url: str, DataType: str):
   print(f'Got {len(shelfmarks)} shelfmarks.')
   print(shelfmarks)
   ids = get_id_from_shelfmark_local(shelfmarks)
+  if DataType == "Maditadata":
+    data = maddyData(inData=ids, DataType='ids')
+    return data
   xmls = []
   for i in ids:
     xml = crawler.load_xmls_by_id(i)
@@ -682,7 +689,8 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
   ids = get_id_from_shelfmark_local(finalMSs)
   xmls = []
   if DataType == "Maditadata":
-    
+    data = maddyData(inData=ids, DataType='ids')
+    return data
   for i in ids:
     xml = crawler.load_xmls_by_id(i)
     xmlList = list(xml.values())
