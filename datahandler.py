@@ -9,6 +9,7 @@ import pickle
 import os
 import crawler
 import handrit_tamer_2 as tamer
+import metadata
 
 PICKLE_PATH = "data/cache.pickle"
 

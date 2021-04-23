@@ -11,6 +11,7 @@ from crawler import load_xml
 from crawler import load_xmls_by_id
 from datetime import datetime
 import re
+import statistics
 
 
 # Test URLs
@@ -32,8 +33,10 @@ _backspace_print = '                                     \r'
 # ----------------
 
 
-""" Anmerkung: Folgender Funktion bedarf es noch für get_creator resp. get_persName. Ggf. streichen """
-def get_soup(url: str) -> BeautifulSoup:
+""" Anmerkung: Folgender Funktion bedarf es noch für get_creator resp. get_persName. Ggf. streichen """  # QUESTION: what?
+
+
+def get_soup(url: str) -> BeautifulSoup:  # TODO: should become obsolete
     """Get a BeautifulSoup object from a URL
 
     Args:
@@ -58,7 +61,6 @@ def get_cleaned_text(carrot: Tag) -> str:
     Returns:
         str: human-readable text
     """
-    
     if not carrot:
         return
     res = carrot.get_text()
@@ -71,7 +73,7 @@ def get_cleaned_text(carrot: Tag) -> str:
     return res
 
 
-def get_structure(mylist: List[tuple], mytuple: Tuple[str]):
+def get_structure(mylist: List[tuple], mytuple: Tuple[str]):  # TODO: might get obsolete?
     """Adds tuple to list.
 
     Args:
@@ -81,11 +83,11 @@ def get_structure(mylist: List[tuple], mytuple: Tuple[str]):
     Returns:
         list: mylist
     """
-      
     mylist.append(mytuple)
     return mylist
 
-def get_digits(text: str) -> int:
+
+def _get_digits(text: str) -> int:
     """Gets digits from text.
 
     Args:
@@ -100,7 +102,7 @@ def get_digits(text: str) -> int:
             i += x
 
         else:
-            pass    
+            pass
     if i:
         i = int(i)
     else:
@@ -113,14 +115,14 @@ def get_digits(text: str) -> int:
 # ---------------
 
 
-def get_tag(soup):
+def get_tag(soup):  # TODO: should become obsolete
     tag = soup.msDesc
     handritID = str(tag['xml:id'])
     name = handritID[0:-3]
     return name
 
 
-def get_key(leek: Tag) -> str:
+def _get_key(leek: Tag) -> str:
     """Find key identifying the country and return country name.
 
     Args:
@@ -128,8 +130,7 @@ def get_key(leek: Tag) -> str:
 
     Returns:
         str: country name
-    """    
-
+    """
     key = leek.get('key')
     if key:
         if key == "IS":
@@ -155,20 +156,20 @@ def get_origin(soup: BeautifulSoup) -> str:
 
     Returns:
         str: country name
-    """    
+    """
     origPlace = soup.origPlace
 
     try:
-        pretty_origPlace = get_key(origPlace)
+        pretty_origPlace = _get_key(origPlace)
         if not pretty_origPlace:
-            pretty_origPlace = get_cleaned_text(origPlace)    
+            pretty_origPlace = get_cleaned_text(origPlace)
     except:
         pretty_origPlace = "Origin unknown"
 
     return pretty_origPlace
 
 
-def get_persName(id: str) -> str:
+def _get_persName(id: str) -> str:  # LATER: improved person handling anyways
     """Get person name in nominative case.
 
     Args:
@@ -176,8 +177,7 @@ def get_persName(id: str) -> str:
 
     Returns:
         str: person name
-    """    
-    
+    """
     url = "https://handrit.is/is/biography/xml/" + id
     stew = get_soup(url)
     persName = stew.find('persName')
@@ -193,27 +193,27 @@ def get_creator(soup: BeautifulSoup) -> str:
 
     Returns:
         str: creator name(s)
-    """    
-    
+    """
     hands = soup.handDesc
 
     if hands:
         try:
-            creators = hands.find_all('name', {'type':'person'})
+            creators = hands.find_all('name', {'type': 'person'})
 
-            if not creators: 
+            if not creators:
                 pretty_creators = "Scribe(s) unknown"
             else:
                 pretty_creators = ""
                 for creator in creators:
                     key = creator.get('key')
-                    if key: 
-                        pretty_creator = get_persName(key)
-                    else: pretty_creator = get_cleaned_text(creator)
+                    if key:
+                        pretty_creator = _get_persName(key)
+                    else:
+                        pretty_creator = get_cleaned_text(creator)
                     pretty_creators = pretty_creators + "; " + pretty_creator
                 pretty_creators = pretty_creators[2:]
         except:
-            pretty_creators = "Scribe(s) unknown"       
+            pretty_creators = "Scribe(s) unknown"
     else:
         pretty_creators = "Scribe(s) unknown"
 
@@ -228,32 +228,36 @@ def get_shorttitle(soup: BeautifulSoup) -> str:
 
     Returns:
         str: short title
-    """    
-
+    """
     msName = ""
     headtitle = ""
     summarytitle = ""
 
     msName = soup.find('msName')
     head = soup.head
-    if head: headtitle = head.find('title')
+    if head:
+        headtitle = head.find('title')
     summary = soup.summary
-    if summary: summarytitle = summary.find('title')
+    if summary:
+        summarytitle = summary.find('title')
 
-    if msName: shorttitle = msName
-    elif headtitle: shorttitle = headtitle   
-    elif summarytitle: shorttitle = summarytitle
+    if msName:
+        shorttitle = msName
+    elif headtitle:
+        shorttitle = headtitle
+    elif summarytitle:
+        shorttitle = summarytitle
     else:
         msItem = soup.msItem
-        shorttitle = msItem.find('title')        
+        if not msItem:
+            return "None"
+        shorttitle = msItem.find('title')
         if not shorttitle:
             pretty_shorttitle = "None"
-        else:
-            pass
     try:
         pretty_shorttitle = get_cleaned_text(shorttitle)
     except:
-        pass
+        return shorttitle
 
     return pretty_shorttitle
 
@@ -266,8 +270,7 @@ def get_support(soup: BeautifulSoup) -> str:
 
     Returns:
         str: supporting material
-    """   
-
+    """
     supportDesc = soup.find('supportDesc')
     if supportDesc:
         support = supportDesc.get('material')
@@ -283,13 +286,13 @@ def get_support(soup: BeautifulSoup) -> str:
                 pretty_support = ""
     else:
         pretty_support = ""
-        
+
     return pretty_support
 
 
 def get_folio(soup: BeautifulSoup) -> int:
     """Returns: total of folios.
-    
+
     Find <extent> and make copy.
     Get rid of info that might bias number of folio:
         Find <dimensions> and destroy all its tags from <extent>.
@@ -310,8 +313,10 @@ def get_folio(soup: BeautifulSoup) -> int:
     Returns:
         int: total of folios
     """
-
+    # TODO: look into this method... can this be streamlined?
     extent = soup.find('extent')
+    if not extent:
+        return 0
     extent_copy = copy.copy(extent)
 
     dimensions = extent_copy.find('dimensions')
@@ -327,13 +332,13 @@ def get_folio(soup: BeautifulSoup) -> int:
         locus = extent_copy.find('locus')
 
     clean_extent_copy: str = get_cleaned_text(extent_copy)
-    
+
     folio_total: int = 0
 
     try:
         '''Is a total of folio given:'''
         given_total: int = clean_extent_copy.find("blöð alls")
-        
+
         if given_total > 0:
             clean_extent_copy = clean_extent_copy[:given_total]
             folio_total = int(clean_extent_copy)
@@ -344,25 +349,28 @@ def get_folio(soup: BeautifulSoup) -> int:
                 clean_extent_copy = clean_extent_copy[:given_emptiness]
             else:
                 pass
-            
+
             clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
             brackets: str = clean_extent_copy.find("()")
-            
+
             while brackets > 0:
-                first_bit: str = clean_extent_copy[:brackets]         
+                first_bit: str = clean_extent_copy[:brackets]
                 clean_extent_copy = clean_extent_copy[brackets+2:]
                 brackets = clean_extent_copy.find("()")
-                folio_n = get_digits(first_bit)
-                if folio_n: folio_total = folio_total+folio_n
+                folio_n = _get_digits(first_bit)
+                if folio_n:
+                    folio_total = folio_total+folio_n
 
-            folio_z = get_digits(extent_copy)
-            if folio_z: folio_total = folio_total+folio_z
+            folio_z = _get_digits(extent_copy)
+            if folio_z:
+                folio_total = folio_total+folio_z
 
         folio_check: str = str(folio_total)
         if len(folio_check) > 3:
             name: str = get_tag(soup)
             print(name + ": Attention. Check number of folios.")
-        elif folio_total == 0: folio_total = 0
+        elif folio_total == 0:
+            folio_total = 0
 
     except:
         folio_total = 0
@@ -378,7 +386,6 @@ def get_dimensions(soup: BeautifulSoup) -> tuple:
     Returns:
         tuple: height and width
     """
-
     extent: Tag = soup.find('extent')
     extent_copy = copy.copy(extent)
     dimensions: Tag = extent_copy.find('dimensions')
@@ -387,16 +394,16 @@ def get_dimensions(soup: BeautifulSoup) -> tuple:
 
     myheights: list = []
     mywidths: list = []
-    while dimensions:   
+    while dimensions:
         height = dimensions.height
-        pretty_height: int = get_length(height)
-        
+        pretty_height: int = _get_length(height)
+
         width = dimensions.width
-        pretty_width: int = get_length(width)
+        pretty_width: int = _get_length(width)
 
         myheights.append(pretty_height)
         mywidths.append(pretty_width)
-                
+
         extent_copy.dimensions.unwrap()
         dimensions = extent_copy.find('dimensions')
 
@@ -408,11 +415,11 @@ def get_dimensions(soup: BeautifulSoup) -> tuple:
     except:
         perfect_height = 0
         perfect_width = 0
-    
+
     return perfect_height, perfect_width
 
 
-def get_length(txt: str) -> int:
+def _get_length(txt: str) -> int:
     """Get length. If length is given as range, calculates average.
 
     Args:
@@ -420,12 +427,13 @@ def get_length(txt: str) -> int:
 
     Returns:
         int: returns length.
-    """   
+    """
 
     length: str = get_cleaned_text(txt)
     try:
         x: int = length.find("-")
-        if x == -1: pretty_length: int = int(length)
+        if x == -1:
+            pretty_length: int = int(length)
         else:
             mylist = length.split("-")
             int_map = map(int, mylist)
@@ -435,7 +443,6 @@ def get_length(txt: str) -> int:
     except:
         print("Curr MS missing length!")
         pretty_length = 0
-
 
     return pretty_length
 
@@ -448,24 +455,24 @@ def get_extent(soup: BeautifulSoup) -> str:
 
     Returns:
         str: qualitative description of manuscript's extent
-    """    
-
+    """
     extent: Tag = soup.find('extent')
 
     extent_copy = copy.copy(extent)
 
     dimensions: Tag = extent_copy.find('dimensions')
 
-    while dimensions:        
-     
+    while dimensions:
+
         height: Tag = dimensions.height
         width: Tag = dimensions.width
 
         unit: str = dimensions.get('unit')
-        if not unit: unit = "[mm?]"
+        if not unit:
+            unit = "[mm?]"
         height.string = height.string + " x"
         width.string = width.string + " " + unit
-        
+
         extent_copy.dimensions.unwrap()
         dimensions = extent_copy.find('dimensions')
 
@@ -485,17 +492,16 @@ def get_description(soup):
 
     Returns:
         str: support / dimensions
-    """    
-
+    """
     pretty_support = get_support(soup)
     pretty_extent = get_extent(soup)
-   
-    pretty_description = pretty_support + " / "  + pretty_extent
+
+    pretty_description = pretty_support + " / " + pretty_extent
 
     return pretty_description
 
 
-def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str]:
+def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str]:  # TODO: does that make some of the other funtions obsolete?
     """Get data of the manuscript's location.
 
     Args:
@@ -503,12 +509,12 @@ def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str]:
 
     Returns:
         tuple: data of manuscript's location
-    """    
+    """
     country = soup.country
     try:
-        pretty_country = get_key(country)
+        pretty_country = _get_key(country)
         if not pretty_country:
-            pretty_country = get_cleaned_text(country)    
+            pretty_country = get_cleaned_text(country)
     except:
         pretty_country = "Country unknown"
 
@@ -524,14 +530,88 @@ def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str]:
     pretty_collection = get_cleaned_text(collection)
     pretty_signature = get_cleaned_text(signature)
 
-    return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature 
+    return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature
+
+
+def get_date(soup: BeautifulSoup):
+    tag = soup.origDate
+    date = ""
+    ta = 0
+    tp = 0
+    meandate = 0
+    yearrange = 0
+    if not tag:
+        return date, tp, ta, meandate, yearrange  # TODO: error handling
+
+    if tag.get("notBefore") and tag.get("notAfter"):
+        notBefore = str(tag["notBefore"])
+        notAfter = str(tag["notAfter"])
+
+        # TODO: give indication why this happened
+        # Snibbel Snibbel
+        if len(notBefore) >= 5:
+            notBefore = notBefore[0:4]
+
+        if len(notAfter) >= 5:
+            notAfter = notAfter[0:4]
+        # Snibbel Snibbel Ende
+
+        date = f"{notBefore}-{notAfter}"
+        tp = int(notBefore)
+        ta = int(notAfter)
+        meandate = int(statistics.mean([int(tp), int(ta)]))
+        yearrange = int(ta) - int(tp)
+
+    elif tag.get("when"):
+        date = str(tag["when"])
+        normalized_date = date
+        if len(normalized_date) > 4:
+            normalized_date = normalized_date[:4]
+        tp = int(normalized_date)
+        ta = int(normalized_date)
+        meandate = tp
+        yearrange = 0
+
+    elif tag.get("from") and tag.get("to"):
+        fr = str(tag["from"])
+        to = str(tag["to"])
+        date = f"{fr}-{to}"
+        n = fr
+        if len(n) > 4:
+            n = n[:4]
+        tp = int(n)
+        n = to
+        if len(n) > 4:
+            n = n[:4]
+        ta = int(n)
+        meandate = int(statistics.mean([int(tp), int(ta)]))
+        yearrange = int(ta) - int(tp)
+
+    return date, tp, ta, meandate, yearrange
+
+
+def get_msID(soup):
+    msID = soup.find("msIdentifier")
+    if not msID:
+        country, settlement, repository, signature = "", "", "", ""  # TODO: move to metadata
+        # TODO: should never happen
+    else:
+        c = msID.find("country")
+        country = c.get_text() if c else ""
+        s = msID.find("settlement")
+        settlement = s.get_text() if s else ""
+        r = msID.find("repository")
+        repository = r.get_text() if r else ""
+        si = msID.find("idno")
+        signature = si.get_text() if si else ""
+    return signature, country, settlement, repository
 
 
 # Get all metadata
 # ----------------
 
 
-def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    
+def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: should become obsolete when these methods are called from handler
     """ Create dataframe for usage in interface
 
     The dataframe contains the following collumns:
@@ -543,10 +623,10 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:
 
     Returns:
         tuple: pd.DataFrame (containing manuscript meta data), file_name
-    """    
-    
+    """
+
     mylist = []
-     
+
     i = 0
     for thing in inData:
 
@@ -554,29 +634,29 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:
         i += 1
         if DataType == 'urls':
             soup = load_xml(thing)
-        
+
         if DataType == 'ids':
             presoup = load_xmls_by_id(thing)
-            soup = list(presoup.values())[0]
-            
+            soup = list(presoup.values())[0]  # TODO: do we really want to hard-exclude multi language like this?
+
         # gets soup from url (without crawler)
         # soup = get_soup(url)
 
         name = get_tag(soup)
         location = get_location(soup)
         shorttitle = get_shorttitle(soup)
-        creator = get_creator(soup)    
+        creator = get_creator(soup)
         dimensions = get_dimensions(soup)
         folio = get_folio(soup)
         origin = get_origin(soup)
         support = get_support(soup)
 
         mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,)
-        structure = get_structure(mylist, mytuple) 
+        structure = get_structure(mylist, mytuple)
 
-        columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"]
+        columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement",
+                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"]
         data = pandafy_data(structure, columns)
-
 
     print(f'Loaded:  {i}',)
 
@@ -595,7 +675,7 @@ def summarize_location(location: Tuple[str, str, str, str, str, str]) -> Tuple[s
 
     Returns:
         tuple: summary of metadata of manuscript's location
-    """    
+    """
 
     location_list = list(location)
     for i in range(len(location_list)):
@@ -615,14 +695,14 @@ def summarize_location(location: Tuple[str, str, str, str, str, str]) -> Tuple[s
         archive = archive[:-2]
     except:
         archive = "unknown"
-    
+
     signature = location_list[5]
     signature = signature[:-2]
 
     return settlement, archive, signature
 
 
-def get_citavified_data (inData: list, DataType: str = 'urls') -> tuple:  
+def get_citavified_data(inData: list, DataType: str = 'urls') -> tuple:
     """ Create dataframe for usage in interface
 
     The dataframe contains the following columns:
@@ -656,19 +736,18 @@ def get_citavified_data (inData: list, DataType: str = 'urls') -> tuple:
         if DataType == 'ids':
             presoup = load_xmls_by_id(thing)
             soup = list(presoup.values())[0]
-        
 
-        name = get_tag(soup)    
-        creator = get_creator(soup)  
+        name = get_tag(soup)
+        creator = get_creator(soup)
         shorttitle = get_shorttitle(soup)
         description = get_description(soup)
         date = "Eline?"
         origin = get_origin(soup)
         location = get_location(soup)
         settlement, archive, signature = summarize_location(location)
-        
+
         mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + (date,) + (origin,) + (settlement,) + (archive,) + (signature,)
-        structure = get_structure(mylist, mytuple) 
+        structure = get_structure(mylist, mytuple)
 
     columns = ["Handrit-ID", "Creator", "Short title", "Description", "Dating", "Origin",  "Settlement", "Archive", "Signature"]
 
@@ -711,7 +790,7 @@ def do_it_my_way(links):
     for url in links:
         soup = get_soup(url)
         items = soup.find_all('msItem')
-        copies= [copy.copy(item) for item in items]
+        copies = [copy.copy(item) for item in items]
         cleaned_copies = clean_msitems(copies)
         structure = dictionarize(cleaned_copies)
         yield url, structure
@@ -730,7 +809,7 @@ def pandafy_data(result: list, columns: list) -> DataFrame:
 
     Returns:
         pandas.core.frame.DataFrame: panda dataframe
-    """    
+    """
 
     data = []
     data = pd.DataFrame(result)
@@ -740,7 +819,7 @@ def pandafy_data(result: list, columns: list) -> DataFrame:
 
 
 def CSVExport(FileName: str, DataFrame):
-    DataFrame.to_csv(FileName+".csv", sep ='\t', encoding='utf-8', index=False)
+    DataFrame.to_csv(FileName+".csv", sep='\t', encoding='utf-8', index=False)
     print("File exported")
     return
 
@@ -763,19 +842,17 @@ if __name__ == "__main__":
     # Get all data
     # ----------------
     # data = get_all_data(myURLList, DataType='ids')
-    # print(data) 
-
+    # print(data)
 
     '''Hier ist noch Balduins Titel-Finder. Allerdings noch nicht in einem richtigen Dataframe oder dergleichen!'''
     # Get all titles
     # --------------
     #list_of_results = do_it_my_way(myURLList)
-    #for url, result in list_of_results:
+    # for url, result in list_of_results:
     #    print(url)
     #    for vals in result:
     #        print(vals)
     #    print('\n------------------\n')
-    
 
     # CSV exports
     # ----------
