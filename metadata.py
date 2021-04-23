@@ -387,6 +387,8 @@ def get_dimensions(soup: BeautifulSoup) -> tuple:
         tuple: height and width
     """
     extent: Tag = soup.find('extent')
+    if not extent:
+        return 0, 0
     extent_copy = copy.copy(extent)
     dimensions: Tag = extent_copy.find('dimensions')
     height: Tag = []
@@ -457,6 +459,9 @@ def get_extent(soup: BeautifulSoup) -> str:
         str: qualitative description of manuscript's extent
     """
     extent: Tag = soup.find('extent')
+
+    if not extent:
+        return "no dimensions given"
 
     extent_copy = copy.copy(extent)
 
