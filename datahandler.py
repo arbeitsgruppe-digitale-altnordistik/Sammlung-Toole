@@ -12,6 +12,7 @@ import handrit_tamer_2 as tamer
 import metadata
 
 PICKLE_PATH = "data/cache.pickle"
+BACKUP_PATH_MSS = "data/backups/mss.csv"
 
 
 class DataHandler:
@@ -85,6 +86,7 @@ class DataHandler:
         print("Getting DataHandler")
         res = cls._from_pickle()  # TODO: max_res
         if res:
+            res._backup()
             return res
         print("Could not get DataHandler from pickle")
         res = cls._from_backup()  # TODO: max_res
@@ -105,7 +107,8 @@ class DataHandler:
             pickle.dump(self, file)
 
     def _backup(self):
-        pass  # TODO: implement to csv/json
+        self.manuscripts.to_csv(BACKUP_PATH_MSS, encoding='utf-8', index=False)
+        # TODO: implement rest to csv/json
 
     # API Methods
     # -----------
