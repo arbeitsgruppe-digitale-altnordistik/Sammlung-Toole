@@ -24,13 +24,13 @@ from handrit_tamer import get_from_search_list as multiSearch
 from datetime import datetime
 import metadata
 import sessionState
-
+from datahandler import DataHandler
 
 
 # Constants
 # ---------
 
-_coll_path = 'data/collections.csv' # Contains the different collections from handrit
+_coll_path = 'data/collections.csv'  # Contains the different collections from handrit
 _id_path = 'data/ms_ids.csv'        # Contains XML IDs
 _xml_path = 'data/xml/'             # Directory where handrit XMLs are stored
 _date_path = 'data/dating_all.csv'  # CSV containing the datings of all MSs
@@ -43,7 +43,6 @@ _home_image = 'data/title.png'      # Image displayed on home page
 
 # These three functions can be used as wrapper functions to redirect prints from terminal to the
 # web interface. This will not work directly with cached functions.
-
 
 
 @contextmanager
@@ -78,7 +77,6 @@ def st_stdout(dst):
 def st_stderr(dst):
     with st_redirect(sys.stderr, dst):
         yield
-
 
 
 # Utility Functions
@@ -122,7 +120,6 @@ def collections_button():
         st.write(cols)
 
 
-
 # Functions which create sub pages
 # --------------------------------------
 
@@ -155,9 +152,11 @@ def search_page():
         st.header("Preprocessing")
         st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
         state.currentSURL = st.text_input("Input handrit search URL here")
-        state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False, help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
+        state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False,
+                                        help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
         state.currentBURL = st.text_input("Input handrit browse URL here")
-        state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False, help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
+        state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False,
+                                        help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
         state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata', 'Maditadata'], index=0)
         state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
@@ -171,7 +170,7 @@ def search_page():
                 dataS = multiSearch(baseList, DataType=state.resultMode, joinMode=state.joinMode)
             if state.currentBURL and state.multiBrowse == False:
                 dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
-            
+
             # This block will check the data the got delivered and display it
             if state.resultMode == 'Contents':
                 if state.currentSURL and state.currentBURL:
@@ -195,24 +194,24 @@ def search_page():
                 if state.currentBURL and not state.currentSURL:
                     state.currentData = dataB
             if not state.currentData.empty:
-                state.didRun = 'OK'   
+                state.didRun = 'OK'
         if state.didRun == 'OK':
             st.header('Results')
             st.write(state.currentData)
-    if state.didRun == 'OK': 
+    if state.didRun == 'OK':
         if st.button("Go to postprocessing"):
             state.CurrentStep = 'Postprocessing'
     if state.CurrentStep == 'Postprocessing':
         postprocessing()
         if st.button("Go back to preprocessing"):
             state.CurrentStep = 'Preprocessing'
-        
 
 
 def citaviExporter():
     foundListList = list(state.currentData.columns)
     foundList = [i for x in foundListList for i in x]
-    state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList, help="This will export your selected references as a CSV file for Citavi.")
+    state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
+                                        help="This will export your selected references as a CSV file for Citavi.")
     if st.button('Export'):
         state.currentCitaviData, sink = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
         st.write(state.currentCitaviData)
@@ -244,7 +243,7 @@ def postprocessing():
 
 
 # def dataInspector():
-    
+
 
 def dataCleaner():
     if state.resultMode == 'Maditadata':
@@ -257,9 +256,9 @@ def dataCleaner():
         st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values.")
     else:
         itemsPrev = len(state.currentData.columns)
-        # newDF = 
+        # newDF =
         itemsAfter = len(newDF.columns)
-        newDF = newDF.loc[:,~newDF.columns.duplicated()]
+        newDF = newDF.loc[:, ~newDF.columns.duplicated()]
         itemsAfter1 = len(newDF.columns)
         diff0 = itemsPrev - itemsAfter
         diff1 = itemsAfter - itemsAfter1
@@ -267,6 +266,7 @@ def dataCleaner():
     st.write(newDF)
     if st.button("Keep cleaned data"):
         state.currentData = newDF
+
 
 def search_results(inURL: str, DataType: str):
     ''' Actual call to handrit tamer to get the desired results from the search URL.
@@ -280,7 +280,7 @@ def search_results(inURL: str, DataType: str):
         Data frame contains the following columns:
         ['Handrit ID', 'Signature', 'Country',
                                'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-    
+
     Args:
         inURL(str, required): A URL pointing to a handrit search result page.
         DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
@@ -289,7 +289,7 @@ def search_results(inURL: str, DataType: str):
     Returns:
         pd.DataFrame: DataFrame containing MS contents or meta data.
     '''
-    data = hSr(inURL, DataType)    
+    data = hSr(inURL, DataType)
     return data
 
 
@@ -305,7 +305,7 @@ def browse_results(inURL: str, DataType: str):
         Data frame contains the following columns:
         ['Handrit ID', 'Signature', 'Country',
                                'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-    
+
     Args:
         inURL(str, required): A URL pointing to a handrit search result page.
         DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
@@ -328,6 +328,39 @@ def static_reports():
     eval(selected + "()")
 
 
+def browse_data():
+    handler: DataHandler = state.data_handler
+    st.title("Currently Loaded Dataset")
+
+    # Manuscripts
+    mss = handler.manuscripts
+    st.header("Manuscripts")
+    st.write(f"Currently loaded data: Dataframe with {len(mss.index)} entries, {len(mss.columns)} columns each.")
+    st.write("Each manuscript can have entries in multiple languages (English, Icelandic, Danish)")
+    st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts, \
+             stored in {mss['collection'].unique().size} collections.")
+    st.write("Head and tail of the dataset:")
+    st.dataframe(mss.head().append(mss.tail()))
+
+    # Texts
+    txt = handler.texts
+    st.header("Texts")
+    st.write("Not yet implemented")
+    st.dataframe(txt.head())
+
+    # Persons
+    pers = handler.persons
+    st.header("Persons")
+    st.write("Not yet implemented")
+    st.dataframe(pers.head())
+
+    # Subcorpora
+    subs = handler.subcorpora
+    st.header("Sub-Corpora")
+    st.write("Not yet implemented")
+    st.write(subs)
+
+
 # Menu Functions
 # --------------
 
@@ -337,27 +370,32 @@ def full_menu():
     all the other functions containing sub pages.
     '''
 
-    MenuOptions = {"Home": "mainPage", "Search Functions": "search_page", "Reports": "static_reports", "Advanced Settings": "adv_options"}
+    MenuOptions = {"Home": mainPage,
+                   "Browse Data": browse_data,
+                   "Search Functions": search_page,
+                   "Reports": static_reports,
+                   "Advanced Settings": adv_options,
+                   }
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
-    selected = MenuOptions[selection]
-    eval(selected + "()")
+    selected_function = MenuOptions[selection]
+    selected_function()
 
 
 # Run
-#----
+# ----
 if __name__ == '__main__':
     state = sessionState.get(currentData=pd.DataFrame(),
-                            resultMode='', 
-                            currentSURL='', 
-                            currentBURL='', 
-                            URLType='', 
-                            multiSearch='False', 
-                            multiBrowse='False', 
-                            joinMode='All',
-                            didRun='dnr',
-                            CitaviSelect=[],
-                            CurrentStep = 'Preprocessing',
-                            postStep = '',
-                            currentCitaviData = pd.DataFrame()
-                            )
+                             resultMode='',
+                             currentSURL='',
+                             currentBURL='',
+                             URLType='',
+                             multiSearch='False',
+                             multiBrowse='False',
+                             joinMode='All',
+                             didRun='dnr',
+                             CitaviSelect=[],
+                             CurrentStep='Preprocessing',
+                             postStep='',
+                             currentCitaviData=pd.DataFrame(),
+                             data_handler=DataHandler.get_handler())
     full_menu()
