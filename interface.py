@@ -1,40 +1,31 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import crawler
-import csv
-import time
-import handrit_tamer as ht
 from handrit_tamer import get_data_from_search_url as hSr
 from handrit_tamer import get_data_from_browse_url as hBr
 import base64
-import matplotlib
-import plotly.figure_factory as ff
 from contextlib import contextmanager
 from io import StringIO
 from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
 from threading import current_thread
 import sys
-from bs4 import BeautifulSoup
-import os
-import date_extractor
-import plotly.express as px
-import streamlit.components.v1 as comps
 from handrit_tamer import get_from_search_list as multiSearch
 from datetime import datetime
 import metadata
 import sessionState
 from datahandler import DataHandler
 
+# unused?
+import matplotlib
+import plotly.figure_factory as ff
+import plotly.express as px
+import streamlit.components.v1 as comps
+
 
 # Constants
 # ---------
 
-_coll_path = 'data/collections.csv'  # Contains the different collections from handrit
-_id_path = 'data/ms_ids.csv'        # Contains XML IDs
-_xml_path = 'data/xml/'             # Directory where handrit XMLs are stored
-_date_path = 'data/dating_all.csv'  # CSV containing the datings of all MSs
-_big_plot = 'data/dating_all.png'   # Scatter plot of the above dating data (static)
+# _id_path = 'data/ms_ids.csv'        # Contains XML IDs
 _home_image = 'data/title.png'      # Image displayed on home page
 
 
@@ -95,29 +86,29 @@ def rebuild_button():
         st.write(f'Finished: {datetime.now()}')
 
 
-def redo_xmls_wrap():
+def redo_xmls_wrap():  # QUESTION: is this even used?
     ''' Wrapper for XML redo function to redirect output to web interface.
     '''
     with st_stdout('code'):
-        noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)
+        noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)  # TODO: should not be aggressive. Do we still need it with the handler?
     return noMSs
 
 
-def msNumber_button():
-    ''' Displays the button that shows the number of MS IDs cached. Not strictly necessary.
-    '''
-    if st.sidebar.button("Show number of MS IDs cached"):
-        with open(_id_path) as m:
-            MScount = sum(1 for row in m)
-        st.write(f"There are currently {MScount:,d} manuscript IDs in cache!")
+# def msNumber_button():
+#     ''' Displays the button that shows the number of MS IDs cached. Not strictly necessary.
+#     '''
+#     if st.sidebar.button("Show number of MS IDs cached"):
+#         with open(_id_path) as m:
+#             MScount = sum(1 for row in m)
+#         st.write(f"There are currently {MScount:,d} manuscript IDs in cache!")
 
 
-def collections_button():
-    '''Self explanatory
-    '''
-    if st.sidebar.button("Show all collections"):
-        cols = crawler.get_collections()
-        st.write(cols)
+# def collections_button():
+#     '''Self explanatory
+#     '''
+#     if st.sidebar.button("Show all collections"):
+#         cols = crawler.get_collections()
+#         st.write(cols)
 
 
 # Functions which create sub pages
@@ -138,10 +129,11 @@ def adv_options():
     st.title("Advanced Options Menu")
     st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
-    collections_button()
-    msNumber_button()
+    # collections_button()  # TODO: Remove? I think, with the "browse data" page, this should be obsolete
+    # msNumber_button()     #       dito
     rebuild_button()
     # generate_reports()
+    # TODO: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
 
 
 def search_page():
@@ -213,7 +205,7 @@ def citaviExporter():
     state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
                                         help="This will export your selected references as a CSV file for Citavi.")
     if st.button('Export'):
-        state.currentCitaviData, sink = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
+        state.currentCitaviData, _ = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
         st.write(state.currentCitaviData)
         csv = state.currentCitaviData.to_csv(index=False)
         b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
@@ -257,7 +249,7 @@ def dataCleaner():
     else:
         itemsPrev = len(state.currentData.columns)
         # newDF =
-        itemsAfter = len(newDF.columns)
+        itemsAfter = len(newDF.columns)  # FIXME: newDF not defined?
         newDF = newDF.loc[:, ~newDF.columns.duplicated()]
         itemsAfter1 = len(newDF.columns)
         diff0 = itemsPrev - itemsAfter
@@ -322,7 +314,7 @@ def browse_results(inURL: str, DataType: str):
 def static_reports():
     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
 
-    reports = {"Dating of all MSs": "all_MS_datings"}
+    reports = {"Dating of all MSs": "all_MS_datings"}  # FIXME: function not defined
     selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
     selected = reports[selection]
     eval(selected + "()")
