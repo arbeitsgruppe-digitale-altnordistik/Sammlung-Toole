@@ -7,6 +7,11 @@ import requests
 from bs4 import BeautifulSoup
 from metadata import get_all_data as maddyData  # TODO: should become obsolete
 import metadata
+import utils
+
+
+log = utils.get_logger(__name__)
+
 
 # MS Texts
 # --------
@@ -217,7 +222,7 @@ def get_data_from_browse_url(url: str, DataType: str):
         pd.DataFrame: DataFrame containing MS contents or meta data.
     """
     ids = efnisordResult(url)
-    print(f"Got {len(ids)} IDs.")
+    log.debug(f"Got {len(ids)} IDs.")
     xmls = []
     for i in ids:
         xml = crawler.load_xmls_by_id(i)
@@ -254,9 +259,9 @@ def get_data_from_search_url(url: str, DataType: str):
         pd.DataFrame: DataFrame containing MS contents or meta data.
     """
     pages = get_search_result_pages(url)
-    print(f"Got {len(pages)} pages.")
+    log.debug(f"Got {len(pages)} pages.")
     shelfmarks = get_shelfmarks_from_urls(pages)
-    print(f"Got {len(shelfmarks)} shelfmarks.")
+    log.debug(f"Got {len(shelfmarks)} shelfmarks.")
     ids = get_id_from_shelfmark_local(shelfmarks)
     if DataType == "Maditadata":
         data = maddyData(inData=ids, DataType='ids')
@@ -267,7 +272,7 @@ def get_data_from_search_url(url: str, DataType: str):
         xmlList = list(xml.values())
         for x in xmlList:
             xmls.append(x)
-    print(f"Got {len(xmls)} XML files")
+    log.debug(f"Got {len(xmls)} XML files")
     if DataType == "Contents":
         data = get_mstexts(xmls)
     if DataType == "Metadata":
@@ -304,7 +309,7 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
     listList = []
     for url in inURLs:
         pages = get_search_result_pages(url)
-        print(f"Got {len(pages)} pages.")
+        log.debug(f"Got {len(pages)} pages.")
         shelfmarks = get_shelfmarks_from_urls(pages)
         listList.append(shelfmarks)
     if joinMode == "Shared":
@@ -319,7 +324,7 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
         xmlList = list(xml.values())
         for x in xmlList:
             xmls.append(x)
-    print(f"Got {len(xmls)} XML files")
+    log.debug(f"Got {len(xmls)} XML files")
     if DataType == "Contents":
         data = get_mstexts(xmls)
     if DataType == "Metadata":

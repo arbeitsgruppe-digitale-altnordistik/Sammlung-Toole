@@ -9,7 +9,11 @@ import pickle
 import os
 import crawler
 import handrit_tamer_2 as tamer
-import metadata
+import utils
+
+
+log = utils.get_logger(__name__)
+
 
 PICKLE_PATH = "data/cache.pickle"
 BACKUP_PATH_MSS = "data/backups/mss.csv"
@@ -22,7 +26,7 @@ class DataHandler:
                  persons: pd.DataFrame = None,
                  max_res: int = -1):
         """"""  # CHORE: documentation
-        print("Creating new handler")
+        log.info("Creating new handler")
         self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res)
         self.texts = texts if texts else pd.DataFrame()  # TODO
         self.persons = persons if persons else pd.DataFrame()  # TODO
@@ -83,17 +87,17 @@ class DataHandler:
         Returns:
             DataHandler: A DataHandler, either loaded from cache or created anew.
         """
-        print("Getting DataHandler")
+        log.info("Getting DataHandler")
         res = cls._from_pickle()  # TODO: max_res
         if res:
             res._backup()
             return res
-        print("Could not get DataHandler from pickle")
+        log.info("Could not get DataHandler from pickle")
         res = cls._from_backup()  # TODO: max_res
         if res:
             res._to_pickle()
             return res
-        print("Could not get DataHandler from backup")
+        log.info("Could not get DataHandler from backup")
         res = cls(max_res=max_res)
         res._to_pickle()
         res._backup()
