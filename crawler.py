@@ -483,39 +483,31 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
     return res
 
 
-def crawl(use_cache: bool = False, verbose_output: bool = True):
+def crawl(use_cache: bool = False):
     """crawl everything as fast as possible"""
-    verbose = verbose_output
-    if verbose:
-        print(f'Start: {datetime.now()}')
+    log.debug(f'Start: {datetime.now()}')
+    log.info('Start crawling')
     if not use_cache:
-        if verbose:
-            print('Removing cache...')
+        log.debug('Removing cache...')
         _wipe_cache()
-        if verbose:
-            print('Done removing cache.')
-    if verbose:
-        print('Loading collections...')
+        log.debug('Done removing cache.')
+    log.debug('Loading collections...')
     colls = get_collections()
-    if verbose:
-        print(f"Done loading collections. Found {len(colls.index)} collections containing {colls['ms_count'].sum()} manuscripts.")
-        print("Loading Manuscript IDs...")
+    log.debug(f"Done loading collections. Found {len(colls.index)} collections containing {colls['ms_count'].sum()} manuscripts.")
+    log.debug("Loading Manuscript IDs...")
     ids = get_ids(df=colls)
-    if verbose:
-        print(f"Done loading Manuscript IDs. Found {len(ids.index)} unique identifiers.")
-        print("Loading XML URLs...")
+    log.debug(f"Done loading Manuscript IDs. Found {len(ids.index)} unique identifiers.")
+    log.debug("Loading XML URLs...")
     urls = get_xml_urls(df=ids)
-    if verbose:
-        print(f"Done loading URLs. Found {len(urls.index)} URLs.")
-        print("Downloading XML Data...")
+    log.debug(f"Done loading URLs. Found {len(urls.index)} URLs.")
+    log.debug("Downloading XML Data...")
     loaded_xmls = cache_all_xml_data(df=urls)
-    if verbose:
-        print(f"Done loading XMLs. Downloaded {loaded_xmls} files.")
-        print("Extracting shelfmarks...")
+    log.debugt(f"Done loading XMLs. Downloaded {loaded_xmls} files.")
+    log.debug("Extracting shelfmarks...")
     shelfmarks = get_shelfmarks(df=urls)
-    if verbose:
-        print(f"Done extracting shelfmarks. Found {len(shelfmarks.index)} shelfmarks.")
-        print(f'Finished: {datetime.now()}')
+    log.debug(f"Done extracting shelfmarks. Found {len(shelfmarks.index)} shelfmarks.")
+    log.info('done Crawling.')
+    log.debug(f'Finished: {datetime.now()}')
 
 
 def _wipe_cache():
