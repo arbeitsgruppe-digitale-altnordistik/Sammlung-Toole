@@ -14,7 +14,6 @@ from datetime import datetime, time
 import metadata
 import sessionState
 from datahandler import DataHandler
-import guiUtils
 import time as time_
 
 # unused?
@@ -82,23 +81,21 @@ def rebuild_all_button():
     '''
     if st.sidebar.button("Download everything"):
         st.write(f'Start: {datetime.now()}')
-        prog = guiUtils.Progress("Loading Data from Handrit.is", "Done loading data from Handrit.is")
-        crawler.crawl(use_cache=False, prog=prog)
+        crawler.crawl(use_cache=False)
         st.write(f'Finished: {datetime.now()}')
         rebuild_handler()
 
 
 def reload_with_cache():
     st.write(f'Start: {datetime.now()}')
-    prog = guiUtils.Progress("Loading Data from Handrit.is", "Done loading data from Handrit.is")
-    crawler.crawl(use_cache=True, prog=prog)
+    container = st.beta_container()
+    crawler.crawl(use_cache=True, prog=container)
     st.write(f'Finished: {datetime.now()}')
 
 
 def rebuild_handler():
     st.write(f'Start: {datetime.now()}')
-    prog = guiUtils.Progress("Build Data Handler", "Done building data handler.")
-    state.data_handler = DataHandler.get_handler(prog=prog)
+    state.data_handler = DataHandler.get_handler()
     st.write(f'Finished: {datetime.now()}')
 
 
@@ -152,6 +149,7 @@ def adv_options():
         reload_with_cache()
     if st.sidebar.button("Rebuild Data Handler"):
         rebuild_handler()
+
     # generate_reports()
     # TODO: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
 

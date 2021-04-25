@@ -8,7 +8,7 @@ def get_logger(name: str) -> logging.Logger:
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG)
     c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler('warnings.log', mode='w')
+    f_handler = logging.FileHandler('warnings.log', mode='a')
     f_handler2 = logging.FileHandler('log.log', mode='w')
     c_handler.setLevel(logging.INFO)
     f_handler.setLevel(logging.WARNING)

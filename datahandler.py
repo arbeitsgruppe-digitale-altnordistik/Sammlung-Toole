@@ -10,7 +10,7 @@ import os
 import crawler
 import handrit_tamer_2 as tamer
 import utils
-import guiUtils
+# import guiUtils
 
 
 log = utils.get_logger(__name__)
