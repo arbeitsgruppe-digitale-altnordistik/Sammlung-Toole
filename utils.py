@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def _get_soup(url: str, parser='xml') -> BeautifulSoup:
+def get_soup(url: str, parser='xml') -> BeautifulSoup:
     """Get a BeautifulSoup object from a URL
 
     Args:

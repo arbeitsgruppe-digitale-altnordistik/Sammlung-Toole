@@ -75,7 +75,7 @@ class DataHandler:
 
     @staticmethod
     def _load_ms_info(max_res: int = -1, prog: guiUtils.Progress = None) -> pd.DataFrame:
-        df = crawler.get_xml_urls(max_res=max_res)
+        df = crawler.crawl_xmls(max_res=max_res)
         if max_res > 0 and len(df.index) > max_res:
             df = df[:max_res]
         if prog:

@@ -63,7 +63,7 @@ def crawl_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFram
 def _load_collections() -> pd.DataFrame:
     """Load collections from website
     """
-    soup = utils._get_soup('https://handrit.is/#collection', 'lxml')
+    soup = utils.get_soup('https://handrit.is/#collection', 'lxml')
     collection_tags = soup.find_all('div', attrs={'class': 'collection'})
     collections = [(c.find('span', attrs={'class': 'mark'}).text,
                     int(c.find('span', attrs={'class': 'count'}).text.split()[0]),
@@ -147,7 +147,7 @@ def _load_ids(df: pd.DataFrame, max_res: int = -1) -> pd.DataFrame:
 
 def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
     """get IDs from a collection URL"""
-    soup = utils._get_soup(url, 'lxml')
+    soup = utils.get_soup(url, 'lxml')
     res = []
     for td in soup.find_all('td', attrs={'class': 'id'}):
         res.append((col, td.text))
