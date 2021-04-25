@@ -10,11 +10,10 @@ from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
 from threading import current_thread
 import sys
 from handrit_tamer import get_from_search_list as multiSearch
-from datetime import datetime, time
+from datetime import datetime
 import metadata
 import sessionState
 from datahandler import DataHandler
-import time as time_
 
 # unused?
 import matplotlib
@@ -26,7 +25,6 @@ import streamlit.components.v1 as comps
 # Constants
 # ---------
 
-# _id_path = 'data/ms_ids.csv'        # Contains XML IDs
 _home_image = 'data/title.png'      # Image displayed on home page
 
 

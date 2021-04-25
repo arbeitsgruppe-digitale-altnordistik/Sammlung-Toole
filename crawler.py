@@ -23,7 +23,7 @@ _id_path = 'data/ms_ids.csv'
 _potential_xml_url_path = 'data/pot_ms_urls.csv'
 _xml_url_path = 'data/ms_urls.csv'
 _xml_data_prefix = 'data/xml/'
-_xml_content_pickle_path = 'data/soup.pickle'
+_xml_content_pickle_path = 'data/contents.pickle'
 _xml_url_prefix = 'https://handrit.is/en/manuscript/xml/'
 
 verbose = True
@@ -165,6 +165,7 @@ def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tr
     - Manuscript ID (`id`)
     - language (`lang`)
     - URL to XML (`xml_url`)
+    # CHORE: update
 
     Args:
         df (pd.DataFrame, optional): Dataframe containing the available manuscript IDs. If `None` is passed, `get_ids()` will be called. Defaults to None.
