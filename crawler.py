@@ -224,8 +224,7 @@ def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = 
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
     log.debug("Building potential URLs")
-    potential_urls = df.apply(_get_potential_xml_urls, axis=1)  # XXX: improve!  # TODO: improve this with vectorized string operation?
-    xmls = _get_existing_xml_urls(potential_urls, max_res, prog, cache, use_cache).sort_values(by=['collection', 'id'])
+    xmls = _get_existing_xml_urls(df, max_res, prog, cache, use_cache).sort_values(by=['collection', 'id'])
     xmls['shelfmark'] = xmls['soup'].apply(_get_shelfmark)
     soups = xmls[['soup', 'xml_file']]
     soups['path'] = _xml_data_prefix + soups['xml_file']
@@ -254,14 +253,14 @@ def _get_potential_xml_urls(row: pd.Series):
     return row
 
 
-def _get_existing_xml_urls(potentials: pd.DataFrame, max_res, prog: guiUtils.Progress = None, cache=True, use_cache=True) -> pd.DataFrame:
+def _get_existing_xml_urls(df: pd.DataFrame, max_res, prog: guiUtils.Progress = None, cache=True, use_cache=True) -> pd.DataFrame:
     """Create a dataframe with all URLs that exist (return HTTP code 200) - delegator method."""  # TODO: update eventually
     if prog:
-        max = len(potentials.index)
+        max = len(df.index)
         if max_res > 0:
             max = max_res * 3 + 2
         prog.set_steps(max)
-    iter_ = _get_existing_xml_urls_chillfully(potentials, max_res, prog, cache, use_cache)
+    iter_ = _get_existing_xml_urls_chillfully(df, max_res, prog, cache, use_cache)
     if max_res > 0:
         res = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url', 'xml_file', 'soup'])
         # TODO: add graceful shutdown
@@ -283,19 +282,17 @@ def _get_existing_xml_urls(potentials: pd.DataFrame, max_res, prog: guiUtils.Pro
     return res
 
 
-def _get_existing_xml_urls_chillfully(
-        potentials: pd.DataFrame, max_res, prog: guiUtils.Progress, cache: bool, use_cache: bool) -> Generator[
-        Tuple[str],
-        None, None]:
+def _get_existing_xml_urls_chillfully(df: pd.DataFrame, max_res, prog: guiUtils.Progress, cache: bool, use_cache: bool) -> Generator[Tuple[str], None, None]:
     """Generator of slowly loaded rows for ms_urls dataframe."""
-    if max_res > 0 and len(potentials.index) > max_res:
-        potentials = potentials[:max_res]
-    for _, row in potentials.iterrows():
+    if max_res > 0 and len(df.index) > max_res:
+        df = df[:max_res]
+    for _, row in df.iterrows():
         col = row['collection']
         id_ = row['id']
-        lang = ['en', 'da', 'is']
-        for l in lang:
-            res = _get_xml_if_exists(col, id_, l, row[l], cache, use_cache)
+        langs = ('en', 'da', 'is')
+        for l in langs:
+            url = f'{_xml_url_prefix}{id_}-{l}.xml'
+            res = _get_xml_if_exists(col, id_, l, url, cache, use_cache)
             if res:
                 if prog:
                     prog.increment()
