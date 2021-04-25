@@ -101,11 +101,11 @@ def rebuild_handler():
 #     ''' Wrapper for XML redo function to redirect output to web interface.
 #     '''
 #     with st_stdout('code'):
-#         noMSs = crawler.cache_all_xml_data(use_cache=False)  # TODO: should not be aggressive. Do we still need it with the handler?
+#         noMSs = crawler.cache_all_xml_data(use_cache=False)
 #     return noMSs
 
 
-# def msNumber_button():
+# def msNumber_button():  # QUESTION: obsolete with browse data function?
 #     ''' Displays the button that shows the number of MS IDs cached. Not strictly necessary.
 #     '''
 #     if st.sidebar.button("Show number of MS IDs cached"):
@@ -114,7 +114,7 @@ def rebuild_handler():
 #         st.write(f"There are currently {MScount:,d} manuscript IDs in cache!")
 
 
-# def collections_button():
+# def collections_button():  # QUESTION: obsolete with browse data function?
 #     '''Self explanatory
 #     '''
 #     if st.sidebar.button("Show all collections"):
