@@ -10,10 +10,12 @@ from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
 from threading import current_thread
 import sys
 from handrit_tamer import get_from_search_list as multiSearch
-from datetime import datetime
+from datetime import datetime, time
 import metadata
 import sessionState
 from datahandler import DataHandler
+import guiUtils
+import time as time_
 
 # unused?
 import matplotlib
@@ -79,19 +81,26 @@ def rebuild_button():
     from handrit
     '''
     if st.sidebar.button("Download everything"):
-        with st.spinner("In Progress"):
-            st.write(f'Start: {datetime.now()}')
-            with st_stdout('code'):
-                crawler.crawl(use_cache=False)
+        st.write(f'Start: {datetime.now()}')
+        prog = guiUtils.Progress("Loading Data from Handrit.is", "Done loading data from Handrit.is")
+        crawler.crawl(use_cache=False, prog=prog)
         st.write(f'Finished: {datetime.now()}')
+        rebuild_handler()
 
 
-def redo_xmls_wrap():  # QUESTION: is this even used?
-    ''' Wrapper for XML redo function to redirect output to web interface.
-    '''
-    with st_stdout('code'):
-        noMSs = crawler.cache_all_xml_data(aggressive_crawl=True, use_cache=False)  # TODO: should not be aggressive. Do we still need it with the handler?
-    return noMSs
+def rebuild_handler():
+    st.write(f'Start: {datetime.now()}')
+    prog = guiUtils.Progress("Build Data Handler", "Done building data handler.")
+    state.data_handler = DataHandler.get_handler(prog=prog)
+    st.write(f'Finished: {datetime.now()}')
+
+
+# def redo_xmls_wrap():  # QUESTION: is this even used?
+#     ''' Wrapper for XML redo function to redirect output to web interface.
+#     '''
+#     with st_stdout('code'):
+#         noMSs = crawler.cache_all_xml_data(use_cache=False)  # TODO: should not be aggressive. Do we still need it with the handler?
+#     return noMSs
 
 
 # def msNumber_button():
@@ -132,6 +141,8 @@ def adv_options():
     # collections_button()  # TODO: Remove? I think, with the "browse data" page, this should be obsolete
     # msNumber_button()     #       dito
     rebuild_button()
+    if st.sidebar.button("Rebuild Data Handler"):
+        rebuild_handler()
     # generate_reports()
     # TODO: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
 
@@ -361,16 +372,20 @@ def full_menu():
     '''This is basically the main() and will load and display the full menu, which in turn calls
     all the other functions containing sub pages.
     '''
-
-    MenuOptions = {"Home": mainPage,
-                   "Browse Data": browse_data,
-                   "Search Functions": search_page,
-                   "Reports": static_reports,
-                   "Advanced Settings": adv_options,
-                   }
-    selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
-    selected_function = MenuOptions[selection]
-    selected_function()
+    handler = state.data_handler
+    if handler:
+        MenuOptions = {"Home": mainPage,
+                       "Browse Data": browse_data,
+                       "Search Functions": search_page,
+                       "Reports": static_reports,
+                       "Advanced Settings": adv_options,
+                       }
+        selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
+        selected_function = MenuOptions[selection]
+        selected_function()
+    else:
+        st.sidebar.text("No data at hand. Needs loading first.")
+        adv_options()
 
 
 # Run
@@ -389,5 +404,5 @@ if __name__ == '__main__':
                              CurrentStep='Preprocessing',
                              postStep='',
                              currentCitaviData=pd.DataFrame(),
-                             data_handler=DataHandler.get_handler())
+                             data_handler=None)
     full_menu()

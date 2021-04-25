@@ -1,4 +1,4 @@
-from typing import Generator, List, Tuple
+from typing import Generator, List, Optional, Tuple
 import pandas as pd
 import requests
 import os
@@ -7,6 +7,8 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import utils
+import guiUtils
+import pickle
 
 
 log = utils.get_logger(__name__)
@@ -20,9 +22,10 @@ _id_path = 'data/ms_ids.csv'
 _xml_url_path = 'data/ms_urls.csv'
 _shelfmark_path = 'data/ms_shelfmarks.csv'
 _xml_data_prefix = 'data/xml/'
+_soup_pickle_path = 'data/soup.pickle'
 _xml_url_prefix = 'https://handrit.is/en/manuscript/xml/'
 
-_backspace_print = '                                     \r'
+# _backspace_print = '                                     \r'
 
 verbose = True
 
@@ -92,7 +95,7 @@ def _load_collections() -> pd.DataFrame:
 # Crawl Manuscript IDs
 # --------------------
 
-def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> pd.DataFrame:
+def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog: guiUtils.Progress = None) -> pd.DataFrame:
     """Load all manuscript IDs.
 
     The dataframe contains the following collumns:
@@ -105,6 +108,7 @@ def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True,
         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). 
             For unrestricted, use -1. Defaults to -1.
+        # CHORE: prog
 
     Returns:
         pd.DataFrame: Dataframe containing the manuscript IDs.
@@ -114,10 +118,12 @@ def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True,
         ids = pd.read_csv(_id_path)
         if ids is not None and not ids.empty and _is_ids_complete(ids):  # TODO: should work from that, in case of partially finished loading
             log.debug('Loaded manuscript IDs from cache.')
+            if prog:
+                prog.done()
             return ids
     if df is None:
         df = get_collections(use_cache=use_cache, cache=cache)
-    ids = _load_ids(df, max_res=max_res)
+    ids = _load_ids(df, max_res=max_res, prog=prog)
     if max_res > 0 and len(ids.index) >= max_res:
         ids = ids[:max_res]
     ids.sort_values(by=['collection', 'id'])
@@ -138,9 +144,14 @@ def _is_ids_complete(ids: pd.DataFrame) -> bool:
     return False
 
 
-def _load_ids(df: pd.DataFrame, max_res: int = -1) -> pd.DataFrame:
+def _load_ids(df: pd.DataFrame, max_res: int = -1, prog: guiUtils.Progress = None) -> pd.DataFrame:
     """Load IDs"""
-    iterator_ = _load_ids_chillfully(df)
+    if prog:
+        max_count = df['ms_count'].sum()
+        if max_res > 0:
+            max_count = min(max_count, max_res)
+        prog.set_steps(max_count)
+    iterator_ = _load_ids_chillfully(df, prog=prog)
     if max_res > 0:
         res = pd.DataFrame(columns=['collection', 'id'])
         for tuple_ in iterator_:
@@ -155,13 +166,15 @@ def _load_ids(df: pd.DataFrame, max_res: int = -1) -> pd.DataFrame:
     return res
 
 
-def _load_ids_chillfully(df: pd.DataFrame) -> Generator[Tuple[str], None, None]:
+def _load_ids_chillfully(df: pd.DataFrame, prog: guiUtils.Progress = None) -> Generator[Tuple[str], None, None]:
     """Load IDs page by page"""
     cols = list(df.collection)
     for col in cols:
         log.debug(f'loading: {col}')
         url = df.loc[df.collection == col, 'url'].values[0]
         for res in _download_ids_from_url(url, col):
+            if prog:
+                prog.increment()
             yield res
 
 
@@ -176,8 +189,8 @@ def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
 
 # Crawl XML URLs
 # --------------
-
-def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> pd.DataFrame:
+# TODO: rename. it's not only urls now
+def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog: guiUtils.Progress = None) -> pd.DataFrame:
     """Load all manuscript URLs.
 
     The dataframe contains the following collumns:
@@ -191,6 +204,7 @@ def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = 
         use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
+        # CHORE: prog
 
     Returns:
         pd.DataFrame: Dataframe containing manuscript URLs.
@@ -210,11 +224,18 @@ def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = 
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
     potential_urls = df.apply(_get_potential_xml_urls, axis=1)  # TODO: improve this with vectorized string operation?
-    existing_urls = _get_existing_xml_urls(potential_urls, max_res).sort_values(by=['collection', 'id'])  # TODO: should actually reade the xml here
+    xmls = _get_existing_xml_urls(potential_urls, max_res, prog, cache).sort_values(by=['collection', 'id'])
+    xmls['shelfmark'] = xmls['soup'].apply(_get_shelfmark)
+    soups = xmls[['soup', 'xml_file']]
+    soups['path'] = _xml_data_prefix + soups['xml_file']
+    xmls.drop(columns=['soup'], inplace=True)
+    xmls.drop(columns=['content'], inplace=True)
     if cache:
-        existing_urls.to_csv(_xml_url_path, encoding='utf-8', index=False)
-    log.info(f"Loaded {len(existing_urls.index)} XML URLs.")
-    return existing_urls
+        xmls.to_csv(_xml_url_path, encoding='utf-8', index=False)
+        with open(_soup_pickle_path, mode='wb') as file:
+            pickle.dump(soups, file=file)
+    log.info(f"Loaded {len(xmls.index)} XML URLs.")
+    return xmls  # QUESTION: soups too?
 
 
 def _is_urls_complete(df: pd.DataFrame) -> bool:  # TODO: remove?
@@ -232,14 +253,21 @@ def _get_potential_xml_urls(row: pd.Series):
     return row
 
 
-def _get_existing_xml_urls(potentials: pd.DataFrame, max_res) -> pd.DataFrame:
+def _get_existing_xml_urls(potentials: pd.DataFrame, max_res, prog: guiUtils.Progress = None, cache=True) -> pd.DataFrame:
     """Create a dataframe with all URLs that exist (return HTTP code 200) - delegator method."""  # TODO: update eventually
-    iter_ = _get_existing_xml_urls_chillfully(potentials, max_res)
+    if prog:
+        max = len(potentials.index)
+        if max_res > 0:
+            max = max_res * 3 + 2
+        prog.set_steps(max)
+    iter_ = _get_existing_xml_urls_chillfully(potentials, max_res, prog, cache)
     if max_res > 0:
-        res = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url', 'xml_file'])
+        res = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url', 'xml_file', 'soup'])
         # TODO: add graceful shutdown
         for tuple_ in iter_:
             if len(res.index) >= max_res:
+                if prog:
+                    prog.done()
                 break
             res = res.append({
                 'collection': tuple_[0],
@@ -247,38 +275,37 @@ def _get_existing_xml_urls(potentials: pd.DataFrame, max_res) -> pd.DataFrame:
                 'lang': tuple_[2],
                 'xml_url': tuple_[3],
                 'xml_file': tuple_[4],
+                'soup': tuple_[5],
             }, ignore_index=True)
     else:
-        res = pd.DataFrame(iter_, columns=['collection', 'id', 'lang', 'xml_url', 'xml_file'])
+        res = pd.DataFrame(iter_, columns=['collection', 'id', 'lang', 'xml_url', 'xml_file', 'soup'])
     return res
 
 
-def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res) -> Generator[Tuple[str], None, None]:
+def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res, prog: guiUtils.Progress, cache: bool) -> Generator[Tuple[str], None, None]:
     """Generator of slowly loaded rows for ms_urls dataframe."""
-    # TODO: improve around here, to only request XML once
     if max_res > 0 and len(potentials.index) > max_res:
         potentials = potentials[:max_res]
-    hits = 0
-    for checked, row in potentials.iterrows():
+    for _, row in potentials.iterrows():
         col = row['collection']
         id_ = row['id']
         lang = ['en', 'da', 'is']
         for l in lang:
-            res = _get_url_if_exists(col, id_, l, row[l])
+            res = _get_xml_if_exists(col, id_, l, row[l], cache)
             if res:
-                hits += 1
+                if prog:
+                    prog.increment()
                 yield res
-                if verbose:
-                    percents = hits / max_res * 100
-                    print(f'Checked {checked+1} \tFound {hits} of {max_res} ({percents:.2f}%)', end=_backspace_print)  # FIXME: maxres can be -1
 
 
-def _get_url_if_exists(col, id_, l, url: str):
+def _get_xml_if_exists(col, id_, l, url: str, cache: bool):
     """Returns tuple, if URL returns 200, None otherwise."""
-    status = requests.head(url).status_code  # TODO: get rid of the 'head' thing, to avoid double requests
     file = url.rsplit('/', 1)[1]
-    if status == 200:
-        return col, id_, l, url, file
+    content = _load_xml_content(url)
+    if content:
+        if cache:
+            _cache_xml(file, content)  # XXX: make thread
+        return col, id_, l, url, file, BeautifulSoup(content, 'xml')  # XXX: move soup parsing to somewhere else?
     else:
         return False
 
@@ -286,56 +313,63 @@ def _get_url_if_exists(col, id_, l, url: str):
 # Cache XML data
 # --------------
 
-def cache_all_xml_data(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> int:
-    """Download all XML data.
+def _cache_xml(file, data):
+    path = _xml_data_prefix + file
+    with open(path, mode='w+', encoding='utf-8') as file:
+        file.write(data)
 
-    Args:
-        df (pd.DataFrame, optional): Dataframe containing the existing URLs. If `None` is passed, `get_xml_urls()` will be called. Defaults to None.
-        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
-        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
-        max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
+# def cache_all_xml_data(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> int:
+#     """Download all XML data.
 
-    Returns:
-        int: Number of XML files downloaded.
-    """
-    if df is None:
-        df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res)
-    res = _cache_xml_chillfully(df, max_res, use_cache)
-    return res
+#     Args:
+#         df (pd.DataFrame, optional): Dataframe containing the existing URLs. If `None` is passed, `get_xml_urls()` will be called. Defaults to None.
+#         use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
+#         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
+#         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
 
-
-def _cache_xml_chillfully(df, max_res, use_cache):  # TODO: needs some work
-    res = 0
-    for _, row in df.iterrows():
-        if max_res > 0 and res >= max_res:
-            return res
-        url = row['xml_url']
-        filename = url.rsplit('/', 1)[1]
-        path = _xml_data_prefix + filename
-        did_cache = _cache_xml(path, url, use_cache)
-        if did_cache:
-            res += 1
-            if verbose:
-                print(f'Cached {res}', end=_backspace_print)
-    return res
+#     Returns:
+#         int: Number of XML files downloaded.
+#     """
+#     if df is None:
+#         df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res)
+#     res = _cache_xml_chillfully(df, max_res, use_cache)
+#     return res
 
 
-def _cache_xml(path, url, use_cache) -> bool:  # TODO: needs some work
-    """Cache XML from URL. Return True, if it got cached, False if already existed."""
-    if use_cache and os.path.exists(path):
-        return False
-    with open(path, 'w', encoding='utf-8') as f:
-        data = _load_xml_content(url)
-        f.write(data)
-        if not data:
-            print(f'No data loaded for {url}')
-        return True
+# def _cache_xml_chillfully(df, max_res, use_cache):  # TODO: needs some work
+#     res = 0
+#     for _, row in df.iterrows():
+#         if max_res > 0 and res >= max_res:
+#             return res
+#         url = row['xml_url']
+#         filename = url.rsplit('/', 1)[1]
+#         path = _xml_data_prefix + filename
+#         did_cache = _cache_xml(path, url, use_cache)
+#         if did_cache:
+#             res += 1
+#             if verbose:
+#                 print(f'Cached {res}', end=_backspace_print)
+#     return res
+
+
+# def _cache_xml(path, url, use_cache) -> bool:  # TODO: needs some work
+#     """Cache XML from URL. Return True, if it got cached, False if already existed."""
+#     if use_cache and os.path.exists(path):
+#         return False
+#     with open(path, 'w', encoding='utf-8') as f:
+#         data = _load_xml_content(url)
+#         f.write(data)
+#         if not data:
+#             print(f'No data loaded for {url}')
+#         return True
 
 
 def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is actually XML
     """Load XML content from URL, ensuring the encoding is correct."""
     log.debug(f"Loading XML Content: {url}")
     response = requests.get(url)
+    if response.status_code != 200:
+        return None
     bytes_ = response.text.encode(response.encoding)
     if bytes_[0] == 255:
         try:
@@ -344,80 +378,77 @@ def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is 
             txt = txt.replace('UTF-16', 'UTF-8', 1)
             log.warning(f"Found XML in encoding 'UTF-16-LE'. Converted to 'UTF-8'. Check if data was lost in the process.\nXML: {url}")
             return txt
-        except Exception:
+        except Exception as e:  # TODO: never seems to be the case
             log.warning(f"Failed to convert 'UTF-16-LE'. Fall back to 'ISO-8859-1'. Check if data was lost in the process.\nXML: {url}")
+            log.exception(e)
             return response.text.replace('iso-8859-1', 'UTF-8')
     else:
         try:
             txt = bytes_.decode('utf-8')  # 0xe1
             log.debug("Encodung: UTF-8")
             return txt
-        except Exception:
+        except Exception as e:  # TODO: the case a lot, find a better way?
             log.warning(f"Failed to convert 'UTF-8'. Fall back to 'ISO-8859-1'. Check if data was lost in the process.\nXML: {url}")
+            log.exception(e)
             return response.text.replace('iso-8859-1', 'UTF-8')
 
 
 # Look up shelfmarks
 # ------------------
 
-def get_shelfmarks(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> pd.DataFrame:
-    """Look up all manuscript shelfmarks.
+# def get_shelfmarks(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> pd.DataFrame:
+#     """Look up all manuscript shelfmarks.
 
-    The dataframe contains the following collumns:
-    - Manuscript ID (`id`)
-    - Shelfmark (`shelfmark`)
+#     The dataframe contains the following collumns:
+#     - Manuscript ID (`id`)
+#     - Shelfmark (`shelfmark`)
 
-    Args:
-        df (pd.DataFrame, optional): Dataframe containing the available XML URLs. If `None` is passed, `get_xml_urls()` will be called. Defaults to None.
-        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
-        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
-        max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
+#     Args:
+#         df (pd.DataFrame, optional): Dataframe containing the available XML URLs. If `None` is passed, `get_xml_urls()` will be called. Defaults to None.
+#         use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
+#         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
+#         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
 
-    Returns:
-        pd.DataFrame: Dataframe containing shelfmarks.
-    """
-    # TODO: this should happen when XML is loaded first... do we even need the separate shelfmark thingie?
-    if use_cache and os.path.exists(_shelfmark_path):
-        res = pd.read_csv(_shelfmark_path)
-        if res is not None and not res.empty and _is_shelfmarks_complete(res):  # LATER: should work from that, in case of partially finished loading
-            log.debug('Loaded shelfmarks from cache.')
-            return res
-    if df is None:
-        df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res)
-    if max_res > 0 and max_res < len(df.index):
-        df = df[:max_res]
+#     Returns:
+#         pd.DataFrame: Dataframe containing shelfmarks.
+#     """
+#     # TODO: this should happen when XML is loaded first... do we even need the separate shelfmark thingie?
+#     if use_cache and os.path.exists(_shelfmark_path):
+#         res = pd.read_csv(_shelfmark_path)
+#         if res is not None and not res.empty and _is_shelfmarks_complete(res):  # LATER: should work from that, in case of partially finished loading
+#             log.debug('Loaded shelfmarks from cache.')
+#             return res
+#     if df is None:
+#         df = get_xml_urls(df=None, use_cache=use_cache, cache=cache, max_res=max_res)
+#     if max_res > 0 and max_res < len(df.index):
+#         df = df[:max_res]
 
-    iter_ = _get_shelfmarks(df)
-    res = pd.DataFrame(iter_, columns=['id', 'shelfmark']).sort_values(by='id').drop_duplicates()
-    if cache:
-        res.to_csv(_shelfmark_path, encoding='utf-8', index=False)
-    return res
-
-
-def _is_shelfmarks_complete(df: pd.DataFrame) -> bool:
-    ids_a = len(get_ids()['id'].unique())
-    ids_b = len(df['id'].unique())
-    return ids_a == ids_b
+#     iter_ = _get_shelfmarks(df)
+#     res = pd.DataFrame(iter_, columns=['id', 'shelfmark']).sort_values(by='id').drop_duplicates()
+#     if cache:
+#         res.to_csv(_shelfmark_path, encoding='utf-8', index=False)
+#     return res
 
 
-def _get_shelfmarks(df: pd.DataFrame):
-    for _, row in df.iterrows():
-        shelfmark = _get_shelfmark(row['xml_file'])
-        yield row['id'], shelfmark
+# def _is_shelfmarks_complete(df: pd.DataFrame) -> bool:
+#     ids_a = len(get_ids()['id'].unique())
+#     ids_b = len(df['id'].unique())
+#     return ids_a == ids_b
 
 
-# Access XML Directly
-# -------------------
+# def _get_shelfmarks(df: pd.DataFrame):
+#     for _, row in df.iterrows():
+#         shelfmark = _get_shelfmark(row['xml_file'])
+#         yield row['id'], shelfmark
 
-def _get_shelfmark(file: str) -> str:
-    soup = load_xml_by_filename(file)
+
+def _get_shelfmark(soup) -> str:
     msid = soup.find('msIdentifier')
     if msid:
         idno = msid.idno
         if idno:
             sm = idno.getText()
-            if verbose:
-                print(f'Shelfmark: {sm}', end=_backspace_print)
+            log.debug(f"Extracted shelfmark: {sm}")
             return sm
 
 
@@ -483,34 +514,52 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
     return res
 
 
-def crawl(use_cache: bool = False):
+def crawl(use_cache: bool = False, prog: Optional[guiUtils.Progress] = None):
     """crawl everything as fast as possible"""
     log.debug(f'Start: {datetime.now()}')
     log.info('Start crawling')
+
+    if prog:
+        prog.set_steps(3)
     if not use_cache:
         log.debug('Removing cache...')
         _wipe_cache()
         log.debug('Done removing cache.')
+
     log.debug('Loading collections...')
     colls = get_collections()
     log.debug(f"Done loading collections. Found {len(colls.index)} collections containing {colls['ms_count'].sum()} manuscripts.")
+    if prog:
+        prog.increment('Loaded Collections')
+        prog_ids = prog.next_subtask("Loading MS IDs", "Done loading MS IDs")
+
     log.debug("Loading Manuscript IDs...")
-    ids = get_ids(df=colls)
+    ids = get_ids(df=colls, prog=prog_ids)
     log.debug(f"Done loading Manuscript IDs. Found {len(ids.index)} unique identifiers.")
+
+    if prog:
+        prog_urls = prog.next_subtask("Loading Manuscript XMLs", "Done loading XMLs")
     log.debug("Loading XML URLs...")
-    urls = get_xml_urls(df=ids)
+    urls = get_xml_urls(df=ids, prog=prog_urls)
     log.debug(f"Done loading URLs. Found {len(urls.index)} URLs.")
-    log.debug("Downloading XML Data...")
-    loaded_xmls = cache_all_xml_data(df=urls)
-    log.debugt(f"Done loading XMLs. Downloaded {loaded_xmls} files.")
-    log.debug("Extracting shelfmarks...")
-    shelfmarks = get_shelfmarks(df=urls)
-    log.debug(f"Done extracting shelfmarks. Found {len(shelfmarks.index)} shelfmarks.")
-    log.info('done Crawling.')
+
+    # log.debug("Downloading XML Data...")
+    # loaded_xmls = cache_all_xml_data(df=urls)
+    # log.debugt(f"Done loading XMLs. Downloaded {loaded_xmls} files.")
+    # if prog:
+    #     prog.increment()
+
+    # log.debug("Extracting shelfmarks...")
+    # shelfmarks = get_shelfmarks(df=urls)
+    # log.debug(f"Done extracting shelfmarks. Found {len(shelfmarks.index)} shelfmarks.")
+    # log.info('done Crawling.')
+    # if prog:
+    #     prog.increment()
+
     log.debug(f'Finished: {datetime.now()}')
 
 
-def _wipe_cache():
+def _wipe_cache():  # TODO: expand, should involve handler stuff too
     xmls = glob.glob(_xml_data_prefix + '*.xml')
     for xml in xmls:
         os.remove(xml)

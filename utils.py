@@ -15,7 +15,7 @@ def get_logger(name: str) -> logging.Logger:
     f_handler2.setLevel(logging.DEBUG)
     c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    f_format2 = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    f_format2 = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')  # TODO: simplify
     c_handler.setFormatter(c_format)
     f_handler.setFormatter(f_format)
     f_handler2.setFormatter(f_format2)

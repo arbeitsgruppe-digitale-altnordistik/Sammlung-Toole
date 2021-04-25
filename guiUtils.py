@@ -1,3 +1,4 @@
+from typing import Optional
 import streamlit as st
 
 
@@ -19,10 +20,13 @@ class Progress:
     def set_steps(self, steps: int):
         self.__steps = steps
 
-    def increment(self):
+    def increment(self, msg: Optional[str] = None):
         self.__state += 1
         percentage = int(100 * self.__state / self.__steps)
         self.__progressbar.progress(percentage)
+        if msg:
+            with self.__container:
+                st.text(msg)
         if self.__state >= self.__steps:
             self.done()
 
