@@ -1,10 +1,9 @@
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, List, Tuple
 import pandas as pd
 import requests
 import os
 import glob
 from bs4 import BeautifulSoup
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import utils
 import pickle
@@ -23,37 +22,17 @@ _coll_path = 'data/collections.csv'
 _id_path = 'data/ms_ids.csv'
 _potential_xml_url_path = 'data/pot_ms_urls.csv'
 _xml_url_path = 'data/ms_urls.csv'
-_shelfmark_path = 'data/ms_shelfmarks.csv'
 _xml_data_prefix = 'data/xml/'
 _xml_content_pickle_path = 'data/soup.pickle'
 _xml_url_prefix = 'https://handrit.is/en/manuscript/xml/'
 
 verbose = True
 
-# Utlity Functions
-# ----------------
-
-
-def _get_soup(url: str, parser='xml') -> BeautifulSoup:
-    """Get a BeautifulSoup object from a URL
-
-    Args:
-        url (str): The URL
-        parser (str, optional): Parser; for HTML, use 'lxml'. Defaults to 'xml'.
-
-    Returns:
-        BeautifulSoup: BeautifulSoup object representation of the HTML/XML page.
-    """
-    log.debug(f'Requesting ({parser}): {url}')
-    htm = requests.get(url).text
-    soup = BeautifulSoup(htm, parser)
-    return soup
-
 
 # Crawl Collections
 # -----------------
 
-def get_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFrame:
+def crawl_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFrame:
     """Load all collections from handrit.is.
 
     The dataframe contains the following informations:
@@ -72,7 +51,7 @@ def get_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFrame:
     if use_cache and os.path.exists(_coll_path):
         cols = pd.read_csv(_coll_path)
         if cols is not None and not cols.empty:
-            log.debug('Loaded collections from cache.')
+            log.info('Loaded collections from cache.')
             return cols
     cols = _load_collections()
     if cache:
@@ -84,7 +63,7 @@ def get_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFrame:
 def _load_collections() -> pd.DataFrame:
     """Load collections from website
     """
-    soup = _get_soup('https://handrit.is/#collection', 'lxml')
+    soup = utils._get_soup('https://handrit.is/#collection', 'lxml')
     collection_tags = soup.find_all('div', attrs={'class': 'collection'})
     collections = [(c.find('span', attrs={'class': 'mark'}).text,
                     int(c.find('span', attrs={'class': 'count'}).text.split()[0]),
@@ -96,7 +75,7 @@ def _load_collections() -> pd.DataFrame:
 # Crawl Manuscript IDs
 # --------------------
 
-def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> pd.DataFrame:
+def crawl_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> pd.DataFrame:
     """Load all manuscript IDs.
 
     The dataframe contains the following collumns:
@@ -109,19 +88,20 @@ def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True,
         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). 
             For unrestricted, use -1. Defaults to -1.
-        # CHORE: prog
 
     Returns:
         pd.DataFrame: Dataframe containing the manuscript IDs.
     """
+    # LATER: could add progressbar to this one too
     log.info('Loading Manuscript IDs')
     if use_cache and os.path.exists(_id_path):
         ids = pd.read_csv(_id_path)
-        if ids is not None and not ids.empty and _is_ids_complete(ids):  # TODO: should work from that, in case of partially finished loading
-            log.debug('Loaded manuscript IDs from cache.')
+        if ids is not None and not ids.empty and _is_ids_complete(ids):
+            # TODO: improve working with half finished caches (e.g. after max_res)
+            log.info('Loaded manuscript IDs from cache.')
             return ids
     if df is None:
-        df = get_collections(use_cache=use_cache, cache=cache)
+        df = crawl_collections(use_cache=use_cache, cache=cache)
     ids = _load_ids(df, max_res=max_res)
     if max_res > 0 and len(ids.index) >= max_res:
         ids = ids[:max_res]
@@ -135,9 +115,8 @@ def get_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True,
 def _is_ids_complete(ids: pd.DataFrame) -> bool:
     """indicates if the number of IDs matches the number indicated by the collections"""
     # TODO: improve this
-    colls = get_collections()
+    colls = crawl_collections()
     if colls['ms_count'].sum() == len(ids.index):
-        log.debug("Number of manuscript IDs matches the number indicated by collections")
         return True
     log.warning('Number of manuscripts does not match the number indicated by collections')
     return False
@@ -145,34 +124,30 @@ def _is_ids_complete(ids: pd.DataFrame) -> bool:
 
 def _load_ids(df: pd.DataFrame, max_res: int = -1) -> pd.DataFrame:
     """Load IDs"""
-    iterator_ = _load_ids_chillfully(df)
-    if max_res > 0:
-        res = pd.DataFrame(columns=['collection', 'id'])
-        for tuple_ in iterator_:
-            if len(res.index) >= max_res:
-                return res
-            res = res.append({
-                'collection': tuple_[0],
-                'id': tuple_[1],
-            }, ignore_index=True)
-    else:
-        res = pd.DataFrame(iterator_, columns=['collection', 'id'])
+
+    def get_iter(df: pd.DataFrame, max_res: int):
+        hits = 0
+        cols = list(df.collection)
+        if max_res <= 0:
+            max_res = len(cols)
+        for col in cols:
+            if hits >= max_res:
+                break
+            url = df.loc[df.collection == col, 'url'].values[0]
+            for res in _download_ids_from_url(url, col):
+                if hits >= max_res:
+                    break
+                yield res
+                hits += 1
+
+    iterator_ = get_iter(df, max_res)
+    res = pd.DataFrame(iterator_, columns=['collection', 'id'])
     return res
-
-
-def _load_ids_chillfully(df: pd.DataFrame) -> Generator[Tuple[str], None, None]:
-    """Load IDs page by page"""
-    cols = list(df.collection)
-    for col in cols:
-        log.debug(f'loading: {col}')
-        url = df.loc[df.collection == col, 'url'].values[0]
-        for res in _download_ids_from_url(url, col):
-            yield res
 
 
 def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
     """get IDs from a collection URL"""
-    soup = _get_soup(url, 'lxml')
+    soup = utils._get_soup(url, 'lxml')
     res = []
     for td in soup.find_all('td', attrs={'class': 'id'}):
         res.append((col, td.text))
@@ -181,9 +156,9 @@ def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
 
 # Crawl XML URLs
 # --------------
-# TODO: rename. it's not only urls now
-def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog=None) -> pd.DataFrame:
-    """Load all manuscript URLs.
+
+def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog=None) -> pd.DataFrame:
+    """Load all manuscript XMLs.
 
     The dataframe contains the following collumns:
     - Collection ID (`collection`)
@@ -196,7 +171,7 @@ def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = 
         use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
         max_res (int, optional): Maximum number of results to return (mostly for testing quickly). For unrestricted, use -1. Defaults to -1.
-        # CHORE: prog
+        prog (streamlit.beta_container, optional): streamlit context for displaying progress bars
 
     Returns:
         pd.DataFrame: Dataframe containing manuscript URLs.
@@ -204,15 +179,16 @@ def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = 
     if use_cache and os.path.exists(_xml_url_path):
         log.debug("Loading XML URLs from cache.")
         res = pd.read_csv(_xml_url_path)
-        # FIXME: get this to work again
+        # TODO: get this to work again
         return res
-        # if res is not None and not res.empty and _is_urls_complete(res):  # LATER: should work from that, in case of partially finished loading
+        # if res is not None and not res.empty and _is_urls_complete(res):
+        # TODO: improve working with half finished caches (e.g. after max_res)
         #    if verbose:
         #         print('Loaded XML URLs from cache.')
         #     return res
     log.info("Loading XML URLs.")
     if df is None:
-        df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res)
+        df = crawl_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res)
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
     log.info("Building potential URLs")
@@ -280,14 +256,11 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog=None, use_cache=True, cache=Tr
     return df
 
 
-def _is_urls_complete(df: pd.DataFrame) -> bool:  # TODO: remove?
-    ids_a = len(get_ids()['id'].unique())
+def _is_urls_complete(df: pd.DataFrame) -> bool:
+    # TODO: improve?
+    ids_a = len(crawl_ids()['id'].unique())
     ids_b = len(df['id'].unique())
     return ids_a == ids_b
-
-
-# Cache XML data
-# --------------
 
 
 def _cache_xml_content(content, path):
@@ -295,7 +268,7 @@ def _cache_xml_content(content, path):
         file.write(content)
 
 
-def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is actually XML
+def _load_xml_content(url):
     """Load XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
     if response.status_code != 200:
@@ -320,7 +293,7 @@ def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is 
             try:
                 txt = bytes_.decode('utf-8')
                 return txt
-            except Exception as e:  # TODO: the case a lot, find a better way?
+            except Exception as e:
                 log.warning(f"Failed to convert {url}")
                 log.exception(e)
                 return ""
@@ -330,7 +303,7 @@ def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is 
                 txt = txt.replace('iso-8859-1', 'UTF-8')
                 log.info(f"Loaded {url} - Encoding: ISO-8859-1 changed to UTF-8")
                 return txt
-            except Exception as e:  # TODO: the case a lot, find a better way?
+            except Exception as e:
                 log.warning(f"Failed to convert {url}")
                 log.exception(e)
                 return ""
@@ -339,7 +312,7 @@ def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is 
             try:
                 txt = bytes_.decode('utf-8')
                 return '<?xml version="1.0" encoding="UTF-8"?>\n' + txt
-            except Exception as e:  # TODO: the case a lot, find a better way?
+            except Exception as e:
                 log.warning(f"Failed to convert {url}")
                 log.exception(e)
                 return ""
@@ -354,6 +327,8 @@ def _get_shelfmark(content: str) -> str:
 
 # Access XML Directly
 # -------------------
+
+# TODO: rethink this part: is it still the way to go? or is this handler domain?
 
 def load_xml(url: str, use_cache: bool = True, cache: bool = True) -> BeautifulSoup:
     """Load XML from URL.
@@ -405,7 +380,7 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
         dict: dict of the XMLs found by this ID. Follows the structure `{language: BeautifulSoup}` (i.e. `{'da': 'soup', 'is': 'soup}`).
     """
     res = {}
-    df = get_xml_urls()
+    df = crawl_xmls()
     hits = df.loc[df['id'] == id_]
     for _, row in hits.iterrows():
         lang = row['lang']
@@ -422,18 +397,19 @@ def crawl(use_cache: bool = False, prog=None):
         _wipe_cache()
         log.info('Done removing cache.')
 
-    colls = get_collections()
+    colls = crawl_collections()
     log.info(f"Done loading collections. Found {len(colls.index)} collections containing {colls['ms_count'].sum()} manuscripts.")
-    ids = get_ids(df=colls)
+    ids = crawl_ids(df=colls)
     log.info(f"Done loading Manuscript IDs. Found {len(ids.index)} unique identifiers.")
 
-    urls, contents = get_xml_urls(df=ids, prog=prog)
+    urls, _ = crawl_xmls(df=ids, prog=prog)
     log.info(f"Done loading URLs. Found {len(urls.index)} URLs.")
 
     log.info(f'Finished: {datetime.now()}')
 
 
-def _wipe_cache():  # TODO: expand, should involve handler stuff too
+def _wipe_cache():
+    # TODO: expand, should involve handler stuff too
     xmls = glob.glob(_xml_data_prefix + '*.xml')
     for xml in xmls:
         os.remove(xml)
@@ -443,7 +419,5 @@ def _wipe_cache():  # TODO: expand, should involve handler stuff too
         os.remove(_id_path)
     if os.path.exists(_xml_url_path):
         os.remove(_xml_url_path)
-    if os.path.exists(_shelfmark_path):
-        os.remove(_shelfmark_path)
     if os.path.exists(_potential_xml_url_path):
         os.remove(_potential_xml_url_path)
