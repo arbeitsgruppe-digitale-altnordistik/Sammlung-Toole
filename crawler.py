@@ -223,8 +223,9 @@ def get_xml_urls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = 
         df = get_ids(df=None, use_cache=use_cache, cache=cache, max_res=max_res)
     if max_res > 0 and max_res < len(df.index):
         df = df[:max_res]
-    potential_urls = df.apply(_get_potential_xml_urls, axis=1)  # TODO: improve this with vectorized string operation?
-    xmls = _get_existing_xml_urls(potential_urls, max_res, prog, cache).sort_values(by=['collection', 'id'])
+    log.debug("Building potential URLs")
+    potential_urls = df.apply(_get_potential_xml_urls, axis=1)  # XXX: improve!  # TODO: improve this with vectorized string operation?
+    xmls = _get_existing_xml_urls(potential_urls, max_res, prog, cache, use_cache).sort_values(by=['collection', 'id'])
     xmls['shelfmark'] = xmls['soup'].apply(_get_shelfmark)
     soups = xmls[['soup', 'xml_file']]
     soups['path'] = _xml_data_prefix + soups['xml_file']
@@ -253,14 +254,14 @@ def _get_potential_xml_urls(row: pd.Series):
     return row
 
 
-def _get_existing_xml_urls(potentials: pd.DataFrame, max_res, prog: guiUtils.Progress = None, cache=True) -> pd.DataFrame:
+def _get_existing_xml_urls(potentials: pd.DataFrame, max_res, prog: guiUtils.Progress = None, cache=True, use_cache=True) -> pd.DataFrame:
     """Create a dataframe with all URLs that exist (return HTTP code 200) - delegator method."""  # TODO: update eventually
     if prog:
         max = len(potentials.index)
         if max_res > 0:
             max = max_res * 3 + 2
         prog.set_steps(max)
-    iter_ = _get_existing_xml_urls_chillfully(potentials, max_res, prog, cache)
+    iter_ = _get_existing_xml_urls_chillfully(potentials, max_res, prog, cache, use_cache)
     if max_res > 0:
         res = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url', 'xml_file', 'soup'])
         # TODO: add graceful shutdown
@@ -282,7 +283,10 @@ def _get_existing_xml_urls(potentials: pd.DataFrame, max_res, prog: guiUtils.Pro
     return res
 
 
-def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res, prog: guiUtils.Progress, cache: bool) -> Generator[Tuple[str], None, None]:
+def _get_existing_xml_urls_chillfully(
+        potentials: pd.DataFrame, max_res, prog: guiUtils.Progress, cache: bool, use_cache: bool) -> Generator[
+        Tuple[str],
+        None, None]:
     """Generator of slowly loaded rows for ms_urls dataframe."""
     if max_res > 0 and len(potentials.index) > max_res:
         potentials = potentials[:max_res]
@@ -291,16 +295,21 @@ def _get_existing_xml_urls_chillfully(potentials: pd.DataFrame, max_res, prog: g
         id_ = row['id']
         lang = ['en', 'da', 'is']
         for l in lang:
-            res = _get_xml_if_exists(col, id_, l, row[l], cache)
+            res = _get_xml_if_exists(col, id_, l, row[l], cache, use_cache)
             if res:
                 if prog:
                     prog.increment()
                 yield res
 
 
-def _get_xml_if_exists(col, id_, l, url: str, cache: bool):
+def _get_xml_if_exists(col, id_, l, url: str, cache: bool, use_cache: bool):
     """Returns tuple, if URL returns 200, None otherwise."""
     file = url.rsplit('/', 1)[1]
+    path = _xml_data_prefix + file
+    if use_cache and os.path.exists(path):
+        log.debug(f"Loaded from cache: {file}")
+        with open(path, 'r', encoding='utf-8') as f:
+            return col, id_, l, url, file, BeautifulSoup(f, 'xml')
     content = _load_xml_content(url)
     if content:
         if cache:
@@ -366,11 +375,13 @@ def _cache_xml(file, data):
 
 def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is actually XML
     """Load XML content from URL, ensuring the encoding is correct."""
-    log.debug(f"Loading XML Content: {url}")
     response = requests.get(url)
     if response.status_code != 200:
         return None
     bytes_ = response.text.encode(response.encoding)
+    if bytes_.startswith(b'<!DOCTYPE html'):
+        log.error(f"Content is not XML: {url}")
+        return ""
     if bytes_[0] == 255:
         try:
             bytes_ = bytes_[2:]
@@ -378,19 +389,33 @@ def _load_xml_content(url):  # TODO: somewhere here, ensure that the content is 
             txt = txt.replace('UTF-16', 'UTF-8', 1)
             log.warning(f"Found XML in encoding 'UTF-16-LE'. Converted to 'UTF-8'. Check if data was lost in the process.\nXML: {url}")
             return txt
-        except Exception as e:  # TODO: never seems to be the case
+        except Exception as e:
             log.warning(f"Failed to convert 'UTF-16-LE'. Fall back to 'ISO-8859-1'. Check if data was lost in the process.\nXML: {url}")
             log.exception(e)
             return response.text.replace('iso-8859-1', 'UTF-8')
     else:
-        try:
-            txt = bytes_.decode('utf-8')  # 0xe1
-            log.debug("Encodung: UTF-8")
-            return txt
-        except Exception as e:  # TODO: the case a lot, find a better way?
-            log.warning(f"Failed to convert 'UTF-8'. Fall back to 'ISO-8859-1'. Check if data was lost in the process.\nXML: {url}")
-            log.exception(e)
-            return response.text.replace('iso-8859-1', 'UTF-8')
+        if bytes_.startswith(b'<?xml version="1.0" encoding="UTF-8"?>'):
+            try:
+                txt = bytes_.decode('utf-8')
+                log.debug(f"Loaded {url} - Encoding: UTF-8")
+                return txt
+            except Exception as e:  # TODO: the case a lot, find a better way?
+                log.warning(f"Failed to convert {url}")
+                log.exception(e)
+                return ""
+        elif bytes_.startswith(b'<?xml version="1.0" encoding="iso-8859-1"?>'):
+            try:
+                txt = bytes_.decode('iso-8859-1')
+                txt = txt.replace('iso-8859-1', 'UTF-8')
+                log.debug(f"Loaded {url} - Encoding: ISO-8859-1 changed to UTF-8")
+                return txt
+            except Exception as e:  # TODO: the case a lot, find a better way?
+                log.warning(f"Failed to convert {url}")
+                log.exception(e)
+                return ""
+        else:
+            log.error(f"Unknown encoding: {url}")
+            return ""
 
 
 # Look up shelfmarks

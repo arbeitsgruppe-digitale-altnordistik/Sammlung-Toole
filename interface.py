@@ -76,7 +76,7 @@ def st_stderr(dst):
 # -----------------
 
 
-def rebuild_button():
+def rebuild_all_button():
     ''' This will run the crawl() function from the crawler, which will download everything
     from handrit
     '''
@@ -86,6 +86,13 @@ def rebuild_button():
         crawler.crawl(use_cache=False, prog=prog)
         st.write(f'Finished: {datetime.now()}')
         rebuild_handler()
+
+
+def reload_with_cache():
+    st.write(f'Start: {datetime.now()}')
+    prog = guiUtils.Progress("Loading Data from Handrit.is", "Done loading data from Handrit.is")
+    crawler.crawl(use_cache=True, prog=prog)
+    st.write(f'Finished: {datetime.now()}')
 
 
 def rebuild_handler():
@@ -140,7 +147,9 @@ def adv_options():
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
     # collections_button()  # TODO: Remove? I think, with the "browse data" page, this should be obsolete
     # msNumber_button()     #       dito
-    rebuild_button()
+    rebuild_all_button()
+    if st.sidebar.button("Reload Missing Data"):
+        reload_with_cache()
     if st.sidebar.button("Rebuild Data Handler"):
         rebuild_handler()
     # generate_reports()
