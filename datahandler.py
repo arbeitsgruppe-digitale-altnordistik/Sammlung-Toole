@@ -77,6 +77,14 @@ class DataHandler:
         df.drop(columns=['soup'], inplace=True)  # TODO: here or later? or store soups for quick access?
         return df
 
+    @staticmethod
+    def is_cached() -> bool:
+        return os.path.exists(PICKLE_PATH)
+
+    @staticmethod
+    def has_data_available() -> bool:
+        return crawler.has_data_available()
+
     # Class Methods
     # =============
 

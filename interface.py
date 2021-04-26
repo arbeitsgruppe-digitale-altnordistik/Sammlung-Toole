@@ -73,13 +73,23 @@ def st_stderr(dst):
 # -----------------
 
 
+def get_handler():
+    st.spinner('Grabbing data handler...')
+    if DataHandler.is_cached() or DataHandler.has_data_available():
+        rebuild_handler()
+    else:
+        st.sidebar.text("No data at hand. Needs loading first.")
+        adv_options()
+
+
 def rebuild_all_button():
     ''' This will run the crawl() function from the crawler, which will download everything
     from handrit
     '''
     if st.sidebar.button("Download everything"):
         st.write(f'Start: {datetime.now()}')
-        crawler.crawl(use_cache=False)
+        container = st.beta_container()
+        crawler.crawl(use_cache=False, prog=container)
         st.write(f'Finished: {datetime.now()}')
         rebuild_handler()
 
@@ -389,8 +399,7 @@ def full_menu():
         selected_function = MenuOptions[selection]
         selected_function()
     else:
-        st.sidebar.text("No data at hand. Needs loading first.")
-        adv_options()
+        get_handler()
 
 
 # Run
@@ -409,5 +418,6 @@ if __name__ == '__main__':
                              CurrentStep='Preprocessing',
                              postStep='',
                              currentCitaviData=pd.DataFrame(),
+                             #  data_handler=get_handler()
                              data_handler=None)
     full_menu()

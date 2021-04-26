@@ -1,4 +1,5 @@
 from typing import Generator, List, Tuple
+from numpy import integer
 import pandas as pd
 import requests
 import os
@@ -25,6 +26,8 @@ _xml_url_path = 'data/ms_urls.csv'
 _xml_data_prefix = 'data/xml/'
 _xml_content_pickle_path = 'data/contents.pickle'
 _xml_url_prefix = 'https://handrit.is/en/manuscript/xml/'
+PICKLE_PATH = "data/cache.pickle"
+BACKUP_PATH_MSS = "data/backups/mss.csv"
 
 verbose = True
 
@@ -129,7 +132,7 @@ def _load_ids(df: pd.DataFrame, max_res: int = -1) -> pd.DataFrame:
         hits = 0
         cols = list(df.collection)
         if max_res <= 0:
-            max_res = len(cols)
+            max_res = float('inf')
         for col in cols:
             if hits >= max_res:
                 break
@@ -178,7 +181,7 @@ def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tr
         pd.DataFrame: Dataframe containing manuscript URLs.
     """
     if use_cache and os.path.exists(_xml_url_path):
-        log.debug("Loading XML URLs from cache.")
+        log.info("Loading XML URLs from cache.")
         res = pd.read_csv(_xml_url_path)
         # TODO: get this to work again
         return res
@@ -214,6 +217,7 @@ def _get_existing_xmls(potentials: pd.DataFrame, prog=None, use_cache=True, cach
     with prog:
         stqdm.pandas(desc="Loading XMLs")
         potentials['content'] = potentials.progress_apply(lambda x: _get_xml_content_if_exists(x, cache, use_cache), axis=1)
+        # TODO: ensure that prog==None doesn't break anything anywhere
     potentials['exists'] = potentials['content'].apply(lambda x: True if x else False)
     df = potentials[potentials['exists'] == True]
     if max_res > 0 and len(df.index > max_res):
@@ -236,11 +240,12 @@ def _get_xml_content_if_exists(row: pd.Series, cache, use_cache):
 
 def _get_potential_xmls(id_df: pd.DataFrame, prog=None, use_cache=True, cache=True) -> pd.DataFrame:
     if use_cache and os.path.exists(_potential_xml_url_path):
-        log.debug("Loading XML URLs from cache.")
+        log.info("Loading XML URLs from cache.")
         res = pd.read_csv(_potential_xml_url_path)
         return res
-    df = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url'])
-    with prog:
+
+    def iterate():
+        df = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url'])
         for _, row in stqdm(id_df.iterrows(), total=len(id_df.index), desc="Calculating Potential URLs"):
             langs = ('en', 'da', 'is')
             for l in langs:
@@ -252,6 +257,12 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog=None, use_cache=True, cache=Tr
                                 'xml_url': url,
                                 'xml_file': file
                                 }, ignore_index=True)
+        return df
+    if prog:
+        with prog:
+            df = iterate()
+    else:
+        df = iterate()
     if cache:
         df.to_csv(_potential_xml_url_path, encoding='utf-8', index=False)
     return df
@@ -290,7 +301,8 @@ def _load_xml_content(url):
             log.exception(e)
             return response.text.replace('iso-8859-1', 'UTF-8')
     else:
-        if bytes_.startswith(b'<?xml version="1.0" encoding="UTF-8"?>'):
+        if bytes_.startswith(b'<?xml version="1.0" encoding="UTF-8"?>') or \
+                bytes_.startswith(b'<?xml version="1.0" encoding="utf-8"?>'):
             try:
                 txt = bytes_.decode('utf-8')
                 return txt
@@ -320,10 +332,15 @@ def _load_xml_content(url):
 
 
 def _get_shelfmark(content: str) -> str:
-    root = etree.fromstring(content.encode())
-    msDesc = root.find('.//{http://www.tei-c.org/ns/1.0}msDesc')
-    msID = msDesc.get('{http://www.w3.org/XML/1998/namespace}id')
-    return msID
+    try:
+        root = etree.fromstring(content.encode())
+        msDesc = root.find('.//{http://www.tei-c.org/ns/1.0}msDesc')
+        msID = msDesc.get('{http://www.w3.org/XML/1998/namespace}id')
+        log.debug(f'Shelfmark: {msID}')
+        return msID
+    except Exception:
+        log.exception(f"Faild to load Shelfmark XML:\n\n{content}\n\n")
+        return ""
 
 
 # Access XML Directly
@@ -390,6 +407,16 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
     return res
 
 
+def has_data_available() -> bool:
+    xmls = glob.glob(_xml_data_prefix + '*.xml')
+    return xmls and \
+        os.path.exists(_coll_path) and \
+        os.path.exists(_id_path) and \
+        os.path.exists(_xml_url_path) and \
+        os.path.exists(_potential_xml_url_path) and \
+        os.path.exists(_xml_content_pickle_path)
+
+
 def crawl(use_cache: bool = False, prog=None):
     """crawl everything as fast as possible"""
     log.info(f'Start crawling: {datetime.now()}')
@@ -410,7 +437,6 @@ def crawl(use_cache: bool = False, prog=None):
 
 
 def _wipe_cache():
-    # TODO: expand, should involve handler stuff too
     xmls = glob.glob(_xml_data_prefix + '*.xml')
     for xml in xmls:
         os.remove(xml)
@@ -422,3 +448,9 @@ def _wipe_cache():
         os.remove(_xml_url_path)
     if os.path.exists(_potential_xml_url_path):
         os.remove(_potential_xml_url_path)
+    if os.path.exists(_xml_content_pickle_path):
+        os.remove(_xml_content_pickle_path)
+    if os.path.exists(BACKUP_PATH_MSS):
+        os.remove(BACKUP_PATH_MSS)
+    if os.path.exists(PICKLE_PATH):
+        os.remove(PICKLE_PATH)
