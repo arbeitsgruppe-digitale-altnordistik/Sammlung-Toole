@@ -4,18 +4,21 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 from typing import List, Optional, Union
+from bs4 import BeautifulSoup
 import pandas as pd
 import pickle
 import os
 import crawler
 import handrit_tamer_2 as tamer
 import utils
+from stqdm import stqdm
 
 
 log = utils.get_logger(__name__)
 
 
-PICKLE_PATH = "data/cache.pickle"
+PICKLE_PATH_HANDLER = "data/handler_cache.pickle"
+PICKLE_PATH_CONTENT = "data/cache.pickle"
 BACKUP_PATH_MSS = "data/backups/mss.csv"
 
 
@@ -38,8 +41,8 @@ class DataHandler:
 
     @staticmethod
     def _from_pickle() -> Optional[DataHandler]:
-        if os.path.exists(PICKLE_PATH):
-            with open(PICKLE_PATH, mode='rb') as file:
+        if os.path.exists(PICKLE_PATH_HANDLER):
+            with open(PICKLE_PATH_HANDLER, mode='rb') as file:
                 obj = pickle.load(file)
                 if isinstance(obj, DataHandler):
                     return obj
@@ -65,21 +68,37 @@ class DataHandler:
 
     @staticmethod
     def _load_ms_info(max_res: int = -1, prog=None) -> pd.DataFrame:
-        # TODO: load content pickle
-        df = crawler.crawl_xmls(max_res=max_res)
+        df, contents = crawler.crawl_xmls(max_res=max_res)
         if max_res > 0 and len(df.index) > max_res:
             df = df[:max_res]
-        # TODO: should not be necessary with content pickle
-        # TODO: add progressbar
-        df['soup'] = df['xml_url'].apply(crawler.load_xml)
-        msinfo = df['soup'].apply(tamer.get_msinfo)
+        if contents is not None:
+            df = pd.merge(df, contents, on='xml_file')
+        else:
+            stqdm.pandas(desc="Loading XML contents...")
+            if prog:
+                with prog:
+                    df['content'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
+            else:
+                df['content'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
+        stqdm.pandas(desc="Cooking soups from XML contents...")
+        if prog:
+            with prog:
+                df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
+        else:
+            df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
+        stqdm.pandas(desc="Boiling soups down to the essence of metadata...")
+        if prog:
+            with prog:
+                msinfo = df['soup'].progress_apply(tamer.get_msinfo)
+        else:
+            msinfo = df['soup'].apply(tamer.get_msinfo)
         df = df.join(msinfo)
         df.drop(columns=['soup'], inplace=True)  # TODO: here or later? or store soups for quick access?
         return df
 
     @staticmethod
     def is_cached() -> bool:
-        return os.path.exists(PICKLE_PATH)
+        return os.path.exists(PICKLE_PATH_HANDLER)
 
     @staticmethod
     def has_data_available() -> bool:
@@ -121,7 +140,7 @@ class DataHandler:
     # ================
 
     def _to_pickle(self):
-        with open(PICKLE_PATH, mode='wb') as file:
+        with open(PICKLE_PATH_HANDLER, mode='wb') as file:
             pickle.dump(self, file)
 
     def _backup(self):

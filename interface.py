@@ -103,7 +103,8 @@ def reload_with_cache():
 
 def rebuild_handler():
     st.write(f'Start: {datetime.now()}')
-    state.data_handler = DataHandler.get_handler()
+    container = st.beta_container()
+    state.data_handler = DataHandler.get_handler(prog=container)
     st.write(f'Finished: {datetime.now()}')
 
 

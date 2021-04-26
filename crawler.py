@@ -1,4 +1,4 @@
-from typing import Generator, List, Tuple
+from typing import Generator, List, Optional, Tuple
 from numpy import integer
 import pandas as pd
 import requests
@@ -160,7 +160,7 @@ def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
 # Crawl XML URLs
 # --------------
 
-def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog=None) -> pd.DataFrame:
+def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog=None) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Load all manuscript XMLs.
 
     The dataframe contains the following collumns:
@@ -182,9 +182,13 @@ def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tr
     """
     if use_cache and os.path.exists(_xml_url_path):
         log.info("Loading XML URLs from cache.")
-        res = pd.read_csv(_xml_url_path)
+        xmls = pd.read_csv(_xml_url_path)
+        if os.path.exists(_xml_content_pickle_path):
+            with open(_xml_content_pickle_path, mode='rb') as file:
+                contents = pickle.load(file)
+                return xmls, contents
+        return xmls, None
         # TODO: get this to work again
-        return res
         # if res is not None and not res.empty and _is_urls_complete(res):
         # TODO: improve working with half finished caches (e.g. after max_res)
         #    if verbose:
