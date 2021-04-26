@@ -106,6 +106,7 @@ def rebuild_handler():
     container = st.beta_container()
     state.data_handler = DataHandler.get_handler(prog=container)
     st.write(f'Finished: {datetime.now()}')
+    full_menu()
 
 
 # def redo_xmls_wrap():  # QUESTION: is this even used?

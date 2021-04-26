@@ -12,6 +12,7 @@ from crawler import load_xmls_by_id
 from datetime import datetime
 import re
 import statistics
+import utils
 
 
 # Test URLs
@@ -28,6 +29,9 @@ myURLList = ['AM02-0002', 'AM02-0022', 'AM02-190-b']
 # ---------
 
 _backspace_print = '                                     \r'
+
+
+log = utils.get_logger(__name__)
 
 # Utlity Functions
 # ----------------
@@ -133,15 +137,15 @@ def _get_key(leek: Tag) -> str:
     """
     key = leek.get('key')
     if key:
-        if key == "IS":
+        if key == "IS":  # XXX: is
             pretty_key = "Iceland"
-        elif key == "DK":
+        elif key == "DK":  # XXX: dk
             pretty_key = "Denmark"
         elif key == "FO":
             pretty_key = "Faroe Islands"
-        else:
+        else:  # XXX: NO, SE, KA
             pretty_key = "!! unknown country key"
-            print("!! unknown country key. Fix function get_key!!")
+            log.warning(f"unknown country key: {key}. (Fix function get_key)")
     else:
         pretty_key = None
 
@@ -368,7 +372,7 @@ def get_folio(soup: BeautifulSoup) -> int:
         folio_check: str = str(folio_total)
         if len(folio_check) > 3:
             name: str = get_tag(soup)
-            print(name + ": Attention. Check number of folios.")
+            log.warning(name + ": Attention. Check number of folios.")
         elif folio_total == 0:
             folio_total = 0
 
@@ -443,7 +447,7 @@ def _get_length(txt: str) -> int:
             pretty_length = sum(int_list) / len(int_list)
             pretty_length = int(pretty_length)
     except:
-        print("Curr MS missing length!")
+        log.info(f"Curr MS missing length!")
         pretty_length = 0
 
     return pretty_length
@@ -467,19 +471,23 @@ def get_extent(soup: BeautifulSoup) -> str:
 
     dimensions: Tag = extent_copy.find('dimensions')
 
-    while dimensions:
+    try:
+        while dimensions:
 
-        height: Tag = dimensions.height
-        width: Tag = dimensions.width
+            height: Tag = dimensions.height
+            width: Tag = dimensions.width
 
-        unit: str = dimensions.get('unit')
-        if not unit:
-            unit = "[mm?]"
-        height.string = height.string + " x"
-        width.string = width.string + " " + unit
+            unit: str = dimensions.get('unit')
+            if not unit:
+                unit = "[mm?]"
+            height.string = height.string + " x"
+            width.string = width.string + " " + unit
 
-        extent_copy.dimensions.unwrap()
-        dimensions = extent_copy.find('dimensions')
+            extent_copy.dimensions.unwrap()
+            dimensions = extent_copy.find('dimensions')
+    except Exception:
+        log.exception("failed building manuscript extent description")
+        return "N/A"
 
     pretty_extent: str = get_cleaned_text(extent_copy)
 
@@ -546,7 +554,7 @@ def get_date(soup: BeautifulSoup):
     meandate = 0
     yearrange = 0
     if not tag:
-        return date, tp, ta, meandate, yearrange  # TODO: error handling
+        return date, tp, ta, meandate, yearrange
 
     if tag.get("notBefore") and tag.get("notAfter"):
         notBefore = str(tag["notBefore"])
@@ -635,7 +643,7 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: shou
     i = 0
     for thing in inData:
 
-        print(f'Loading: {i}, which is {thing}', end=_backspace_print)
+        log.info(f'Loading: {i}, which is {thing}', end=_backspace_print)
         i += 1
         if DataType == 'urls':
             soup = load_xml(thing)
@@ -663,7 +671,7 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: shou
                    "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"]
         data = pandafy_data(structure, columns)
 
-    print(f'Loaded:  {i}',)
+    log.info(f'Loaded:  {i}',)
 
     return data
 
@@ -733,7 +741,7 @@ def get_citavified_data(inData: list, DataType: str = 'urls') -> tuple:
 
     mylist = []
     for thing in inData:
-        print(f'Loading: {i}', end=_backspace_print)
+        log.info(f'Loading: {i}', end=_backspace_print)
         i += 1
 
         if DataType == 'urls':
@@ -759,7 +767,7 @@ def get_citavified_data(inData: list, DataType: str = 'urls') -> tuple:
     data = pandafy_data(structure, columns)
     file_name = "metadata_citavified"
 
-    print(f'Loaded:  {i}',)
+    log.info(f'Loaded:  {i}',)
 
     return data, file_name
 
@@ -825,7 +833,7 @@ def pandafy_data(result: list, columns: list) -> DataFrame:
 
 def CSVExport(FileName: str, DataFrame):
     DataFrame.to_csv(FileName+".csv", sep='\t', encoding='utf-8', index=False)
-    print("File exported")
+    log.info("File exported")
     return
 
 
