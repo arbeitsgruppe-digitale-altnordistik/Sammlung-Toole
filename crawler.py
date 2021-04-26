@@ -305,8 +305,8 @@ def _load_xml_content(url):
             log.exception(e)
             return response.text.replace('iso-8859-1', 'UTF-8')
     else:
-        if bytes_.startswith(b'<?xml version="1.0" encoding="UTF-8"?>') or \
-                bytes_.startswith(b'<?xml version="1.0" encoding="utf-8"?>'):
+        if bytes_.startswith(b'<?xml version="1.0" encoding="UTF-8"') or \
+                bytes_.startswith(b'<?xml version="1.0" encoding="utf-8"'):
             try:
                 txt = bytes_.decode('utf-8')
                 return txt
@@ -314,7 +314,7 @@ def _load_xml_content(url):
                 log.warning(f"Failed to convert {url}")
                 log.exception(e)
                 return ""
-        elif bytes_.startswith(b'<?xml version="1.0" encoding="iso-8859-1"?>'):
+        elif bytes_.startswith(b'<?xml version="1.0" encoding="iso-8859-1"'):
             try:
                 txt = bytes_.decode('iso-8859-1')
                 txt = txt.replace('iso-8859-1', 'UTF-8')
