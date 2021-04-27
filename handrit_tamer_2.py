@@ -2,10 +2,16 @@ from typing import Set
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 import pandas as pd
-import statistics
 import crawler
 import requests
 from bs4 import BeautifulSoup
+from metadata import get_all_data as maddyData  # TODO: should become obsolete
+import metadata
+import utils
+
+
+log = utils.get_logger(__name__)
+
 
 # MS Texts
 # --------
@@ -33,141 +39,89 @@ def get_mstexts(soups):
 # --------
 
 
-def get_msinfo_(soup: BeautifulSoup):  # TODO: get rid of this, once it works with series
-    msID = soup.find("msIdentifier")
-    if not msID:
-        country, settlement, repository, signature = "", "", "", ""
-    else:
-        country = msID.find("country").get_text()
-        country = msID.find("settlement").get_text()
-        country = msID.find("repository").get_text()
-        country = msID.find("idno").get_text()
+# def get_msinfo_(soup: BeautifulSoup):  # TODO: get rid of this, once it works with series
+#     msID = soup.find("msIdentifier")
+#     if not msID:
+#         country, settlement, repository, signature = "", "", "", ""
+#     else:
+#         country = msID.find("country").get_text()
+#         country = msID.find("settlement").get_text()
+#         country = msID.find("repository").get_text()
+#         country = msID.find("idno").get_text()
 
-    date, tp, ta, meandate, yearrange = get_date(soup)
+#     date, tp, ta, meandate, yearrange = metadata.get_date(soup)
 
-    return country, settlement, repository, signature, date, tp, ta, meandate, yearrange
+#     return country, settlement, repository, signature, date, tp, ta, meandate, yearrange
 
 
 def get_msinfo(soup: BeautifulSoup):
-    msID = soup.find("msIdentifier")
-    if not msID:
-        country, settlement, repository, signature = "", "", "", ""
-    else:
-        c = msID.find("country")
-        country = c.get_text() if c else ""
-        s = msID.find("settlement")
-        settlement = s.get_text() if s else ""
-        r = msID.find("repository")
-        repository = r.get_text() if r else ""
-        si = msID.find("idno")
-        signature = si.get_text() if si else ""
+    shorttitle = metadata.get_shorttitle(soup)
+    signature, country, settlement, repository = metadata.get_msID(soup)
+    origin = metadata.get_origin(soup)
+    date, tp, ta, meandate, yearrange = metadata.get_date(soup)
+    support = metadata.get_support(soup)
+    folio = metadata.get_folio(soup)
+    height, width = metadata.get_dimensions(soup)
+    creator = metadata.get_creator(soup)
+    extent = metadata.get_extent(soup)
+    description = metadata.get_description(soup)
 
-    date, tp, ta, meandate, yearrange = get_date(soup)
-
-    return pd.Series({"country": country,
+    return pd.Series({"signature": signature,
+                      "shorttitle": shorttitle,
+                      "country": country,
                       "settlement": settlement,
                       "repository": repository,
-                      "signature": signature,
+                      "origin": origin,
                       "date": date,
                       "tp": tp,
                       "ta": ta,
                       "meandate": meandate,
-                      "yearrange": yearrange})
+                      "yearrange": yearrange,
+                      "support": support,
+                      "folio": folio,
+                      "height": height,
+                      "width": width,
+                      "extent": extent,
+                      "description": description,
+                      "creator": creator})
 
 
-def get_date(soup: BeautifulSoup):
-    tag = soup.origDate
-    date = ""
-    ta = 0
-    tp = 0
-    meandate = 0
-    yearrange = 0
-    if not tag:
-        return date, tp, ta, meandate, yearrange  # TODO: error handling
+# def get_msinfos(soups):  # TODO: still needed? if so, update!
+#     data = pd.DataFrame(columns=["Handrit ID",
+#                                  "Signature",
+#                                  "Country",
+#                                  "Settlement",
+#                                  "Repository",
+#                                  "Original Date",
+#                                  "Mean Date",
+#                                  "Range",
+#                                  ])
 
-    if tag.get("notBefore") and tag.get("notAfter"):
-        notBefore = str(tag["notBefore"])
-        notAfter = str(tag["notAfter"])
+#     for soup in soups:
+#         tag = soup.msDesc
+#         try:
+#             handritID = str(tag["xml:id"])
+#             handritID = handritID[0:-3]
+#         except:
+#             handritID = "N/A"
 
-        # TODO: give indication why this happened
-        # Snibbel Snibbel
-        if len(notBefore) >= 5:
-            notBefore = notBefore[0:4]
+#         country, settlement, repository, signature, date, tp, ta, meandate, yearrange = get_msinfo_(soup)
 
-        if len(notAfter) >= 5:
-            notAfter = notAfter[0:4]
-        # Snibbel Snibbel Ende
+#         data = data.append({"Handrit ID": handritID,
+#                             "Signature": signature,
+#                             "Country": country,
+#                             "Settlement": settlement,
+#                             "Repository": repository,
+#                             "Original Date": date,
+#                             "Terminus Postquem": tp,
+#                             "Terminus Antequem": ta,
+#                             "Mean Date": meandate,
+#                             "Range": yearrange,
+#                             },
+#                            ignore_index=True,
+#                            )
 
-        date = f"{notBefore}-{notAfter}"
-        tp = int(notBefore)
-        ta = int(notAfter)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta) - int(tp)
-
-    elif tag.get("when"):
-        date = str(tag["when"])
-        normalized_date = date
-        if len(normalized_date) > 4:
-            normalized_date = normalized_date[:4]
-        tp = int(normalized_date)
-        ta = int(normalized_date)
-        meandate = tp
-        yearrange = 0
-
-    elif tag.get("from") and tag.get("to"):
-        fr = str(tag["from"])
-        to = str(tag["to"])
-        date = f"{fr}-{to}"
-        n = fr
-        if len(n) > 4:
-            n = n[:4]
-        tp = int(n)
-        n = to
-        if len(n) > 4:
-            n = n[:4]
-        ta = int(n)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta) - int(tp)
-
-    return date, tp, ta, meandate, yearrange
-
-
-def get_msinfos(soups):
-    data = pd.DataFrame(columns=["Handrit ID",
-                                 "Signature",
-                                 "Country",
-                                 "Settlement",
-                                 "Repository",
-                                 "Original Date",
-                                 "Mean Date",
-                                 "Range",
-                                 ])
-
-    for soup in soups:
-        tag = soup.msDesc
-        try:
-            handritID = str(tag["xml:id"])
-            handritID = handritID[0:-3]
-        except:
-            handritID = "N/A"
-
-        country, settlement, repository, signature, date, tp, ta, meandate, yearrange = get_msinfo_(soup)
-
-        data = data.append({"Handrit ID": handritID,
-                            "Signature": signature,
-                            "Country": country,
-                            "Settlement": settlement,
-                            "Repository": repository,
-                            "Original Date": date,
-                            "Terminus Postquem": tp,
-                            "Terminus Antequem": ta,
-                            "Mean Date": meandate,
-                            "Range": yearrange,
-                            },
-                           ignore_index=True,
-                           )
-
-    return data
+#     return data
 
 
 # TODO: move the following to crawler, remove possible duplication
@@ -268,7 +222,7 @@ def get_data_from_browse_url(url: str, DataType: str):
         pd.DataFrame: DataFrame containing MS contents or meta data.
     """
     ids = efnisordResult(url)
-    print(f"Got {len(ids)} IDs.")
+    log.info(f"Got {len(ids)} IDs.")
     xmls = []
     for i in ids:
         xml = crawler.load_xmls_by_id(i)
@@ -278,7 +232,8 @@ def get_data_from_browse_url(url: str, DataType: str):
     if DataType == "Contents":
         data = get_mstexts(xmls)
     if DataType == "Metadata":
-        data = get_msinfos(xmls)
+        # data = get_msinfos(xmls)  # TODO: rethink this function
+        data = None
     return data
 
 
@@ -304,21 +259,25 @@ def get_data_from_search_url(url: str, DataType: str):
         pd.DataFrame: DataFrame containing MS contents or meta data.
     """
     pages = get_search_result_pages(url)
-    print(f"Got {len(pages)} pages.")
+    log.info(f"Got {len(pages)} pages.")
     shelfmarks = get_shelfmarks_from_urls(pages)
-    print(f"Got {len(shelfmarks)} shelfmarks.")
+    log.info(f"Got {len(shelfmarks)} shelfmarks.")
     ids = get_id_from_shelfmark_local(shelfmarks)
+    if DataType == "Maditadata":
+        data = maddyData(inData=ids, DataType='ids')
+        return data
     xmls = []
     for i in ids:
         xml = crawler.load_xmls_by_id(i)
         xmlList = list(xml.values())
         for x in xmlList:
             xmls.append(x)
-    print(f"Got {len(xmls)} XML files")
+    log.info(f"Got {len(xmls)} XML files")
     if DataType == "Contents":
         data = get_mstexts(xmls)
     if DataType == "Metadata":
-        data = get_msinfos(xmls)
+        # data = get_msinfos(xmls)  # TODO: rethink this function
+        data = None
     return data
 
 
@@ -350,7 +309,7 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
     listList = []
     for url in inURLs:
         pages = get_search_result_pages(url)
-        print(f"Got {len(pages)} pages.")
+        log.info(f"Got {len(pages)} pages.")
         shelfmarks = get_shelfmarks_from_urls(pages)
         listList.append(shelfmarks)
     if joinMode == "Shared":
@@ -365,9 +324,10 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
         xmlList = list(xml.values())
         for x in xmlList:
             xmls.append(x)
-    print(f"Got {len(xmls)} XML files")
+    log.info(f"Got {len(xmls)} XML files")
     if DataType == "Contents":
         data = get_mstexts(xmls)
     if DataType == "Metadata":
-        data = get_msinfos(xmls)
+        # data = get_msinfos(xmls)  # TODO: rethink this function
+        data = None
     return data

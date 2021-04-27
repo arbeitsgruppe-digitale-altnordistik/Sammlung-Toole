@@ -4,13 +4,22 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 from typing import List, Optional, Union
+from bs4 import BeautifulSoup
 import pandas as pd
 import pickle
 import os
 import crawler
 import handrit_tamer_2 as tamer
+import utils
+from stqdm import stqdm
 
-PICKLE_PATH = "data/cache.pickle"
+
+log = utils.get_logger(__name__)
+
+
+PICKLE_PATH_HANDLER = "data/handler_cache.pickle"
+PICKLE_PATH_CONTENT = "data/cache.pickle"
+BACKUP_PATH_MSS = "data/backups/mss.csv"
 
 
 class DataHandler:
@@ -18,10 +27,11 @@ class DataHandler:
                  manuscripts: pd.DataFrame = None,
                  texts: pd.DataFrame = None,
                  persons: pd.DataFrame = None,
-                 max_res: int = -1):
+                 max_res: int = -1,
+                 prog=None):
         """"""  # CHORE: documentation
-        print("Creating new handler")
-        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res)
+        log.info("Creating new handler")
+        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res, prog=prog)
         self.texts = texts if texts else pd.DataFrame()  # TODO
         self.persons = persons if persons else pd.DataFrame()  # TODO
         self.subcorpora = []  # TODO: discuss how/what we want
@@ -31,8 +41,8 @@ class DataHandler:
 
     @staticmethod
     def _from_pickle() -> Optional[DataHandler]:
-        if os.path.exists(PICKLE_PATH):
-            with open(PICKLE_PATH, mode='rb') as file:
+        if os.path.exists(PICKLE_PATH_HANDLER):
+            with open(PICKLE_PATH_HANDLER, mode='rb') as file:
                 obj = pickle.load(file)
                 if isinstance(obj, DataHandler):
                     return obj
@@ -57,41 +67,71 @@ class DataHandler:
         return None
 
     @staticmethod
-    def _load_ms_info(max_res: int = -1) -> pd.DataFrame:
-        df = crawler.get_xml_urls(max_res=max_res)
+    def _load_ms_info(max_res: int = -1, prog=None) -> pd.DataFrame:
+        df, contents = crawler.crawl_xmls(max_res=max_res)
         if max_res > 0 and len(df.index) > max_res:
             df = df[:max_res]
-        df['soup'] = df['xml_url'].apply(crawler.load_xml)
-        df = df.join(df['soup'].apply(tamer.get_msinfo))
+        if contents is not None:
+            df = pd.merge(df, contents, on='xml_file')
+        else:
+            stqdm.pandas(desc="Loading XML contents...")
+            if prog:
+                with prog:
+                    df['content'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
+            else:
+                df['content'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
+        stqdm.pandas(desc="Cooking soups from XML contents...")
+        if prog:
+            with prog:
+                df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
+        else:
+            df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
+        stqdm.pandas(desc="Boiling soups down to the essence of metadata...")
+        if prog:
+            with prog:
+                msinfo = df['soup'].progress_apply(tamer.get_msinfo)
+        else:
+            msinfo = df['soup'].apply(tamer.get_msinfo)
+        df = df.join(msinfo)
         df.drop(columns=['soup'], inplace=True)  # TODO: here or later? or store soups for quick access?
         return df
+
+    @staticmethod
+    def is_cached() -> bool:
+        return os.path.exists(PICKLE_PATH_HANDLER)
+
+    @staticmethod
+    def has_data_available() -> bool:
+        return crawler.has_data_available()
 
     # Class Methods
     # =============
 
     @classmethod
-    def get_handler(cls, max_res: int = -1) -> DataHandler:
+    def get_handler(cls, max_res: int = -1, prog=None) -> DataHandler:
         """Get a DataHandler
 
         Factory method to get a DataHandler object.
 
         Args:
             max_res (int, optional): maximum number of results, mostly for testing purposes. Defaults to -1.
+            # CHORE: prog
 
         Returns:
             DataHandler: A DataHandler, either loaded from cache or created anew.
         """
-        print("Getting DataHandler")
+        log.info("Getting DataHandler")
         res = cls._from_pickle()  # TODO: max_res
         if res:
+            res._backup()
             return res
-        print("Could not get DataHandler from pickle")
+        log.info("Could not get DataHandler from pickle")
         res = cls._from_backup()  # TODO: max_res
         if res:
             res._to_pickle()
             return res
-        print("Could not get DataHandler from backup")
-        res = cls(max_res=max_res)
+        log.info("Could not get DataHandler from backup")
+        res = cls(max_res=max_res, prog=prog)
         res._to_pickle()
         res._backup()
         return res
@@ -100,11 +140,12 @@ class DataHandler:
     # ================
 
     def _to_pickle(self):
-        with open(PICKLE_PATH, mode='wb') as file:
+        with open(PICKLE_PATH_HANDLER, mode='wb') as file:
             pickle.dump(self, file)
 
     def _backup(self):
-        pass  # TODO: implement to csv/json
+        self.manuscripts.to_csv(BACKUP_PATH_MSS, encoding='utf-8', index=False)
+        # TODO: implement rest to csv/json
 
     # API Methods
     # -----------
