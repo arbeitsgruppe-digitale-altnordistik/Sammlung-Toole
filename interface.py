@@ -241,10 +241,34 @@ def postprocessing():
         state.postStep = 'Cleaning'
     if state.postStep == 'Cleaning':
         dataCleaner()
+    if st.button('Plot dating'):
+        state.postStep = 'Plotting'
+    if state.postStep == 'Plotting':
+        if state.resultMode == "Metadata":
+            fig = date_plotting(state.currentData)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.write('No data to plot!')
 
 
 # def dataInspector():
-    
+
+
+def date_plotting(inDF):
+    ''' Plots the data of a given set of MSs. Used with MS metadata results. Returns scatterplot.
+
+    Args:
+        inDF(dataFrame, required): pandas DataFrame
+
+    Returns:
+        scatterplot data for plotly to be drawn with corresponding function
+    '''
+
+    inDF = inDF[inDF['Terminus Antequem'] != 0]
+    inDF = inDF[inDF['Terminus Postquem'] != 0]
+    fig = px.scatter(inDF, x='Terminus Postquem', y='Terminus Antequem', color='Signature')
+    return fig
+
 
 def dataCleaner():
     if state.resultMode == 'Maditadata':
