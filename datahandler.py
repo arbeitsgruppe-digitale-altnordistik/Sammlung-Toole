@@ -77,9 +77,9 @@ class DataHandler:
             stqdm.pandas(desc="Loading XML contents...")
             if prog:
                 with prog:
-                    df['content'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
+                    df['soup'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
             else:
-                df['content'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
+                df['soup'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
         stqdm.pandas(desc="Boiling soups down to the essence of metadata...")
         if prog:
             with prog:
