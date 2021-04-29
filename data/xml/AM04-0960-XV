@@ -1,0 +1,104 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta content="text/html; charset=utf-8" http-equiv="content-type"></meta>
+        <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE8"></meta>
+        
+        
+        <link type="text/css" rel="stylesheet" href="/assets/tapestry/5.1.0.5/default.css"></link><link type="text/css" rel="stylesheet" href="/assets/blackbird/5.1.0.5/blackbird.css"></link><link type="text/css" rel="stylesheet" href="/assets/ctx/1.9.5-SNAPSHOT/css/all.css"></link><link href="/assets/ctx/1.9.5-SNAPSHOT/favicon.ico" rel="shortcut icon"></link>
+        <link media="print" type="text/css" rel="stylesheet" href="/assets/ctx/1.9.5-SNAPSHOT/css/print.css"></link>
+        <title>Resource not found | Handrit.is</title>
+        
+			<script src="/assets/scriptaculous/5.1.0.5/prototype.js" type="text/javascript"></script><script src="/assets/scriptaculous/5.1.0.5/scriptaculous.js" type="text/javascript"></script><script src="/assets/scriptaculous/5.1.0.5/effects.js" type="text/javascript"></script><script src="/assets/tapestry/5.1.0.5/tapestry.js" type="text/javascript"></script><script src="/assets/blackbird/5.1.0.5/blackbird.js" type="text/javascript"></script><script src="/assets/tapestry/5.1.0.5/tapestry-messages.js" type="text/javascript"></script><script src="/assets/ctx/1.9.5-SNAPSHOT/js/site.js" type="text/javascript"></script><script type="text/javascript">
+			
+			  var _gaq = _gaq || [];
+			  _gaq.push(['_setAccount', 'UA-19666866-4']);
+              _gaq.push(['_gat._anonymizeIp']);
+			  _gaq.push(['_trackPageview']);
+			
+			  (function() {
+			    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+			  })();
+			
+			</script>
+		
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script type="text/javascript">
+	       jQuery = jQuery.noConflict(true);
+	    </script>
+        
+        <!-- <script type="text/javascript" src="http://www.archive.org/includes/jquery-1.4.2.min.js"></script>
+        
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"  type="text/javascript"></script>
+    
+        
+        <script type="text/javascript">
+	       jQuery = jQuery.noConflict(true);
+	    </script>
+        
+        <script type="text/javascript" src="http://www.archive.org/bookreader/jquery-ui-1.8.5.custom.min.js"></script>
+    	<script type="text/javascript" src="http://www.archive.org/bookreader/dragscrollable.js"></script>
+   	 	<script type="text/javascript" src="http://www.archive.org/bookreader/jquery.colorbox-min.js"></script>
+    	<script type="text/javascript" src="http://www.archive.org/bookreader/jquery.ui.ipad.js"></script>
+    	<script type="text/javascript" src="http://www.archive.org/bookreader/jquery.bt.min.js"></script> -->
+    
+        
+	<meta content="Apache Tapestry Framework (version 5.1.0.5)" name="generator"></meta></head>
+    <body>
+        <div id="printMark">Handrit.is</div>
+        <div id="outer">
+            <div id="masthead">
+                <a id="main_logo" href="https://handrit.is/en/">handrit.<em>is</em></a>
+                
+                <a id="admin_link" href="https://handrit.is/en/admin"> </a>
+            </div>
+            <div id="menu">
+                <a href="https://handrit.is/en/">Home</a>
+                <a href="https://handrit.is/en/manuscript/browse/uniform">Browse</a>
+                <a href="https://handrit.is/en/search/regular">Search</a>
+                <a href="https://handrit.is/en/about">About</a>
+                
+                
+                <div id="language_area">
+                    <label id="language_label">Interface Language</label>
+                    <span>
+                        
+                            
+                                    <a href="https://handrit.is/en/notfound.outerlayout.language/is">
+                                        <img title="Breyta tungumáli viðmóts í íslensku" alt="Icelandic" src="/assets/ctx/1.9.5-SNAPSHOT/images/is.png"/>
+                                    </a>
+                                
+                        
+                            
+                                <img title="Current language is English" alt="English" src="/assets/ctx/1.9.5-SNAPSHOT/images/en.png"/>
+                                
+                            
+                        
+                            
+                                    <a href="https://handrit.is/en/notfound.outerlayout.language/da">
+                                        <img title="Skift webstedets sprog til dansk" alt="Danish" src="/assets/ctx/1.9.5-SNAPSHOT/images/da.png"/>
+                                    </a>
+                                
+                        
+                    </span>
+                </div>
+            </div>
+            <div id="content">
+                
+
+    <h1>Resource not found</h1>
+
+    <p class="notFound">The item you requested could not be found.</p>
+    
+
+            </div>
+        </div>
+        <div id="footer">
+            <a href="https://handrit.is/en/statistics">Statistics</a>
+        	<span class="sep"> | </span>
+            <span>&copy; 2009-2021 National and University Library of Iceland</span>
+        </div>
+        
+    </body>
+</html>

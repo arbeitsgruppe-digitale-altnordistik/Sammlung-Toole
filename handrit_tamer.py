@@ -14,8 +14,8 @@ from bs4 import BeautifulSoup
 import urllib
 import pandas as pd
 import time
-import statistics
-import crawler
+from crawler import load_xml
+from crawler import load_xmls_by_id
 
 """# Result URL to list of shelfmarks
 
@@ -38,7 +38,7 @@ def leitaResult(inURL):
   resultPage0 = requests.get(inURL).content
   resultPagesList = []
   resultPagesList = resultPagesList.append(inURL)
-  soup = BeautifulSoup(resultPage0, 'lxml')
+  soup = load_xml(url)
   pagesSoup = soup.find(class_="t-data-grid-pager")
   print(pagesSoup)
   linksToPages = pagesSoup.find_all('a')
@@ -74,7 +74,7 @@ def get_shelfmarks(url):
         List[str]: A list of Shelfmarks
     """
     htm = requests.get(url).text
-    soup = BeautifulSoup(htm, 'lxml')
+    soup = load_xml(url)
     subsoups = soup.select("td.shelfmark")
     shelfmarks = [ss.get_text() for ss in subsoups]
     shelfmarks = [sm.strip() for sm in shelfmarks]
@@ -95,7 +95,7 @@ def get_search_result_pages(url):
     """
     res = [url]
     htm = requests.get(url).text
-    soup = BeautifulSoup(htm, 'lxml')
+    soup = load_xml(url)
     links = soup.select("div.t-data-grid-pager > a")
     urls = [l['href'] for l in links]
     for u in urls:
@@ -106,10 +106,6 @@ def get_search_result_pages(url):
 
 def get_shelfmarks_from_urls(urls):
   results = []
-  if len(urls) == 1:
-    url = urls[0]
-    results += get_shelfmarks(url)
-    return list(set(results))
   for url in urls:
     results += get_shelfmarks(url)
     time.sleep(0.5)
@@ -324,9 +320,9 @@ def get_xml(urls):
     perc = (i + 1) / len(urls) * 100
     print(f'    Parsed XML {i + 1} of {len(urls)} ({perc}%)')
   return res
- 
 
 def get_mstexts(soups):
+
   handritID = []
   handritList = []
   textmatrix = []
@@ -335,14 +331,9 @@ def get_mstexts(soups):
   for soup in soups:
     # Finds handritID for labelling the column
     tag = soup.msDesc
-    try:
-      handritID = str(tag['xml:id'])
-      handritID = handritID[0:-3]
-    except:
-      handritID = 'N/A'
+    handritID = str(tag['xml:id'])
+    handritID = handritID[0:-3]
     handritList.append(handritID)
-  
-      
 
     titlelist = []
     title = []
@@ -359,7 +350,7 @@ def get_mstexts(soups):
     for titleStmt in soup("titleStmt"):
         titleStmt.decompose()
 
-    # There, we noticed that sometimes the tag title is used even though it shoudn't
+    # There, we noticed that sometimes the tag title is used even though it shoudlnt
     for surrogates in soup("surrogates"):
         surrogates.decompose()
 
@@ -442,56 +433,33 @@ def get_msinfo(soups):
   noteBefore = []
   notAfter = []
   when = []
-  meandate = []
-  yearrange = []
 
   data = []
   data = pd.DataFrame(columns=['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', "Mean Date", "Range"])
+                               'Settlement', 'Repository', 'Original Date', 'Terminus Antequem', 'Terminus Postquem'])
 
-  for soup in soups: 
-
+  for soup in soups:
     #handrit-ID finder
     tag = soup.msDesc
-    try:
-      handritID = str(tag['xml:id'])
-      handritID = handritID[0:-3]
-    except:
-      handritID = 'N/A'
+    handritID = str(tag['xml:id'])
+    handritID = handritID[0:-3]
     
     #msIdentifier finder
-    try:
-      msID = soup.find("msIdentifier")
-    except:
-      msID = 'N/A'
+    msID = soup.find("msIdentifier")
 
     #msDetails finder
-    if msID == 'N/A':
-      country = 'N/A'
-      settlement = 'N/A'
-      repository = 'N/A'
-      signature = 'N/A'
-    else:
-      country = msID.find("country")
-      settlement = msID.find("settlement")
-      repository = msID.find("repository")
-      signature = msID.find("idno")
-      country = country.get_text()
-      settlement = settlement.get_text()
-      repository = repository.get_text()
-      signature = signature.get_text()
-      
-
+    country = msID.find("country")
+    settlement = msID.find("settlement")
+    repository = msID.find("repository")
+    signature = msID.find("idno")
 
     
     #Original date: information rather in tag classes than as texts in tags!
     #Sometimes not before/not after, sometimes when
     tag = soup.origDate
-    date = "" 
+    date = ""
     ta = 0
     tp = 0
-    meandate = 0
-    yearrange = 0
     if tag:
       if tag.get('notBefore') and tag.get('notAfter'):
         notBefore = str(tag['notBefore'])
@@ -508,28 +476,22 @@ def get_msinfo(soups):
         date = str(notBefore + "-" + notAfter)
         tp = int(notBefore)
         ta = int(notAfter)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta)-int(tp)
-        
       elif tag.get('when'):
         date = str(tag['when'])
         tp = int(date)
         ta = int(date)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta)-int(tp)
-
       elif tag.get('from') and tag.get('to'):
         fr = str(tag['from'])
         to = str(tag['to'])
         date = str(fr + "-" + to)
         tp = int(fr)
         ta = int(to)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta)-int(tp)
-
 
     #make plain text
-    
+    country = country.get_text()
+    settlement = settlement.get_text()
+    repository = repository.get_text()
+    signature = signature.get_text()
 
     data = data.append({'Handrit ID': handritID, 'Signature' : signature,
                         'Country' : country,
@@ -537,156 +499,43 @@ def get_msinfo(soups):
                         'Repository' : repository,
                         'Original Date' : date,
                         'Terminus Postquem' : tp,
-                        'Terminus Antequem' : ta,
-                        'Mean Date' : meandate,
-                        'Range' : yearrange}, 
+                        'Terminus Antequem' : ta}, 
                        ignore_index=True)
  
 
   return data
-
-def get_id_from_shelfmark_local(shelfmarks: list) -> list:
-  _shelfmark_path = 'data/ms_shelfmarks.csv'
-  shelfIDPD = pd.read_csv(_shelfmark_path)
-  shelfIDPD = shelfIDPD[shelfIDPD['shelfmark'].isin(shelfmarks)]
-  idList = shelfIDPD['id'].tolist()
-  return idList
-
+    
 
 # Hier müsse noch die Funktion von Eline kommen, wie aus ner Signatur eine URL (myURL) werden kann
 # myURLList = ["https://handrit.is/is/manuscript/xml/JS08-0407-is.xml", "https://handrit.is/is/manuscript/xml/AM04-0666-a-en.xml",  "https://handrit.is/is/manuscript/xml/IB04-0070-is.xml", "https://handrit.is/is/manuscript/xml/AM04-0666-b-da.xml"]
 
 # resultingDataframe = get_msinfo(myURLList)
 
-"""Combine it all"""
+"""# Combine it all"""
 
-def get_data_from_browse_url(url: str, DataType: str):
-  '''Get the desired data from a handrit browse URL.
-    The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                                'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-    
-  Args:
-      inURL(str, required): A URL pointing to a handrit browse result page.
-      DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-      such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-
-  Returns:
-      pd.DataFrame: DataFrame containing MS contents or meta data.
-  '''
+def get_data_from_browse_url(url):
   ids = efnisordResult(url)
   print(f'Got {len(ids)} IDs.')
-  xmls = []
-  for i in ids:
-    xml = crawler.load_xmls_by_id(i)
-    xmlList = list(xml.values())
-    for x in xmlList:
-      xmls.append(x)
-  if DataType == "Contents":
-    data = get_mstexts(xmls)
-  if DataType == "Metadata":
-    data = get_msinfo(xmls)
+  urls = idstourls(ids)
+  print(f'Got {len(urls)} URLs.')
+  xmls = get_xml(urls)
+  data = get_mstexts(xmls)
+  # data = get_msinfo(xmls)
   return data
 
-def get_data_from_search_url(url: str, DataType: str):
-  '''This will get the requested data from the corresponding XML files and return it as a data frame.
-  
-  The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-    
-  Args:
-      inURL(str, required): A URL pointing to a handrit search result page.
-      DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-      such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-
-  Returns:
-      pd.DataFrame: DataFrame containing MS contents or meta data.
-  '''
+def get_data_from_search_url(url):
   pages = get_search_result_pages(url)
   print(f'Got {len(pages)} pages.')
   shelfmarks = get_shelfmarks_from_urls(pages)
   print(f'Got {len(shelfmarks)} shelfmarks.')
-  ids = get_id_from_shelfmark_local(shelfmarks)
-  xmls = []
-  for i in ids:
-    xml = crawler.load_xmls_by_id(i)
-    xmlList = list(xml.values())
-    for x in xmlList:
-      xmls.append(x)
-  print(f'Got {len(xmls)} XML files')
-  if DataType == "Contents": 
-    data = get_mstexts(xmls)
-  if DataType == "Metadata":
-    data = get_msinfo(xmls)
+  urls = shelfmarkstourls(shelfmarks)
+  print(f'Got {len(urls)} URLs.')
+  xmls = get_xml(urls)
+  data = get_mstexts(xmls)
+  # data = get_msinfo(xmls)
   return data
 
-
-def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
-  '''This will get the requested data from the corresponding XML files and return it as a data frame.
-  
-  The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-    
-  Args:
-      inURLs(list, required): A URL pointing to a handrit search result page.
-      DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-      joinMode(str, required): Whether you want all info or only those that occur in the results of all
-        search URLs passed as input. If 'shared' returns empty, it means there is no overlap.
-        Set 'All' if you want to return all MSs and their data (duplicates will be removed).
-        Set 'Shared' if you only want the MSs occuring in all search result URLs.
-
-  Returns:
-      pd.DataFrame: DataFrame containing MS contents or meta data.
-  '''
-  listList = []
-  for url in inURLs:
-    pages = get_search_result_pages(url)
-    print(f'Got {len(pages)} pages.')
-    shelfmarks = get_shelfmarks_from_urls(pages)
-    listList.append(shelfmarks)
-  if joinMode == 'Shared':
-    finalMSs = list(set.intersection(*map(set, listList)))
-  if joinMode == 'All':
-    allTheStuff = [i for x in listList for i in x]
-    finalMSs = list(set(allTheStuff))
-  ids = get_id_from_shelfmark_local(finalMSs)
-  xmls = []
-  for i in ids:
-    xml = crawler.load_xmls_by_id(i)
-    xmlList = list(xml.values())
-    for x in xmlList:
-      xmls.append(x)
-  print(f'Got {len(xmls)} XML files')
-  if DataType == "Contents":
-    data = get_mstexts(xmls)
-  if DataType == "Metadata":
-    data = get_msinfo(xmls)
-  return data
-
-
-
-"""Do the Magic
+"""# Do the Magic
 
 To be able to run the program, all code blocks before this text need to be run once to initialize everything.  
 Simply click in this text and then hit "Runtime" > "Run before" in the menu on top.
@@ -724,95 +573,28 @@ Explanation:
 # browse_sample = "https://handrit.is/is/manuscript/list/keyword/bok"
 # browse_sample = "https://handrit.is/is/manuscript/list/keyword/lestur"
 # browse_sample = "https://handrit.is/en/manuscript/list/keyword/timat"
-# browse_sample = "https://handrit.is/en/manuscript/list/keyword/lit"
+browse_sample = "https://handrit.is/en/manuscript/list/keyword/lit"
 
-# data = get_data_from_browse_url(browse_sample)
+data = get_data_from_browse_url(browse_sample)
 
-# print(data)
-# CSVExport("Browse_results", data)
+print(data)
+CSVExport("Browse_results", data)
 
-# """## Search
+"""## Search
 
-# The following code retrieves and analyzes the XMLs from one search result.  
-# It works just like the browse code.
-# """
+The following code retrieves and analyzes the XMLs from one search result.  
+It works just like the browse code.
+"""
 
-# # Search
+# Search
 
-# # search_sample = "https://handrit.is/en/search/results/WWbmHV"
-# # search_sample = "https://handrit.is/en/search/results/BzDSqt"
-# # search_sample = "https://handrit.is/en/search/results/CR9fkh"
-# # search_sample = "https://handrit.is/is/search/results/hsWTp2"
-# search_sample = "https://handrit.is/en/search/results/Wwf4t3"
+# search_sample = "https://handrit.is/en/search/results/WWbmHV"
+# search_sample = "https://handrit.is/en/search/results/BzDSqt"
+# search_sample = "https://handrit.is/en/search/results/CR9fkh"
+# search_sample = "https://handrit.is/is/search/results/hsWTp2"
+search_sample = "https://handrit.is/en/search/results/rBW9PB"
 
-# data = get_data_from_search_url(search_sample, DataType="Contents")
+data = get_data_from_search_url(search_sample)
 
-# print(data)
-# CSVExport("Search_results", data)
-
-# """## Advanced
-
-# The following code blocks do some manual work, which allows more refined analysis more quickly.
-
-# In the first code block we combine the shelfmarks of Landnámabók and Íslendingabók manuscripts.
-# """
-
-# # Search results of Landnámabók and Íslendingabók
-# landnama = "https://handrit.is/is/search/results/fgq5G8"
-# islendinga = "https://handrit.is/is/search/results/RmNlh3"
-# pages = get_search_result_pages(landnama)
-# shelfmarks_lnb = get_shelfmarks_from_urls(pages)
-# pages = get_search_result_pages(islendinga)
-# shelfmarks_ib = get_shelfmarks_from_urls(pages)
-
-# # combine the shelfmarks
-# shelfmarks_combined = shelfmarks_lnb + shelfmarks_ib
-
-# # ensure each shelfmark only appears once
-# shelfmarks_combined = list(set(shelfmarks_combined))
-
-# print(f'Number of shelfmarks: {len(shelfmarks_combined)}')
-
-# """If we run the code, in the next block, `shelfmarks_combined` will still be available.
-
-# If we were to change something in the next block, we wouldn't have to re-run the first block.
-
-
-# """
-
-# urls = shelfmarkstourls(shelfmarks_combined)
-# xmls_combined = get_xml(urls)
-# print(f'Number of XML files loaded: {len(xmls_combined)}')
-
-# """Finally, we can do all sorts of things with the XML, without having to reload it each time."""
-
-# data = get_mstexts(xmls_combined)
-# print(data)
-# CSVExport("lnb_ib_combined_texts", data)
-# data = get_msinfo(xmls_combined)
-# print(data)
-# CSVExport("lnb_ib_combined_metadata", data)
-
-# """E.g. we can get only the manuscripts that are dated"""
-
-# dated_data = data[data['Original Date'] != '']
-# print(dated_data)
-# CSVExport("lnb_ib_combined_metadata_dated", dated_data)
-# dates = dated_data[['Original Date', 'Terminus Antequem', 'Terminus Postquem']]
-# print(dates)
-
-# """We can even plot data"""
-
-# dates['Terminus Antequem'].plot.hist(bins=60)
-
-# dates['Terminus Antequem'].plot.hist(bins=60)
-# dates['Terminus Postquem'].plot.hist(bins=60)
-
-# dates[['Terminus Postquem', 'Terminus Antequem']].plot.hist(bins=60, alpha=0.5)
-
-# Test
-# ----
-
-# inList = ['https://handrit.is/en/search/results/L0tPvR', 'https://handrit.is/en/search/results/1HdG84']
-# data = get_from_search_list(inList, "Contents")
-# print(data)
+print(data)
+CSVExport("Search_results", data)
