@@ -80,12 +80,14 @@ class DataHandler:
                     df['content'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
             else:
                 df['content'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
-        stqdm.pandas(desc="Cooking soups from XML contents...")
-        if prog:
-            with prog:
-                df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
-        else:
-            df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
+        # import pdb; pdb.set_trace()
+        # stqdm.pandas(desc="Cooking soups from XML contents...")
+        # if prog:
+        #     with prog:
+        #         df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
+        # else:
+        #     df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
+        df['soup'] = df['content']
         stqdm.pandas(desc="Boiling soups down to the essence of metadata...")
         if prog:
             with prog:
