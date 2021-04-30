@@ -24,6 +24,7 @@ from handrit_tamer import get_from_search_list as multiSearch
 from datetime import datetime
 import metadata
 import sessionState
+from handrit_tamer import get_data_from_browse_list as multiBrowse
 
 
 
@@ -151,6 +152,11 @@ def search_page():
     '''Workbench. Proper doc to follow soon.'''
 
     st.title("Result Workflow Builder")
+    if state.didRun == 'Started, dnf.':
+        st.write('There was an issue last time')
+        if st.button('Restart'):
+            state.CurrentStep = 'Preprocessing'
+            state.didRun = ''
     if state.CurrentStep == 'Preprocessing':
         st.header("Preprocessing")
         st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
@@ -171,29 +177,45 @@ def search_page():
                 dataS = multiSearch(baseList, DataType=state.resultMode, joinMode=state.joinMode)
             if state.currentBURL and state.multiBrowse == False:
                 dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
+            if state.currentBURL and state.multiBrowse == True:
+                baseList = [x.strip() for x in state.currentBURL.split(',')]
+                dataB = multiBrowse(baseList, state.resultMode, state.joinMode)
             
             # This block will check the data the got delivered and display it
-            if state.resultMode == 'Contents':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=1)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
-            if state.resultMode == 'Maditadata':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=0).drop_duplicates().reset_index(drop=True)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
-            if state.resultMode == 'Metadata':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=1)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
+            if state.joinMode == 'Shared':
+                if state.resultMode == 'Maditadata':
+                    if state.currentSURL and state.currentBURL:
+                        state.currentData = pd.merge(dataS, dataB, how='inner', on='Handrit-ID')
+                    if state.currentSURL and not state.currentBURL:
+                        state.currentData = dataS
+                    if state.currentBURL and not state.currentSURL:
+                        state.currentData = dataB
+                else:
+                    if state.currentSURL and state.currentBURL:
+                        mssA = list(dataS.columns.values)
+                        mssB = list(dataB.columns.values)
+                        mssC = [i for i in mssA if i in mssB]
+                        middelData = pd.concat([dataS, dataB], axis=1)
+                        state.currentData = middelData[middelData.columns.intersection(mssC)].drop_duplicates()
+                    if state.currentSURL and not state.currentBURL:
+                        state.currentData = dataS
+                    if state.currentBURL and not state.currentSURL:
+                        state.currentData = dataB
+            if state.joinMode == 'All':
+                if state.resultMode == 'Maditadata':
+                    if state.currentSURL and state.currentBURL:
+                        state.currentData = pd.concat([dataS, dataB], axis=0).drop_duplicates().reset_index(drop=True)
+                    if state.currentSURL and not state.currentBURL:
+                        state.currentData = dataS
+                    if state.currentBURL and not state.currentSURL:
+                        state.currentData = dataB
+                else:
+                    if state.currentSURL and state.currentBURL:
+                        state.currentData = pd.concat([dataS, dataB], axis=1)
+                    if state.currentSURL and not state.currentBURL:
+                        state.currentData = dataS
+                    if state.currentBURL and not state.currentSURL:
+                        state.currentData = dataB
             if not state.currentData.empty:
                 state.didRun = 'OK'   
         if state.didRun == 'OK':
