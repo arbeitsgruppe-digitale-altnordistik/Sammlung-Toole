@@ -606,6 +606,47 @@ def get_data_from_browse_url(url: str, DataType: str):
     data = get_msinfo(xmls)
   return data
 
+def get_data_from_browse_list(urls: list, DataType: str, joinMode: str):
+  '''Get the desired data from a handrit browse URL.
+    The data frame to be returned depends on the DataType variable (cf. below).
+    If DataType = Contents:
+        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
+        witnesses listed in the MS description/XML.
+
+    If DataType = Metadata:
+        Data frame contains the following columns:
+        ['Handrit ID', 'Signature', 'Country',
+                                'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
+    
+  Args:
+      inURL(str, required): A URL pointing to a handrit browse result page.
+      DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
+      such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
+
+  Returns:
+      pd.DataFrame: DataFrame containing MS contents or meta data.
+  '''
+  listList = [efnisordResult(url) for url in urls]
+  if joinMode == 'Shared':
+    ids = list(set.intersection(*map(set, listList)))
+  if joinMode == 'All':
+    ids = list(set([i for x in listList for i in x]))
+  print(f'Got {len(ids)} IDs.')
+  if DataType == "Maditadata":
+    data = maddyData(inData=ids, DataType='ids')
+    return data
+  xmls = []
+  for i in ids:
+    xml = crawler.load_xmls_by_id(i)
+    xmlList = list(xml.values())
+    for x in xmlList:
+      xmls.append(x)
+  if DataType == "Contents":
+    data = get_mstexts(xmls)
+  if DataType == "Metadata":
+    data = get_msinfo(xmls)
+  return data
+
 def get_data_from_search_url(url: str, DataType: str):
   '''This will get the requested data from the corresponding XML files and return it as a data frame.
   
