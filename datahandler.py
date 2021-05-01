@@ -10,16 +10,12 @@ import pickle
 import os
 import crawler
 import handrit_tamer_2 as tamer
-import utils
+from util import utils
+from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
 from stqdm import stqdm
 
 
 log = utils.get_logger(__name__)
-
-
-PICKLE_PATH_HANDLER = "data/handler_cache.pickle"
-PICKLE_PATH_CONTENT = "data/cache.pickle"
-BACKUP_PATH_MSS = "data/backups/mss.csv"
 
 
 class DataHandler:
@@ -41,8 +37,8 @@ class DataHandler:
 
     @staticmethod
     def _from_pickle() -> Optional[DataHandler]:
-        if os.path.exists(PICKLE_PATH_HANDLER):
-            with open(PICKLE_PATH_HANDLER, mode='rb') as file:
+        if os.path.exists(HANDLER_PATH_PICKLE):
+            with open(HANDLER_PATH_PICKLE, mode='rb') as file:
                 obj = pickle.load(file)
                 if isinstance(obj, DataHandler):
                     return obj
@@ -90,7 +86,7 @@ class DataHandler:
 
     @staticmethod
     def is_cached() -> bool:
-        return os.path.exists(PICKLE_PATH_HANDLER)
+        return os.path.exists(HANDLER_PATH_PICKLE)
 
     @staticmethod
     def has_data_available() -> bool:
@@ -132,7 +128,7 @@ class DataHandler:
     # ================
 
     def _to_pickle(self):
-        with open(PICKLE_PATH_HANDLER, mode='wb') as file:
+        with open(HANDLER_PATH_PICKLE, mode='wb') as file:
             pickle.dump(self, file)
 
     def _backup(self):

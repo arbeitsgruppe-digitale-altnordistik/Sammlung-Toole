@@ -12,7 +12,8 @@ import sys
 from handrit_tamer import get_from_search_list as multiSearch
 from datetime import datetime
 import metadata
-import sessionState
+from util import sessionState
+from util.constants import IMAGE_HOME
 from datahandler import DataHandler
 
 # unused?
@@ -20,12 +21,6 @@ import matplotlib
 import plotly.figure_factory as ff
 import plotly.express as px
 import streamlit.components.v1 as comps
-
-
-# Constants
-# ---------
-
-_home_image = 'data/title.png'      # Image displayed on home page
 
 
 # System
@@ -143,7 +138,7 @@ def mainPage():
 
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
-    st.image(_home_image)
+    st.image(IMAGE_HOME)
 
 
 def adv_options():

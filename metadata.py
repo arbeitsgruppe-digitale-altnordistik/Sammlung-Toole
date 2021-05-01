@@ -12,7 +12,7 @@ from crawler import load_xmls_by_id
 from datetime import datetime
 import re
 import statistics
-import utils
+from util import utils
 
 
 # Test URLs

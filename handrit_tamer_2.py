@@ -7,7 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 from metadata import get_all_data as maddyData  # TODO: should become obsolete
 import metadata
-import utils
+from util import utils
 
 
 log = utils.get_logger(__name__)
