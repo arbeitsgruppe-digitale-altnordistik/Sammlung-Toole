@@ -3,7 +3,7 @@ This module handles data and provides convenient and efficient access to it.
 """
 
 from __future__ import annotations
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 from bs4 import BeautifulSoup
 import pandas as pd
 import pickle
@@ -19,18 +19,13 @@ log = utils.get_logger(__name__)
 
 
 class DataHandler:
-    def __init__(self,
-                 manuscripts: pd.DataFrame = None,
-                 texts: pd.DataFrame = None,
-                 persons: pd.DataFrame = None,
-                 max_res: int = -1,
-                 prog=None):
+    def __init__(self, manuscripts: pd.DataFrame = None, texts: pd.DataFrame = None, persons: pd.DataFrame = None, max_res: int = -1, prog: Any = None):
         """"""  # CHORE: documentation
         log.info("Creating new handler")
         self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res, prog=prog)
         self.texts = texts if texts else pd.DataFrame()  # TODO
         self.persons = persons if persons else pd.DataFrame()  # TODO
-        self.subcorpora = []  # TODO: discuss how/what we want
+        self.subcorpora: List[Any] = []  # TODO: discuss how/what we want
 
     # Static Methods
     # ==============
@@ -63,7 +58,7 @@ class DataHandler:
         return None
 
     @staticmethod
-    def _load_ms_info(max_res: int = -1, prog=None) -> pd.DataFrame:
+    def _load_ms_info(max_res: int = -1, prog: Any = None) -> pd.DataFrame:
         df, contents = crawler.crawl_xmls(max_res=max_res)
         if max_res > 0 and len(df.index) > max_res:
             df = df[:max_res]
@@ -96,7 +91,7 @@ class DataHandler:
     # =============
 
     @classmethod
-    def get_handler(cls, max_res: int = -1, prog=None) -> DataHandler:
+    def get_handler(cls, max_res: int = -1, prog: Any = None) -> DataHandler:
         """Get a DataHandler
 
         Factory method to get a DataHandler object.
@@ -109,7 +104,7 @@ class DataHandler:
             DataHandler: A DataHandler, either loaded from cache or created anew.
         """
         log.info("Getting DataHandler")
-        res = cls._from_pickle()  # TODO: max_res
+        res: Optional[DataHandler] = cls._from_pickle()  # TODO: max_res
         if res:
             res._backup()
             return res
@@ -127,12 +122,12 @@ class DataHandler:
     # Instance Methods
     # ================
 
-    def _to_pickle(self):
+    def _to_pickle(self) -> None:
         with open(HANDLER_PATH_PICKLE, mode='wb') as file:
             pickle.dump(self, file)
 
-    def _backup(self):
-        self.manuscripts.to_csv(BACKUP_PATH_MSS, encoding='utf-8', index=False)
+    def _backup(self) -> None:
+        self.manuscripts.to_csv(HANDLER_BACKUP_PATH_MSS, encoding='utf-8', index=False)
         # TODO: implement rest to csv/json
 
     # API Methods
@@ -143,9 +138,9 @@ class DataHandler:
         return self.manuscripts
 
     def get_manuscript_data(self,
-                            ids: Union[List, pd.Series, pd.DataFrame] = None,
-                            urls: Union[List, pd.Series, pd.DataFrame] = None,
-                            filenames: Union[List, pd.Series, pd.DataFrame] = None) -> pd.DataFrame:
+                            ids: Union[List[str], pd.Series, pd.DataFrame] = None,
+                            urls: Union[List[str], pd.Series, pd.DataFrame] = None,
+                            filenames: Union[List[str], pd.Series, pd.DataFrame] = None) -> pd.DataFrame:
         # CHORE: documentation: one of these arguments must be passed, return df to mss
         pass  # TODO: implement
 
