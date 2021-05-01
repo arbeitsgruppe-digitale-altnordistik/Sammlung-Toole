@@ -24,7 +24,9 @@ import utils
 # myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 # myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
 # myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
-myURLList = ['AM02-0002', 'AM02-0022', 'AM02-190-b', 'Lbs04-1495', 'Einkaeign-0021', 'IB08-0174', 'NKS04-1809', 'Lbs04-4982', 'Acc-0001', 'JS04-0251', 'IB08-0174', 'AM02-0344', 'AM02-0115']
+myURLList = ['JSFragm-0003', 'JSFragm-0020', 'AM02-0002', 'AM02-0022', 'AM02-190-b', 'Lbs04-1495', 'Einkaeign-0021', 'IB08-0174', 'NKS04-1809', 'Lbs04-4982', 'Acc-0001', 'JS04-0251', 'IB08-0174', 'AM02-0344', 'AM02-0115']
+#myURLList = ['AM02-0002', 'Acc-0001', 'Lbs04-4982']
+#myURLList = ['Acc-0001']
 # Constants
 # ---------
 
@@ -273,7 +275,6 @@ def get_support(soup: BeautifulSoup) -> str:
 
     return pretty_support
 
-
 def get_folio(soup: BeautifulSoup) -> int:
     """Returns: total of folios.
     Find <extent> and make copy.
@@ -314,49 +315,62 @@ def get_folio(soup: BeautifulSoup) -> int:
 
     clean_extent_copy: str = get_cleaned_text(extent_copy)
 
-    folio_total: int = 0
-
     try:
-        '''Is a total of folio given:'''
-        given_total: int = clean_extent_copy.find("blöð alls")
+        copy_no_period = clean_extent_copy.replace('.', '')
+        copy_no_space = copy_no_period.replace(' ', '')
+        
+        perfect_copy = copy_no_space.isdigit()
+        
+        if perfect_copy == True:
+            folio_total = copy_no_space
 
-        if given_total > 0:
-            clean_extent_copy = clean_extent_copy[:given_total]
-            folio_total = int(clean_extent_copy)
         else:
-            '''No total is given. First Get rid of other unnecessary info:'''
-            given_emptiness: str = clean_extent_copy.find("Auð blöð")
-            if given_emptiness > 0:
-                clean_extent_copy = clean_extent_copy[:given_emptiness]
+            folio_total: int = 0
+            '''Is a total of folio given:'''
+            given_total: int = clean_extent_copy.find("blöð alls")
+
+            if given_total > 0:
+                clean_extent_copy = clean_extent_copy[:given_total]
+                folio_total = int(clean_extent_copy)
+            else:
+                '''No total is given. First Get rid of other unnecessary info:'''
+                given_emptiness: str = clean_extent_copy.find("Auð blöð")
+                if given_emptiness > 0:
+                    clean_extent_copy = clean_extent_copy[:given_emptiness]
+                else:
+                    pass
+
+                clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
+                
+                brackets: str = clean_extent_copy.find("()")
+
+                if brackets == -1:
+                    folio_total = _get_digits(clean_extent_copy)
+                
+                else:
+                    while brackets > 0:
+                        first_bit: str = clean_extent_copy[:brackets]
+                        clean_extent_copy = clean_extent_copy[brackets+2:]
+                        brackets = clean_extent_copy.find("()")
+                        folio_n = _get_digits(first_bit)
+                        if folio_n:
+                            folio_total = folio_total+folio_n
+
+                    folio_z = _get_digits(extent_copy)
+                    if folio_z:
+                        folio_total = folio_total+folio_z
+
+            folio_check: str = str(folio_total)
+            if len(folio_check) > 3:
+                name: str = get_tag(soup)
+                log.warning(name + ": Attention. Check number of folios.")
+            elif folio_total == 0:
+                folio_total = 0
             else:
                 pass
-
-            clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
-            brackets: str = clean_extent_copy.find("()")
-
-            while brackets > 0:
-                first_bit: str = clean_extent_copy[:brackets]
-                clean_extent_copy = clean_extent_copy[brackets+2:]
-                brackets = clean_extent_copy.find("()")
-                folio_n = _get_digits(first_bit)
-                if folio_n:
-                    folio_total = folio_total+folio_n
-
-            folio_z = _get_digits(extent_copy)
-            if folio_z:
-                folio_total = folio_total+folio_z
-
-        folio_check: str = str(folio_total)
-        if len(folio_check) > 3:
-            name: str = get_tag(soup)
-            log.warning(name + ": Attention. Check number of folios.")
-        elif folio_total == 0:
-            folio_total = 0
-
     except:
         folio_total = 0
-
-    print(folio_total)
+        log.warning(folio_total + ": Attention. Check number of folios.")
 
     return folio_total
 
