@@ -71,15 +71,13 @@ class DataHandler:
         df, contents = crawler.crawl_xmls(max_res=max_res)
         if max_res > 0 and len(df.index) > max_res:
             df = df[:max_res]
-        if contents is not None:
-            df = pd.merge(df, contents, on='xml_file')
+        df = pd.merge(df, contents, on='xml_file')
+        stqdm.pandas(desc="Cooking soups from XML contents...")
+        if prog:
+            with prog:
+                df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
         else:
-            stqdm.pandas(desc="Loading XML contents...")
-            if prog:
-                with prog:
-                    df['soup'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
-            else:
-                df['soup'] = df['xml_file'].progress_apply(crawler.load_xml_by_filename)
+            df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
         stqdm.pandas(desc="Boiling soups down to the essence of metadata...")
         if prog:
             with prog:
@@ -87,7 +85,7 @@ class DataHandler:
         else:
             msinfo = df['soup'].apply(tamer.get_msinfo)
         df = df.join(msinfo)
-        df.drop(columns=['soup'], inplace=True)  # TODO: here or later? or store soups for quick access?
+        # df.drop(columns=['soup'], inplace=True)  # TODO: here or later? or store soups for quick access?
         return df
 
     @staticmethod
