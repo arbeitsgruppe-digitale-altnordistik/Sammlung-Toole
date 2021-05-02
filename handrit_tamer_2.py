@@ -31,7 +31,7 @@ def get_mstext(soup: BeautifulSoup) -> Set:
 
 def get_mstexts(soups):
     # for soup in soups:
-    #     pass  # TODO
+    #     pass  # TODO: implement
     return pd.DataFrame()
 
 

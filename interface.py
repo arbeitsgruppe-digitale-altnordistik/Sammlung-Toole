@@ -148,8 +148,6 @@ def adv_options():
     st.title("Advanced Options Menu")
     st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
-    # collections_button()  # TODO: Remove? I think, with the "browse data" page, this should be obsolete
-    # msNumber_button()     #       dito
     rebuild_all_button()
     if st.sidebar.button("Reload Missing Data"):
         reload_with_cache()
@@ -157,7 +155,7 @@ def adv_options():
         rebuild_handler()
 
     # generate_reports()
-    # TODO: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
+    # LATER: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
 
 
 def search_page():
@@ -273,7 +271,8 @@ def dataCleaner():
     else:
         itemsPrev = len(state.currentData.columns)
         # newDF =
-        itemsAfter = len(newDF.columns)  # FIXME: newDF not defined?
+        newDF = pd.DataFrame()  # QUESTION: newDF not defined? (added this to get rid of warning)
+        itemsAfter = len(newDF.columns)
         newDF = newDF.loc[:, ~newDF.columns.duplicated()]
         itemsAfter1 = len(newDF.columns)
         diff0 = itemsPrev - itemsAfter
@@ -337,11 +336,11 @@ def browse_results(inURL: str, DataType: str):
 
 def static_reports():
     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
-
-    reports = {"Dating of all MSs": "all_MS_datings"}  # FIXME: function not defined
-    selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
-    selected = reports[selection]
-    eval(selected + "()")
+    st.text("Currently not available")
+    # reports = {"Dating of all MSs": "all_MS_datings"}  # QUESTION: function not defined
+    # selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
+    # selected = reports[selection]
+    # eval(selected + "()")
 
 
 def browse_data():

@@ -27,9 +27,9 @@ class DataHandler:
         log.info("Creating new handler")
         self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res, prog=prog, df=xmls, contents=contents)
         log.info("Loaded MS Info")
-        self.texts = texts if texts else pd.DataFrame()  # TODO
-        self.persons = persons if persons else pd.DataFrame()  # TODO
-        self.subcorpora: List[Any] = []  # TODO: discuss how/what we want
+        self.texts = texts if texts else pd.DataFrame()  # TODO: implement
+        self.persons = persons if persons else pd.DataFrame()  # TODO: implement
+        self.subcorpora: List[Any] = []  # TODO: implement
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
 
     # Static Methods
@@ -45,7 +45,6 @@ class DataHandler:
                     obj = pickle.load(file)
                     sys.setrecursionlimit(prev)
                     if isinstance(obj, DataHandler):
-                        # XXX: add soup?
                         return obj
             except Exception:
                 log.exception("Cound not load handler from pickle")
@@ -71,6 +70,7 @@ class DataHandler:
 
     @staticmethod
     def _load_ms_info(max_res: int = -1, prog: Any = None, df: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+        # LATER: look into `tqdm.contrib.concurrent:process_map`
         if df is None or contents is None:
             df, contents = crawler.crawl_xmls(max_res=max_res)
         if max_res > 0 and len(df.index) > max_res:
@@ -148,7 +148,7 @@ class DataHandler:
 
     def _backup(self) -> None:
         self.manuscripts.to_csv(HANDLER_BACKUP_PATH_MSS, encoding='utf-8', index=False)
-        # TODO: implement rest to csv/json
+        # TODO: implement backing up other props to csv/json
 
     # API Methods
     # -----------
@@ -164,16 +164,8 @@ class DataHandler:
         # CHORE: documentation: one of these arguments must be passed, return df to mss
         pass  # TODO: implement
 
-    # TODO: more API
+    # TASKS: more handler API
     # - more options how to get ms data
     # - options to get texts
     # - options to get persons
     # - options to work with subcorpora?
-
-    # TODO: even more stuff:
-    # - logging
-    # - improve crawler
-    # - tidy up everything
-    # - ...
-    #
-    # .

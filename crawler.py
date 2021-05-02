@@ -91,7 +91,7 @@ def crawl_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tru
     if use_cache and os.path.exists(CRAWLER_PATH_IDS):
         ids = pd.read_csv(CRAWLER_PATH_IDS)
         if ids is not None and not ids.empty and _is_ids_complete(ids):
-            # TODO: improve working with half finished caches (e.g. after max_res)
+            # LATER: improve working with half finished caches (e.g. after max_res)
             log.info('Loaded manuscript IDs from cache.')
             return ids
     if df is None:
@@ -108,7 +108,7 @@ def crawl_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tru
 
 def _is_ids_complete(ids: pd.DataFrame) -> bool:
     """indicates if the number of IDs matches the number indicated by the collections"""
-    # TODO: improve this
+    # LATER: improve this
     colls = crawl_collections()
     if colls['ms_count'].sum() == len(ids.index):
         return True
@@ -180,9 +180,9 @@ def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tr
         else:
             contents = _load_all_contents(xmls, use_cache=use_cache, cache=cache, max_res=max_res, prog=prog)
         return xmls, contents
-        # TODO: get this to work again
+        # LATER: get this to work again
         # if res is not None and not res.empty and _is_urls_complete(res):
-        # TODO: improve working with half finished caches (e.g. after max_res)
+        # LATER: improve working with half finished caches (e.g. after max_res)
         #    if verbose:
         #         print('Loaded XML URLs from cache.')
         #     return res
@@ -283,7 +283,7 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None, use_cache: bool =
 
 
 def _is_urls_complete(df: pd.DataFrame) -> bool:
-    # TODO: improve?
+    # LATER: improve this
     ids_a = len(crawl_ids()['id'].unique())
     ids_b = len(df['id'].unique())
     return ids_a == ids_b
