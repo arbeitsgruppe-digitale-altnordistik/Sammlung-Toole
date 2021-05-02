@@ -122,13 +122,19 @@ def _get_key(leek: Tag) -> Optional[str]:
     """
     key = leek.get('key')
     if key:
-        if key == "IS":  # XXX: is
+        if key == "IS" or key == "is":
             pretty_key = "Iceland"
-        elif key == "DK":  # XXX: dk
+        elif key == "DK" or key == "dk":
             pretty_key = "Denmark"
-        elif key == "FO":
+        elif key == "FO" or key == "fo":
             pretty_key = "Faroe Islands"
-        else:  # XXX: NO, SE, KA
+        elif key == "NO" or key == "no":
+            pretty_key = "Norway"
+        elif key == "SE" or key == "se":
+            pretty_key = "Sweden"
+        elif key == "KA" or key == "ka":
+            pretty_key = "Canada"
+        else:
             pretty_key = "!! unknown country key"
             log.warning(f"unknown country key: {key}. (Fix function get_key)")
     else:

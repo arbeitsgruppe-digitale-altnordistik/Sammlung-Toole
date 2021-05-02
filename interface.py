@@ -1,3 +1,4 @@
+from typing import Optional
 import streamlit as st
 import pandas as pd
 import crawler
@@ -84,9 +85,9 @@ def rebuild_all_button():
     if st.sidebar.button("Download everything"):
         st.write(f'Start: {datetime.now()}')
         container = st.beta_container()
-        crawler.crawl(use_cache=False, prog=container)
+        xmls, contents = crawler.crawl(use_cache=False, prog=container)
         st.write(f'Finished: {datetime.now()}')
-        rebuild_handler()
+        rebuild_handler(xmls, contents)
 
 
 def reload_with_cache():
@@ -96,10 +97,10 @@ def reload_with_cache():
     st.write(f'Finished: {datetime.now()}')
 
 
-def rebuild_handler():
+def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None):
     st.write(f'Start: {datetime.now()}')
     container = st.beta_container()
-    state.data_handler = DataHandler.get_handler(prog=container)
+    state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents, prog=container)
     st.write(f'Finished: {datetime.now()}')
     full_menu()
 

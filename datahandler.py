@@ -3,6 +3,7 @@ This module handles data and provides convenient and efficient access to it.
 """
 
 from __future__ import annotations
+import sys
 from typing import Any, List, Optional, Union
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -13,19 +14,23 @@ import handrit_tamer_2 as tamer
 from util import utils
 from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
 from stqdm import stqdm
+import jsonpickle
 
 
 log = utils.get_logger(__name__)
 
 
 class DataHandler:
-    def __init__(self, manuscripts: pd.DataFrame = None, texts: pd.DataFrame = None, persons: pd.DataFrame = None, max_res: int = -1, prog: Any = None):
+    def __init__(self, manuscripts: pd.DataFrame = None, texts: pd.DataFrame = None, persons: pd.DataFrame = None, max_res: int = -1, prog: Any = None,
+                 xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None):
         """"""  # CHORE: documentation
         log.info("Creating new handler")
-        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res, prog=prog)
+        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res, prog=prog, df=xmls, contents=contents)
+        log.info("Loaded MS Info")
         self.texts = texts if texts else pd.DataFrame()  # TODO
         self.persons = persons if persons else pd.DataFrame()  # TODO
         self.subcorpora: List[Any] = []  # TODO: discuss how/what we want
+        self.manuscripts.drop(columns=["content", "soup"], inplace=True)
 
     # Static Methods
     # ==============
@@ -33,10 +38,17 @@ class DataHandler:
     @staticmethod
     def _from_pickle() -> Optional[DataHandler]:
         if os.path.exists(HANDLER_PATH_PICKLE):
-            with open(HANDLER_PATH_PICKLE, mode='rb') as file:
-                obj = pickle.load(file)
-                if isinstance(obj, DataHandler):
-                    return obj
+            try:
+                prev = sys.getrecursionlimit()
+                with open(HANDLER_PATH_PICKLE, mode='rb') as file:
+                    sys.setrecursionlimit(prev * 100)
+                    obj = pickle.load(file)
+                    sys.setrecursionlimit(prev)
+                    if isinstance(obj, DataHandler):
+                        # XXX: add soup?
+                        return obj
+            except Exception:
+                log.exception("Cound not load handler from pickle")
         return None
 
     @staticmethod
@@ -58,8 +70,9 @@ class DataHandler:
         return None
 
     @staticmethod
-    def _load_ms_info(max_res: int = -1, prog: Any = None) -> pd.DataFrame:
-        df, contents = crawler.crawl_xmls(max_res=max_res)
+    def _load_ms_info(max_res: int = -1, prog: Any = None, df: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+        if df is None or contents is None:
+            df, contents = crawler.crawl_xmls(max_res=max_res)
         if max_res > 0 and len(df.index) > max_res:
             df = df[:max_res]
         df = pd.merge(df, contents, on='xml_file')
@@ -75,8 +88,8 @@ class DataHandler:
                 msinfo = df['soup'].progress_apply(tamer.get_msinfo)
         else:
             msinfo = df['soup'].apply(tamer.get_msinfo)
+        log.info("Loaded MS Info")
         df = df.join(msinfo)
-        # df.drop(columns=['soup'], inplace=True)  # TODO: here or later? or store soups for quick access?
         return df
 
     @staticmethod
@@ -91,7 +104,7 @@ class DataHandler:
     # =============
 
     @classmethod
-    def get_handler(cls, max_res: int = -1, prog: Any = None) -> DataHandler:
+    def get_handler(cls, xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None, max_res: int = -1, prog: Any = None) -> DataHandler:
         """Get a DataHandler
 
         Factory method to get a DataHandler object.
@@ -114,7 +127,7 @@ class DataHandler:
             res._to_pickle()
             return res
         log.info("Could not get DataHandler from backup")
-        res = cls(max_res=max_res, prog=prog)
+        res = cls(max_res=max_res, prog=prog, xmls=xmls, contents=contents)
         res._to_pickle()
         res._backup()
         return res
@@ -123,8 +136,15 @@ class DataHandler:
     # ================
 
     def _to_pickle(self) -> None:
+        log.info("Saving handler to pickle")
+        prev = sys.getrecursionlimit()
         with open(HANDLER_PATH_PICKLE, mode='wb') as file:
-            pickle.dump(self, file)
+            try:
+                sys.setrecursionlimit(prev * 100)
+                pickle.dump(self, file)
+                sys.setrecursionlimit(prev)
+            except Exception:
+                log.exception("Failed to pickle the data handler.")
 
     def _backup(self) -> None:
         self.manuscripts.to_csv(HANDLER_BACKUP_PATH_MSS, encoding='utf-8', index=False)

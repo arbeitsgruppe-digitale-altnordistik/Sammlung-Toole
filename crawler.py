@@ -1,18 +1,20 @@
-from typing import Any, Dict, Generator, List, Optional, Tuple
-import pandas as pd
-import requests
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 import os
 import glob
-from bs4 import BeautifulSoup
 from datetime import datetime
+import pickle
+from threading import Thread
+
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from stqdm import stqdm
+from lxml import etree
+
 from util import utils
 from util.constants import HANDLER_BACKUP_PATH_MSS, CRAWLER_PATH_IDS
 from util.constants import PREFIX_XML_DATA, PREFIX_XML_URL
 from util.constants import CRAWLER_PATH_CONTENT_PICKLE, CRAWLER_PICKLE_PATH, CRAWLER_PATH_URLS, CRAWLER_PATH_COLLECTIONS, CRAWLER_PATH_POTENTIAL_XMLS
-import pickle
-from stqdm import stqdm
-from threading import Thread
-from lxml import etree
 
 
 log = utils.get_logger(__name__)
@@ -117,11 +119,11 @@ def _is_ids_complete(ids: pd.DataFrame) -> bool:
 def _load_ids(df: pd.DataFrame, max_res: int = -1) -> pd.DataFrame:
     """Load IDs"""
 
-    def get_iter(df: pd.DataFrame, max_res: int) -> Generator[Tuple[str, str], None, None]:
+    def get_iter(df: pd.DataFrame, max_res: Union[int, float]) -> Generator[Tuple[str, str], None, None]:
         hits = 0
         cols = list(df.collection)
         if max_res <= 0:
-            max_res = int(float('inf'))
+            max_res = float('inf')
         for col in cols:
             if hits >= max_res:
                 break
@@ -306,10 +308,10 @@ def _load_xml_content(url: str) -> Optional[str]:
             bytes_ = bytes_[2:]
             txt = bytes_.decode('utf-16le')
             txt = txt.replace('UTF-16', 'UTF-8', 1)
-            log.warning(f"Found XML in encoding 'UTF-16-LE'. Converted to 'UTF-8'. Check if data was lost in the process.\nXML: {url}")
+            log.warning(f"Found XML in encoding 'UTF-16-LE'. Converted to 'UTF-8'. Check if data was lost in the process. XML: {url}")
             return txt
         except Exception as e:
-            log.warning(f"Failed to convert 'UTF-16-LE'. Fall back to 'ISO-8859-1'. Check if data was lost in the process.\nXML: {url}")
+            log.warning(f"Failed to convert 'UTF-16-LE'. Fall back to 'ISO-8859-1'. Check if data was lost in the process. XML: {url}")
             log.exception(e)
             return response.text.replace('iso-8859-1', 'UTF-8')
     else:
