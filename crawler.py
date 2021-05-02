@@ -350,7 +350,10 @@ def _get_shelfmark(content: str) -> str:
         root = etree.fromstring(content.encode())
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
         log.debug(f'Shelfmark: {etree.tostring(idno)}')
-        return str(idno.text) if idno else ""
+        if idno is not None:
+            return str(idno.text)
+        else:
+            return ""
     except Exception:
         log.exception(f"Faild to load Shelfmark XML:\n\n{content}\n\n")
         return ""
