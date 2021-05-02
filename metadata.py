@@ -328,47 +328,63 @@ def get_folio(soup: BeautifulSoup) -> int:
 
     clean_extent_copy: str = get_cleaned_text(extent_copy)
 
-    folio_total: int = 0
-
     try:
-        '''Is a total of folio given:'''
-        given_total: int = clean_extent_copy.find("blöð alls")
+        copy_no_period = clean_extent_copy.replace('.', '')
+        copy_no_space = copy_no_period.replace(' ', '')
 
-        if given_total > 0:
-            clean_extent_copy = clean_extent_copy[:given_total]
-            folio_total = int(clean_extent_copy)
+        perfect_copy = copy_no_space.isdigit()
+
+        if perfect_copy == True:
+            folio_total = copy_no_space
+
         else:
-            '''No total is given. First Get rid of other unnecessary info:'''
-            given_emptiness: str = clean_extent_copy.find("Auð blöð")
-            if given_emptiness > 0:
-                clean_extent_copy = clean_extent_copy[:given_emptiness]
+            folio_total: int = 0
+            '''Is a total of folio given:'''
+            given_total: int = clean_extent_copy.find("blöð alls")
+
+            if given_total > 0:
+                clean_extent_copy = clean_extent_copy[:given_total]
+                folio_total = int(clean_extent_copy)
+            else:
+                '''No total is given. First Get rid of other unnecessary info:'''
+                given_emptiness: str = clean_extent_copy.find("Auð blöð")
+                if given_emptiness > 0:
+                    clean_extent_copy = clean_extent_copy[:given_emptiness]
+                else:
+                    pass
+
+                clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
+
+                brackets: str = clean_extent_copy.find("()")
+
+                if brackets == -1:
+                    folio_total = _get_digits(clean_extent_copy)
+
+                else:
+                    while brackets > 0:
+                        first_bit: str = clean_extent_copy[:brackets]
+                        clean_extent_copy = clean_extent_copy[brackets+2:]
+                        brackets = clean_extent_copy.find("()")
+                        folio_n = _get_digits(first_bit)
+                        if folio_n:
+                            folio_total = folio_total+folio_n
+
+                    folio_z = _get_digits(extent_copy)
+                    if folio_z:
+                        folio_total = folio_total+folio_z
+
+            folio_check: str = str(folio_total)
+            if len(folio_check) > 3:
+                name: str = get_tag(soup)
+                log.warning(name + ": Attention. Check number of folios.")
+            elif folio_total == 0:
+                folio_total = 0
             else:
                 pass
 
-            clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
-            brackets: str = clean_extent_copy.find("()")
-
-            while brackets > 0:
-                first_bit: str = clean_extent_copy[:brackets]
-                clean_extent_copy = clean_extent_copy[brackets+2:]
-                brackets = clean_extent_copy.find("()")
-                folio_n = _get_digits(first_bit)
-                if folio_n:
-                    folio_total = folio_total+folio_n
-
-            folio_z = _get_digits(extent_copy)
-            if folio_z:
-                folio_total = folio_total+folio_z
-
-        folio_check: str = str(folio_total)
-        if len(folio_check) > 3:
-            name: str = get_tag(soup)
-            log.warning(name + ": Attention. Check number of folios.")
-        elif folio_total == 0:
-            folio_total = 0
-
     except:
         folio_total = 0
+        log.warning(folio_total + ": Attention. Check number of folios.")
 
     return folio_total
 
@@ -610,6 +626,16 @@ def get_msID(soup: BeautifulSoup) -> Tuple[str, str, str, str]:
     return signature, country, settlement, repository
 
 
+def check_graphic(soup: BeautifulSoup):
+    graphic = soup.find('graphic')
+
+    if graphic:
+        graphic = True
+    else:
+        graphic = False
+
+    return graphic
+
 # Get all metadata
 # ----------------
 
@@ -653,12 +679,15 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: shou
         folio = get_folio(soup)
         origin = get_origin(soup)
         support = get_support(soup)
+        graphic = check_graphic(soup)
+        dates = get_date(soup)
 
-        mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,)
+        mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,) + dates + (graphic,)
         structure = get_structure(mylist, mytuple)
 
         columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement",
-                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"]
+                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio",
+                   "Date", "Tempus post quem", "Tempus ante quem", "Mean Date", "Year Range", "Digitized"]
         data = pandafy_data(structure, columns)
 
     log.info(f'Loaded:  {i}',)
@@ -744,7 +773,8 @@ def get_citavified_data(inData: list, DataType: str = 'urls') -> tuple:
         creator = get_creator(soup)
         shorttitle = get_shorttitle(soup)
         description = get_description(soup)
-        date = "Eline?"
+        dates = get_date(soup)
+        date = dates[1]
         origin = get_origin(soup)
         location = get_location(soup)
         settlement, archive, signature = summarize_location(location)
