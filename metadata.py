@@ -363,14 +363,14 @@ def get_folio(soup: BeautifulSoup) -> int:
             folio_check: str = str(folio_total)
             if len(folio_check) > 3:
                 name: str = get_tag(soup)
-                log.warning(name + ": Attention. Check number of folios.")
+                log.warning(f"{name} : Attention. Check number of folios.")
             elif folio_total == 0:
                 folio_total = 0
             else:
                 pass
     except:
         folio_total = 0
-        log.warning(folio_total + ": Attention. Check number of folios.")
+        log.warning(f"{folio_total} : Attention. Check number of folios.")
 
     return folio_total
 
