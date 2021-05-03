@@ -164,7 +164,7 @@ def search_page():
         state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False, help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
         state.currentBURL = st.text_input("Input handrit browse URL here")
         state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False, help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
-        state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata', 'Maditadata'], index=0)
+        state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
         state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
             state.didRun = 'Started, dnf.'
@@ -183,7 +183,7 @@ def search_page():
             
             # This block will check the data the got delivered and display it
             if state.joinMode == 'Shared':
-                if state.resultMode == 'Maditadata':
+                if state.resultMode == 'Metadata':
                     if state.currentSURL and state.currentBURL:
                         state.currentData = pd.merge(dataS, dataB, how='inner', on='Handrit-ID')
                     if state.currentSURL and not state.currentBURL:
@@ -202,7 +202,7 @@ def search_page():
                     if state.currentBURL and not state.currentSURL:
                         state.currentData = dataB
             if state.joinMode == 'All':
-                if state.resultMode == 'Maditadata':
+                if state.resultMode == 'Metadata':
                     if state.currentSURL and state.currentBURL:
                         state.currentData = pd.concat([dataS, dataB], axis=0).drop_duplicates().reset_index(drop=True)
                     if state.currentSURL and not state.currentBURL:
@@ -286,14 +286,14 @@ def date_plotting(inDF):
         scatterplot data for plotly to be drawn with corresponding function
     '''
 
-    inDF = inDF[inDF['Terminus Antequem'] != 0]
-    inDF = inDF[inDF['Terminus Postquem'] != 0]
-    fig = px.scatter(inDF, x='Terminus Postquem', y='Terminus Antequem', color='Signature')
+    inDF = inDF[inDF['Terminus ante quem'] != 0]
+    inDF = inDF[inDF['Terminus post quem'] != 0]
+    fig = px.scatter(inDF, x='Terminus post quem', y='Terminus ante quem', color='Signature')
     return fig
 
 
 def dataCleaner():
-    if state.resultMode == 'Maditadata':
+    if state.resultMode == 'Metadata':
         index = state.currentData.index
         itemsPrev = len(index)
         newDF = state.currentData.dropna()

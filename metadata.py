@@ -661,7 +661,7 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: shou
         structure = get_structure(mylist, mytuple)
 
         columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement",
-                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio", "Date", "Tempus post quem", "Tempus ante quem", "Mean Date", "Year Range", "Digitized"]
+                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio", "Date", "Terminus post quem", "Terminus ante quem", "Mean Date", "Year Range", "Digitized"]
         data = pandafy_data(structure, columns)
 
     log.info(f'Loaded:  {i}',)
