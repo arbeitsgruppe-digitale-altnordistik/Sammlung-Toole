@@ -591,7 +591,7 @@ def get_data_from_browse_url(url: str, DataType: str):
   '''
   ids = efnisordResult(url)
   print(f'Got {len(ids)} IDs.')
-  if DataType == "Maditadata":
+  if DataType == "Metadata":
     data = maddyData(inData=ids, DataType='ids')
     return data
   xmls = []
@@ -602,8 +602,8 @@ def get_data_from_browse_url(url: str, DataType: str):
       xmls.append(x)
   if DataType == "Contents":
     data = get_mstexts(xmls)
-  if DataType == "Metadata":
-    data = get_msinfo(xmls)
+  # if DataType == "Metadata": # TODO: Obsolete?
+  #   data = get_msinfo(xmls)
   return data
 
 def get_data_from_browse_list(urls: list, DataType: str, joinMode: str):
@@ -632,7 +632,7 @@ def get_data_from_browse_list(urls: list, DataType: str, joinMode: str):
   if joinMode == 'All':
     ids = list(set([i for x in listList for i in x]))
   print(f'Got {len(ids)} IDs.')
-  if DataType == "Maditadata":
+  if DataType == "Metadata":
     data = maddyData(inData=ids, DataType='ids')
     return data
   xmls = []
@@ -643,8 +643,8 @@ def get_data_from_browse_list(urls: list, DataType: str, joinMode: str):
       xmls.append(x)
   if DataType == "Contents":
     data = get_mstexts(xmls)
-  if DataType == "Metadata":
-    data = get_msinfo(xmls)
+  # if DataType == "Metadata": # TODO: Obsolete?
+  #   data = get_msinfo(xmls)
   return data
 
 def get_data_from_search_url(url: str, DataType: str):
@@ -674,7 +674,7 @@ def get_data_from_search_url(url: str, DataType: str):
   print(f'Got {len(shelfmarks)} shelfmarks.')
   print(shelfmarks)
   ids = get_id_from_shelfmark_local(shelfmarks)
-  if DataType == "Maditadata":
+  if DataType == "Metadata":
     data = maddyData(inData=ids, DataType='ids')
     return data
   xmls = []
@@ -686,8 +686,8 @@ def get_data_from_search_url(url: str, DataType: str):
   print(f'Got {len(xmls)} XML files')
   if DataType == "Contents": 
     data = get_mstexts(xmls)
-  if DataType == "Metadata":
-    data = get_msinfo(xmls)
+  # if DataType == "Metadata":
+  #   data = get_msinfo(xmls) # TODO: Obsolete?
   return data
 
 
@@ -729,7 +729,7 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
     finalMSs = list(set(allTheStuff))
   ids = get_id_from_shelfmark_local(finalMSs)
   xmls = []
-  if DataType == "Maditadata":
+  if DataType == "Metadata":
     data = maddyData(inData=ids, DataType='ids')
     return data
   for i in ids:
@@ -740,8 +740,8 @@ def get_from_search_list(inURLs: list, DataType: str, joinMode: str):
   print(f'Got {len(xmls)} XML files')
   if DataType == "Contents":
     data = get_mstexts(xmls)
-  if DataType == "Metadata":
-    data = get_msinfo(xmls)
+  # if DataType == "Metadata": # TODO: Obsolete?
+  #   data = get_msinfo(xmls)
   return data
 
 
