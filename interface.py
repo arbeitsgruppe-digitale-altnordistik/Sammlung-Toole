@@ -1,3 +1,4 @@
+from typing import Optional
 import streamlit as st
 import pandas as pd
 import crawler
@@ -12,7 +13,8 @@ import sys
 from handrit_tamer import get_from_search_list as multiSearch
 from datetime import datetime
 import metadata
-import sessionState
+from util import sessionState
+from util.constants import IMAGE_HOME
 from datahandler import DataHandler
 
 # unused?
@@ -20,12 +22,6 @@ import matplotlib
 import plotly.figure_factory as ff
 import plotly.express as px
 import streamlit.components.v1 as comps
-
-
-# Constants
-# ---------
-
-_home_image = 'data/title.png'      # Image displayed on home page
 
 
 # System
@@ -89,9 +85,9 @@ def rebuild_all_button():
     if st.sidebar.button("Download everything"):
         st.write(f'Start: {datetime.now()}')
         container = st.beta_container()
-        crawler.crawl(use_cache=False, prog=container)
+        xmls, contents = crawler.crawl(use_cache=False, prog=container)
         st.write(f'Finished: {datetime.now()}')
-        rebuild_handler()
+        rebuild_handler(xmls, contents)
 
 
 def reload_with_cache():
@@ -101,10 +97,10 @@ def reload_with_cache():
     st.write(f'Finished: {datetime.now()}')
 
 
-def rebuild_handler():
+def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None):
     st.write(f'Start: {datetime.now()}')
     container = st.beta_container()
-    state.data_handler = DataHandler.get_handler(prog=container)
+    state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents, prog=container)
     st.write(f'Finished: {datetime.now()}')
     full_menu()
 
@@ -143,7 +139,7 @@ def mainPage():
 
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
-    st.image(_home_image)
+    st.image(IMAGE_HOME)
 
 
 def adv_options():
@@ -152,8 +148,6 @@ def adv_options():
     st.title("Advanced Options Menu")
     st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
-    # collections_button()  # TODO: Remove? I think, with the "browse data" page, this should be obsolete
-    # msNumber_button()     #       dito
     rebuild_all_button()
     if st.sidebar.button("Reload Missing Data"):
         reload_with_cache()
@@ -161,7 +155,7 @@ def adv_options():
         rebuild_handler()
 
     # generate_reports()
-    # TODO: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
+    # LATER: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
 
 
 def search_page():
@@ -277,7 +271,8 @@ def dataCleaner():
     else:
         itemsPrev = len(state.currentData.columns)
         # newDF =
-        itemsAfter = len(newDF.columns)  # FIXME: newDF not defined?
+        newDF = pd.DataFrame()  # QUESTION: newDF not defined? (added this to get rid of warning)
+        itemsAfter = len(newDF.columns)
         newDF = newDF.loc[:, ~newDF.columns.duplicated()]
         itemsAfter1 = len(newDF.columns)
         diff0 = itemsPrev - itemsAfter
@@ -341,11 +336,11 @@ def browse_results(inURL: str, DataType: str):
 
 def static_reports():
     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
-
-    reports = {"Dating of all MSs": "all_MS_datings"}  # FIXME: function not defined
-    selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
-    selected = reports[selection]
-    eval(selected + "()")
+    st.text("Currently not available")
+    # reports = {"Dating of all MSs": "all_MS_datings"}  # QUESTION: function not defined
+    # selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
+    # selected = reports[selection]
+    # eval(selected + "()")
 
 
 def browse_data():

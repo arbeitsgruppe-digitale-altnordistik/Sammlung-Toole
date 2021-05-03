@@ -3,6 +3,7 @@ argon2-cffi==20.1.0
 astor==0.8.1
 async-generator==1.10
 attrs==20.3.0
+autopep8==1.5.6
 backcall==0.2.0
 base58==2.1.0
 beautifulsoup4==4.9.3
@@ -32,6 +33,7 @@ ipywidgets==7.6.3
 jedi==0.18.0
 Jinja2==2.11.3
 joblib==1.0.1
+jsonpickle==2.0.0
 jsonschema==3.2.0
 jupyter-client==6.1.11
 jupyter-core==4.7.1
@@ -43,6 +45,8 @@ MarkupSafe==1.1.1
 matplotlib==3.3.4
 missingno==0.4.2
 mistune==0.8.4
+mypy==0.812
+mypy-extensions==0.4.3
 nbclient==0.5.3
 nbconvert==6.0.7
 nbformat==5.1.2
@@ -62,6 +66,7 @@ plotly==4.14.3
 prometheus-client==0.9.0
 prompt-toolkit==3.0.17
 protobuf==3.15.5
+pycodestyle==2.7.0
 pycparser==2.20
 pydeck==0.6.1
 Pygments==2.8.1
@@ -82,7 +87,7 @@ Send2Trash==1.5.0
 six==1.15.0
 smmap==3.0.5
 soupsieve==2.1
-stqdm
+stqdm==0.0.3
 streamlit==0.80.0
 streamlit-pandas-profiling==0.1.1
 tangled-up-in-unicode==0.0.7
@@ -93,6 +98,8 @@ toolz==0.11.1
 tornado==6.1
 tqdm==4.59.0
 traitlets==5.0.5
+typed-ast==1.4.3
+typing-extensions==3.7.4.3
 tzlocal==2.1
 urllib3==1.26.3
 validators==0.18.2

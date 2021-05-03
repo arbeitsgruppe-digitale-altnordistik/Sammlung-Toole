@@ -1,4 +1,4 @@
-from typing import Dict, Generator, List, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 import requests
 import lxml
 from bs4 import BeautifulSoup
@@ -12,26 +12,11 @@ from crawler import load_xmls_by_id
 from datetime import datetime
 import re
 import statistics
-import utils
-
-
-# Test URLs
-# ------------------
-# myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml"]
-# myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
-# myURLList = ["https://handrit.is/is/manuscript/xml/AM04-1056-XVII-en.xml", "https://handrit.is/is/manuscript/xml/IB08-0174-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0344-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
-# myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
-# myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
-# myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
-# myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
-myURLList = ['AM02-0002', 'AM02-0022', 'AM02-190-b']
-# Constants
-# ---------
-
-_backspace_print = '                                     \r'
+from util import utils
 
 
 log = utils.get_logger(__name__)
+
 
 # Utlity Functions
 # ----------------
@@ -66,10 +51,10 @@ def get_cleaned_text(carrot: Tag) -> str:
         str: human-readable text
     """
     if not carrot:
-        return
-    res = carrot.get_text()
+        return ""
+    res: Optional[str] = carrot.get_text()
     if not res:
-        return
+        return ""
     res = res.replace('\n', ' ')
     res = res.replace('\t', ' ')
     res = ' '.join(res.split())
@@ -100,15 +85,15 @@ def _get_digits(text: str) -> int:
     Returns:
         int: digits from text
     """
-    i = ""
+    s = ""
     for x in text:
         if x.isdigit():
-            i += x
+            s += x
 
         else:
             pass
-    if i:
-        i = int(i)
+    if s:
+        i = int(s)
     else:
         i = 0
 
@@ -126,7 +111,7 @@ def get_tag(soup):  # TODO: should become obsolete
     return name
 
 
-def _get_key(leek: Tag) -> str:
+def _get_key(leek: Tag) -> Optional[str]:
     """Find key identifying the country and return country name.
 
     Args:
@@ -137,17 +122,23 @@ def _get_key(leek: Tag) -> str:
     """
     key = leek.get('key')
     if key:
-        if key == "IS":  # XXX: is
+        if key == "IS" or key == "is":
             pretty_key = "Iceland"
-        elif key == "DK":  # XXX: dk
+        elif key == "DK" or key == "dk":
             pretty_key = "Denmark"
-        elif key == "FO":
+        elif key == "FO" or key == "fo":
             pretty_key = "Faroe Islands"
-        else:  # XXX: NO, SE, KA
+        elif key == "NO" or key == "no":
+            pretty_key = "Norway"
+        elif key == "SE" or key == "se":
+            pretty_key = "Sweden"
+        elif key == "KA" or key == "ka":
+            pretty_key = "Canada"
+        else:
             pretty_key = "!! unknown country key"
             log.warning(f"unknown country key: {key}. (Fix function get_key)")
     else:
-        pretty_key = None
+        return None
 
     return pretty_key
 
@@ -337,52 +328,68 @@ def get_folio(soup: BeautifulSoup) -> int:
 
     clean_extent_copy: str = get_cleaned_text(extent_copy)
 
-    folio_total: int = 0
-
     try:
-        '''Is a total of folio given:'''
-        given_total: int = clean_extent_copy.find("blöð alls")
+        copy_no_period = clean_extent_copy.replace('.', '')
+        copy_no_space = copy_no_period.replace(' ', '')
 
-        if given_total > 0:
-            clean_extent_copy = clean_extent_copy[:given_total]
-            folio_total = int(clean_extent_copy)
+        perfect_copy = copy_no_space.isdigit()
+
+        if perfect_copy == True:
+            folio_total = copy_no_space
+
         else:
-            '''No total is given. First Get rid of other unnecessary info:'''
-            given_emptiness: str = clean_extent_copy.find("Auð blöð")
-            if given_emptiness > 0:
-                clean_extent_copy = clean_extent_copy[:given_emptiness]
+            folio_total: int = 0
+            '''Is a total of folio given:'''
+            given_total: int = clean_extent_copy.find("blöð alls")
+
+            if given_total > 0:
+                clean_extent_copy = clean_extent_copy[:given_total]
+                folio_total = int(clean_extent_copy)
+            else:
+                '''No total is given. First Get rid of other unnecessary info:'''
+                given_emptiness: str = clean_extent_copy.find("Auð blöð")
+                if given_emptiness > 0:
+                    clean_extent_copy = clean_extent_copy[:given_emptiness]
+                else:
+                    pass
+
+                clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
+
+                brackets: str = clean_extent_copy.find("()")
+
+                if brackets == -1:
+                    folio_total = _get_digits(clean_extent_copy)
+
+                else:
+                    while brackets > 0:
+                        first_bit: str = clean_extent_copy[:brackets]
+                        clean_extent_copy = clean_extent_copy[brackets+2:]
+                        brackets = clean_extent_copy.find("()")
+                        folio_n = _get_digits(first_bit)
+                        if folio_n:
+                            folio_total = folio_total+folio_n
+
+                    folio_z = _get_digits(extent_copy)
+                    if folio_z:
+                        folio_total = folio_total+folio_z
+
+            folio_check: str = str(folio_total)
+            if len(folio_check) > 3:
+                name: str = get_tag(soup)
+                log.warning(name + ": Attention. Check number of folios.")
+            elif folio_total == 0:
+                folio_total = 0
             else:
                 pass
 
-            clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
-            brackets: str = clean_extent_copy.find("()")
-
-            while brackets > 0:
-                first_bit: str = clean_extent_copy[:brackets]
-                clean_extent_copy = clean_extent_copy[brackets+2:]
-                brackets = clean_extent_copy.find("()")
-                folio_n = _get_digits(first_bit)
-                if folio_n:
-                    folio_total = folio_total+folio_n
-
-            folio_z = _get_digits(extent_copy)
-            if folio_z:
-                folio_total = folio_total+folio_z
-
-        folio_check: str = str(folio_total)
-        if len(folio_check) > 3:
-            name: str = get_tag(soup)
-            log.warning(name + ": Attention. Check number of folios.")
-        elif folio_total == 0:
-            folio_total = 0
-
     except:
         folio_total = 0
+        log.warning(folio_total + ": Attention. Check number of folios.")
 
     return folio_total
 
 
-def get_dimensions(soup: BeautifulSoup) -> tuple:
+def get_dimensions(soup: BeautifulSoup) -> Tuple[int, int]:
     """Get dimensions. If more than one volume, it calculates average dimensions. For quantitative usage.
     Args:
         soup (BeautifulSoup): BeautifulSoup
@@ -398,8 +405,8 @@ def get_dimensions(soup: BeautifulSoup) -> tuple:
     height: Tag = []
     width: Tag = []
 
-    myheights: list = []
-    mywidths: list = []
+    myheights: List[int] = []
+    mywidths: List[int] = []
     while dimensions:
         height = dimensions.height
         pretty_height: int = _get_length(height)
@@ -444,7 +451,7 @@ def _get_length(txt: str) -> int:
             mylist = length.split("-")
             int_map = map(int, mylist)
             int_list = list(int_map)
-            pretty_length = sum(int_list) / len(int_list)
+            pretty_length = int(sum(int_list) / len(int_list))
             pretty_length = int(pretty_length)
     except:
         log.info(f"Curr MS missing length!")
@@ -497,7 +504,7 @@ def get_extent(soup: BeautifulSoup) -> str:
     return pretty_extent
 
 
-def get_description(soup):
+def get_description(soup: BeautifulSoup) -> str:
     """Summarizes support and dimensions for usage in citavi.
 
     Args:
@@ -514,7 +521,7 @@ def get_description(soup):
     return pretty_description
 
 
-def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str]:  # TODO: does that make some of the other funtions obsolete?
+def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str, str]:  # TODO: does that make some of the other funtions obsolete?
     """Get data of the manuscript's location.
 
     Args:
@@ -546,7 +553,7 @@ def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str]:  # TODO
     return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature
 
 
-def get_date(soup: BeautifulSoup):
+def get_date(soup: BeautifulSoup) -> Tuple[str, int, int, int, int]:
     tag = soup.origDate
     date = ""
     ta = 0
@@ -603,22 +610,31 @@ def get_date(soup: BeautifulSoup):
     return date, tp, ta, meandate, yearrange
 
 
-def get_msID(soup):
+def get_msID(soup: BeautifulSoup) -> Tuple[str, str, str, str]:
     msID = soup.find("msIdentifier")
     if not msID:
-        country, settlement, repository, signature = "", "", "", ""  # TODO: move to metadata
-        # TODO: should never happen
+        return "", "", "", ""
     else:
         c = msID.find("country")
-        country = c.get_text() if c else ""
+        country: str = c.get_text() if c else ""
         s = msID.find("settlement")
-        settlement = s.get_text() if s else ""
+        settlement: str = s.get_text() if s else ""
         r = msID.find("repository")
-        repository = r.get_text() if r else ""
+        repository: str = r.get_text() if r else ""
         si = msID.find("idno")
-        signature = si.get_text() if si else ""
+        signature: str = si.get_text() if si else ""
     return signature, country, settlement, repository
 
+
+def check_graphic(soup: BeautifulSoup):
+    graphic = soup.find('graphic')
+
+    if graphic:
+        graphic = True
+    else:
+        graphic = False
+
+    return graphic
 
 # Get all metadata
 # ----------------
@@ -643,7 +659,7 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: shou
     i = 0
     for thing in inData:
 
-        log.info(f'Loading: {i}, which is {thing}', end=_backspace_print)
+        log.info(f'Loading: {i}, which is {thing}')
         i += 1
         if DataType == 'urls':
             soup = load_xml(thing)
@@ -663,12 +679,15 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: shou
         folio = get_folio(soup)
         origin = get_origin(soup)
         support = get_support(soup)
+        graphic = check_graphic(soup)
+        dates = get_date(soup)
 
-        mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,)
+        mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,) + dates + (graphic,)
         structure = get_structure(mylist, mytuple)
 
         columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement",
-                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"]
+                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio",
+                   "Date", "Tempus post quem", "Tempus ante quem", "Mean Date", "Year Range", "Digitized"]
         data = pandafy_data(structure, columns)
 
     log.info(f'Loaded:  {i}',)
@@ -741,7 +760,7 @@ def get_citavified_data(inData: list, DataType: str = 'urls') -> tuple:
 
     mylist = []
     for thing in inData:
-        log.info(f'Loading: {i}', end=_backspace_print)
+        log.info(f'Loading: {i}')
         i += 1
 
         if DataType == 'urls':
@@ -754,7 +773,8 @@ def get_citavified_data(inData: list, DataType: str = 'urls') -> tuple:
         creator = get_creator(soup)
         shorttitle = get_shorttitle(soup)
         description = get_description(soup)
-        date = "Eline?"
+        dates = get_date(soup)
+        date = dates[1]
         origin = get_origin(soup)
         location = get_location(soup)
         settlement, archive, signature = summarize_location(location)
@@ -839,6 +859,17 @@ def CSVExport(FileName: str, DataFrame):
 
 # Test Runner
 # -----------
+
+
+# Test URLs
+# myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml"]
+# myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
+# myURLList = ["https://handrit.is/is/manuscript/xml/AM04-1056-XVII-en.xml", "https://handrit.is/is/manuscript/xml/IB08-0174-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0344-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
+# myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
+# myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
+# myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
+# myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
+myURLList = ['AM02-0002', 'AM02-0022', 'AM02-190-b']
 
 
 if __name__ == "__main__":

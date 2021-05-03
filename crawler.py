@@ -1,33 +1,24 @@
-from typing import Generator, List, Optional, Tuple
-from numpy import integer
-import pandas as pd
-import requests
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 import os
 import glob
-from bs4 import BeautifulSoup
 from datetime import datetime
-import utils
 import pickle
-from stqdm import stqdm
 from threading import Thread
+
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from stqdm import stqdm
 from lxml import etree
+
+from util import utils
+from util.constants import HANDLER_BACKUP_PATH_MSS, CRAWLER_PATH_IDS
+from util.constants import PREFIX_XML_DATA, PREFIX_XML_URL
+from util.constants import CRAWLER_PATH_CONTENT_PICKLE, CRAWLER_PICKLE_PATH, CRAWLER_PATH_URLS, CRAWLER_PATH_COLLECTIONS, CRAWLER_PATH_POTENTIAL_XMLS
 
 
 log = utils.get_logger(__name__)
 
-
-# Constants
-# ---------
-
-_coll_path = 'data/collections.csv'
-_id_path = 'data/ms_ids.csv'
-_potential_xml_url_path = 'data/pot_ms_urls.csv'
-_xml_url_path = 'data/ms_urls.csv'
-_xml_data_prefix = 'data/xml/'
-_xml_content_pickle_path = 'data/contents.pickle'
-_xml_url_prefix = 'https://handrit.is/en/manuscript/xml/'
-PICKLE_PATH = "data/cache.pickle"
-BACKUP_PATH_MSS = "data/backups/mss.csv"
 
 verbose = True
 
@@ -51,14 +42,14 @@ def crawl_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFram
         pd.DataFrame: Data frame containing basic information on collections.
     """
     log.info('Loading Collegtions')
-    if use_cache and os.path.exists(_coll_path):
-        cols = pd.read_csv(_coll_path)
+    if use_cache and os.path.exists(CRAWLER_PATH_COLLECTIONS):
+        cols = pd.read_csv(CRAWLER_PATH_COLLECTIONS)
         if cols is not None and not cols.empty:
             log.info('Loaded collections from cache.')
             return cols
     cols = _load_collections()
     if cache:
-        cols.to_csv(_coll_path, encoding='utf-8', index=False)
+        cols.to_csv(CRAWLER_PATH_COLLECTIONS, encoding='utf-8', index=False)
     log.info(f"Loaded {len(cols.index)} collections.")
     return cols
 
@@ -89,7 +80,7 @@ def crawl_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tru
         df (pd.DataFrame, optional): Dataframe containing the available collections on handrit. If `None` is passed, `get_collections()` will be called. Defaults to None.
         use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
         cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
-        max_res (int, optional): Maximum number of results to return (mostly for testing quickly). 
+        max_res (int, optional): Maximum number of results to return (mostly for testing quickly).
             For unrestricted, use -1. Defaults to -1.
 
     Returns:
@@ -97,10 +88,10 @@ def crawl_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tru
     """
     # LATER: could add progressbar to this one too
     log.info('Loading Manuscript IDs')
-    if use_cache and os.path.exists(_id_path):
-        ids = pd.read_csv(_id_path)
+    if use_cache and os.path.exists(CRAWLER_PATH_IDS):
+        ids = pd.read_csv(CRAWLER_PATH_IDS)
         if ids is not None and not ids.empty and _is_ids_complete(ids):
-            # TODO: improve working with half finished caches (e.g. after max_res)
+            # LATER: improve working with half finished caches (e.g. after max_res)
             log.info('Loaded manuscript IDs from cache.')
             return ids
     if df is None:
@@ -110,14 +101,14 @@ def crawl_ids(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tru
         ids = ids[:max_res]
     ids.sort_values(by=['collection', 'id'])
     if cache:
-        ids.to_csv(_id_path, encoding='utf-8', index=False)
+        ids.to_csv(CRAWLER_PATH_IDS, encoding='utf-8', index=False)
     log.info(f"Loaded {len(ids.index)} IDs.")
     return ids
 
 
 def _is_ids_complete(ids: pd.DataFrame) -> bool:
     """indicates if the number of IDs matches the number indicated by the collections"""
-    # TODO: improve this
+    # LATER: improve this
     colls = crawl_collections()
     if colls['ms_count'].sum() == len(ids.index):
         return True
@@ -128,7 +119,7 @@ def _is_ids_complete(ids: pd.DataFrame) -> bool:
 def _load_ids(df: pd.DataFrame, max_res: int = -1) -> pd.DataFrame:
     """Load IDs"""
 
-    def get_iter(df: pd.DataFrame, max_res: int):
+    def get_iter(df: pd.DataFrame, max_res: Union[int, float]) -> Generator[Tuple[str, str], None, None]:
         hits = 0
         cols = list(df.collection)
         if max_res <= 0:
@@ -148,7 +139,7 @@ def _load_ids(df: pd.DataFrame, max_res: int = -1) -> pd.DataFrame:
     return res
 
 
-def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
+def _download_ids_from_url(url: str, col: str) -> List[Tuple[str, str]]:
     """get IDs from a collection URL"""
     soup = utils.get_soup(url, 'lxml')
     res = []
@@ -160,15 +151,15 @@ def _download_ids_from_url(url: str, col: str) -> List[Tuple[str]]:
 # Crawl XML URLs
 # --------------
 
-def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog=None) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
+def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog: Any = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Load all manuscript XMLs.
+    # CHORE: update
 
     The dataframe contains the following collumns:
     - Collection ID (`collection`)
     - Manuscript ID (`id`)
     - language (`lang`)
     - URL to XML (`xml_url`)
-    # CHORE: update
 
     Args:
         df (pd.DataFrame, optional): Dataframe containing the available manuscript IDs. If `None` is passed, `get_ids()` will be called. Defaults to None.
@@ -180,17 +171,18 @@ def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tr
     Returns:
         pd.DataFrame: Dataframe containing manuscript URLs.
     """
-    if use_cache and os.path.exists(_xml_url_path):
+    if use_cache and os.path.exists(CRAWLER_PATH_URLS):
         log.info("Loading XML URLs from cache.")
-        xmls = pd.read_csv(_xml_url_path)
-        if os.path.exists(_xml_content_pickle_path):
-            with open(_xml_content_pickle_path, mode='rb') as file:
+        xmls = pd.read_csv(CRAWLER_PATH_URLS)
+        if os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
+            with open(CRAWLER_PATH_CONTENT_PICKLE, mode='rb') as file:
                 contents = pickle.load(file)
-                return xmls, contents
-        return xmls, None
-        # TODO: get this to work again
+        else:
+            contents = _load_all_contents(xmls, use_cache=use_cache, cache=cache, max_res=max_res, prog=prog)
+        return xmls, contents
+        # LATER: get this to work again
         # if res is not None and not res.empty and _is_urls_complete(res):
-        # TODO: improve working with half finished caches (e.g. after max_res)
+        # LATER: improve working with half finished caches (e.g. after max_res)
         #    if verbose:
         #         print('Loaded XML URLs from cache.')
         #     return res
@@ -205,23 +197,26 @@ def crawl_xmls(df: pd.DataFrame = None, use_cache: bool = True, cache: bool = Tr
     xmls = _get_existing_xmls(potentials, prog=prog, use_cache=use_cache, cache=cache, max_res=max_res)
     xmls['shelfmark'] = xmls['content'].apply(_get_shelfmark)
     contents = xmls[['content', 'xml_file']]
-    contents['path'] = _xml_data_prefix + contents['xml_file']
+    contents['path'] = PREFIX_XML_DATA + contents['xml_file']
     xmls.drop(columns=['content'], inplace=True)
     xmls.drop(columns=['exists'], inplace=True)
     if cache:
-        xmls.to_csv(_xml_url_path, encoding='utf-8', index=False)
-        with open(_xml_content_pickle_path, mode='wb') as file:
+        xmls.to_csv(CRAWLER_PATH_URLS, encoding='utf-8', index=False)
+        with open(CRAWLER_PATH_CONTENT_PICKLE, mode='wb') as file:
             pickle.dump(contents, file=file)
     return xmls, contents
 
 
-def _get_existing_xmls(potentials: pd.DataFrame, prog=None, use_cache=True, cache=True, max_res=-1) -> pd.DataFrame:
+def _get_existing_xmls(potentials: pd.DataFrame, prog: Any = None, use_cache: bool = True, cache: bool = True, max_res: int = -1) -> pd.DataFrame:
     if max_res > 0 and len(potentials.index) > (3 * max_res):
         potentials = potentials[:(max_res * 3)]
-    with prog:
+    if prog:
+        with prog:
+            stqdm.pandas(desc="Loading XMLs")
+            potentials['content'] = potentials.progress_apply(lambda x: _get_xml_content(x, cache, use_cache), axis=1)
+    else:
         stqdm.pandas(desc="Loading XMLs")
-        potentials['content'] = potentials.progress_apply(lambda x: _get_xml_content_if_exists(x, cache, use_cache), axis=1)
-        # TODO: ensure that prog==None doesn't break anything anywhere
+        potentials['content'] = potentials.progress_apply(lambda x: _get_xml_content(x, cache, use_cache), axis=1)
     potentials['exists'] = potentials['content'].apply(lambda x: True if x else False)
     df = potentials[potentials['exists'] == True]
     if max_res > 0 and len(df.index > max_res):
@@ -229,8 +224,8 @@ def _get_existing_xmls(potentials: pd.DataFrame, prog=None, use_cache=True, cach
     return df
 
 
-def _get_xml_content_if_exists(row: pd.Series, cache, use_cache):
-    path = f"{_xml_data_prefix}{row['xml_file']}"
+def _get_xml_content(row: pd.Series, cache: bool, use_cache: bool) -> Optional[str]:
+    path = f"{PREFIX_XML_DATA}{row['xml_file']}"
     if use_cache and os.path.exists(path):
         with open(path, encoding='utf-8', mode='r+') as file:
             return file.read()
@@ -242,19 +237,34 @@ def _get_xml_content_if_exists(row: pd.Series, cache, use_cache):
     return content
 
 
-def _get_potential_xmls(id_df: pd.DataFrame, prog=None, use_cache=True, cache=True) -> pd.DataFrame:
-    if use_cache and os.path.exists(_potential_xml_url_path):
+def _load_all_contents(xmls: pd.DataFrame = None, use_cache: bool = True, cache: bool = True, max_res: int = -1, prog: Any = None) -> pd.DataFrame:
+    if prog:
+        with prog:
+            res = pd.DataFrame()
+            res['xml_url'] = xmls['xml_url']
+            stqdm.pandas(desc="Loading XMLs")
+            res['content'] = res.progress_apply(lambda x: _get_xml_content(x, cache, use_cache), axis=1)
+    else:
+        res = pd.DataFrame()
+        res['xml_url'] = xmls['xml_url']
+        stqdm.pandas(desc="Loading XMLs")
+        res['content'] = res.progress_apply(lambda x: _get_xml_content(x, cache, use_cache), axis=1)
+    return res
+
+
+def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None, use_cache: bool = True, cache: bool = True) -> pd.DataFrame:
+    if use_cache and os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS):
         log.info("Loading XML URLs from cache.")
-        res = pd.read_csv(_potential_xml_url_path)
+        res = pd.read_csv(CRAWLER_PATH_POTENTIAL_XMLS)
         return res
 
-    def iterate():
+    def iterate() -> pd.DataFrame:
         df = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url'])
         for _, row in stqdm(id_df.iterrows(), total=len(id_df.index), desc="Calculating Potential URLs"):
             langs = ('en', 'da', 'is')
             for l in langs:
                 file = f'{row[1]}-{l}.xml'
-                url = f'{_xml_url_prefix}{file}'
+                url = f'{PREFIX_XML_URL}{file}'
                 df = df.append({'collection': row[0],
                                 'id': row[1],
                                 'lang': l,
@@ -268,23 +278,23 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog=None, use_cache=True, cache=Tr
     else:
         df = iterate()
     if cache:
-        df.to_csv(_potential_xml_url_path, encoding='utf-8', index=False)
+        df.to_csv(CRAWLER_PATH_POTENTIAL_XMLS, encoding='utf-8', index=False)
     return df
 
 
 def _is_urls_complete(df: pd.DataFrame) -> bool:
-    # TODO: improve?
+    # LATER: improve this
     ids_a = len(crawl_ids()['id'].unique())
     ids_b = len(df['id'].unique())
     return ids_a == ids_b
 
 
-def _cache_xml_content(content, path):
+def _cache_xml_content(content: str, path: str) -> None:
     with open(path, mode='w+', encoding='utf-8') as file:
         file.write(content)
 
 
-def _load_xml_content(url):
+def _load_xml_content(url: str) -> Optional[str]:
     """Load XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
     if response.status_code != 200:
@@ -292,16 +302,16 @@ def _load_xml_content(url):
     bytes_ = response.text.encode(response.encoding)
     if bytes_.startswith(b'<!DOCTYPE html'):
         log.error(f"Content is not XML: {url}")
-        return ""
+        return None
     if bytes_[0] == 255:
         try:
             bytes_ = bytes_[2:]
             txt = bytes_.decode('utf-16le')
             txt = txt.replace('UTF-16', 'UTF-8', 1)
-            log.warning(f"Found XML in encoding 'UTF-16-LE'. Converted to 'UTF-8'. Check if data was lost in the process.\nXML: {url}")
+            log.warning(f"Found XML in encoding 'UTF-16-LE'. Converted to 'UTF-8'. Check if data was lost in the process. XML: {url}")
             return txt
         except Exception as e:
-            log.warning(f"Failed to convert 'UTF-16-LE'. Fall back to 'ISO-8859-1'. Check if data was lost in the process.\nXML: {url}")
+            log.warning(f"Failed to convert 'UTF-16-LE'. Fall back to 'ISO-8859-1'. Check if data was lost in the process. XML: {url}")
             log.exception(e)
             return response.text.replace('iso-8859-1', 'UTF-8')
     else:
@@ -313,7 +323,7 @@ def _load_xml_content(url):
             except Exception as e:
                 log.warning(f"Failed to convert {url}")
                 log.exception(e)
-                return ""
+                return None
         elif bytes_.startswith(b'<?xml version="1.0" encoding="iso-8859-1"'):
             try:
                 txt = bytes_.decode('iso-8859-1')
@@ -323,7 +333,7 @@ def _load_xml_content(url):
             except Exception as e:
                 log.warning(f"Failed to convert {url}")
                 log.exception(e)
-                return ""
+                return None
         else:
             log.warning(f"Unknown encoding: {url} Assuming UTF-8")
             try:
@@ -332,16 +342,18 @@ def _load_xml_content(url):
             except Exception as e:
                 log.warning(f"Failed to convert {url}")
                 log.exception(e)
-                return ""
+                return None
 
 
 def _get_shelfmark(content: str) -> str:
     try:
         root = etree.fromstring(content.encode())
-        msDesc = root.find('.//{http://www.tei-c.org/ns/1.0}msDesc')
-        msID = msDesc.get('{http://www.w3.org/XML/1998/namespace}id')
-        log.debug(f'Shelfmark: {msID}')
-        return msID
+        idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
+        log.debug(f'Shelfmark: {etree.tostring(idno)}')
+        if idno is not None:
+            return str(idno.text)
+        else:
+            return ""
     except Exception:
         log.exception(f"Faild to load Shelfmark XML:\n\n{content}\n\n")
         return ""
@@ -367,7 +379,7 @@ def load_xml(url: str, use_cache: bool = True, cache: bool = True) -> BeautifulS
     return load_xml_by_filename(filename=filename, use_cache=use_cache, cache=cache)
 
 
-def load_xml_by_filename(filename: str, use_cache: bool = True, cache: bool = True) -> BeautifulSoup:
+def load_xml_by_filename(filename: str, use_cache: bool = True, cache: bool = True) -> BeautifulSoup:  # TODO: see where we actually use this
     """Load XML by file name.
 
     Args:
@@ -378,19 +390,19 @@ def load_xml_by_filename(filename: str, use_cache: bool = True, cache: bool = Tr
     Returns:
         BeautifulSoup: XML content.
     """
-    path = _xml_data_prefix + filename
+    path = PREFIX_XML_DATA + filename
     if use_cache and os.path.exists(path):
         with open(path, 'r', encoding='utf-8') as f:
             return BeautifulSoup(f, 'xml')
-    xml = _load_xml_content(_xml_url_prefix + filename)
-    if cache:
+    xml = _load_xml_content(PREFIX_XML_URL + filename)
+    if cache and xml:
         with open(path, 'w', encoding='utf-8') as f:
             f.write(xml)
     soup = BeautifulSoup(xml, 'xml')
     return soup
 
 
-def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dict:
+def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> Dict[str, str]:
     """Load XML(s) by manuscript ID.
 
     Args:
@@ -402,7 +414,7 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
         dict: dict of the XMLs found by this ID. Follows the structure `{language: BeautifulSoup}` (i.e. `{'da': 'soup', 'is': 'soup}`).
     """
     res = {}
-    df = crawl_xmls()
+    df, _ = crawl_xmls()
     hits = df.loc[df['id'] == id_]
     for _, row in hits.iterrows():
         lang = row['lang']
@@ -412,16 +424,18 @@ def load_xmls_by_id(id_: str, use_cache: bool = True, cache: bool = True) -> dic
 
 
 def has_data_available() -> bool:
-    xmls = glob.glob(_xml_data_prefix + '*.xml')
-    return xmls and \
-        os.path.exists(_coll_path) and \
-        os.path.exists(_id_path) and \
-        os.path.exists(_xml_url_path) and \
-        os.path.exists(_potential_xml_url_path) and \
-        os.path.exists(_xml_content_pickle_path)
+    xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
+    if xmls and \
+            os.path.exists(CRAWLER_PATH_COLLECTIONS) and \
+            os.path.exists(CRAWLER_PATH_IDS) and \
+            os.path.exists(CRAWLER_PATH_URLS) and \
+            os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS) and \
+            os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
+        return True
+    return False
 
 
-def crawl(use_cache: bool = False, prog=None):
+def crawl(use_cache: bool = False, prog: Any = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """crawl everything as fast as possible"""
     log.info(f'Start crawling: {datetime.now()}')
 
@@ -434,27 +448,29 @@ def crawl(use_cache: bool = False, prog=None):
     ids = crawl_ids(df=colls)
     log.info(f"Done loading Manuscript IDs. Found {len(ids.index)} unique identifiers.")
 
-    urls, _ = crawl_xmls(df=ids, prog=prog)
+    urls, contents = crawl_xmls(df=ids, prog=prog)
     log.info(f"Done loading URLs. Found {len(urls.index)} URLs.")
 
     log.info(f'Finished: {datetime.now()}')
 
+    return urls, contents
 
-def _wipe_cache():
-    xmls = glob.glob(_xml_data_prefix + '*.xml')
+
+def _wipe_cache() -> None:
+    xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
     for xml in xmls:
         os.remove(xml)
-    if os.path.exists(_coll_path):
-        os.remove(_coll_path)
-    if os.path.exists(_id_path):
-        os.remove(_id_path)
-    if os.path.exists(_xml_url_path):
-        os.remove(_xml_url_path)
-    if os.path.exists(_potential_xml_url_path):
-        os.remove(_potential_xml_url_path)
-    if os.path.exists(_xml_content_pickle_path):
-        os.remove(_xml_content_pickle_path)
-    if os.path.exists(BACKUP_PATH_MSS):
-        os.remove(BACKUP_PATH_MSS)
-    if os.path.exists(PICKLE_PATH):
-        os.remove(PICKLE_PATH)
+    if os.path.exists(CRAWLER_PATH_COLLECTIONS):
+        os.remove(CRAWLER_PATH_COLLECTIONS)
+    if os.path.exists(CRAWLER_PATH_IDS):
+        os.remove(CRAWLER_PATH_IDS)
+    if os.path.exists(CRAWLER_PATH_URLS):
+        os.remove(CRAWLER_PATH_URLS)
+    if os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS):
+        os.remove(CRAWLER_PATH_POTENTIAL_XMLS)
+    if os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
+        os.remove(CRAWLER_PATH_CONTENT_PICKLE)
+    if os.path.exists(HANDLER_BACKUP_PATH_MSS):
+        os.remove(HANDLER_BACKUP_PATH_MSS)
+    if os.path.exists(CRAWLER_PICKLE_PATH):
+        os.remove(CRAWLER_PICKLE_PATH)

@@ -10,7 +10,6 @@ Follow these steps, in order to be able to use the `Sammlung Toole`.
 1. Be sure to have Python installed.
 2. Install all required packages.
 3. Run the script.
-<!-- TODO: How to run it - streamlit -->
 
 All commands that need running, should be executed from a terminal/command-line-interface that is opened in the root folder of this repo (i.e. the same folder as this file is located).
 

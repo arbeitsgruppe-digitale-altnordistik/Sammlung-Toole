@@ -7,7 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 from metadata import get_all_data as maddyData  # TODO: should become obsolete
 import metadata
-import utils
+from util import utils
 
 
 log = utils.get_logger(__name__)
@@ -31,7 +31,7 @@ def get_mstext(soup: BeautifulSoup) -> Set:
 
 def get_mstexts(soups):
     # for soup in soups:
-    #     pass  # TODO
+    #     pass  # TODO: implement
     return pd.DataFrame()
 
 
