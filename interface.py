@@ -232,8 +232,11 @@ def search_page():
 
 
 def citaviExporter():
-    foundListList = list(state.currentData.columns)
-    foundList = [i for x in foundListList for i in x]
+    if state.resultMode == 'Contents':
+        foundListList = list(state.currentData.columns)
+        foundList = [i for x in foundListList for i in x]
+    if state.resultMode == 'Metadata':
+        foundList = state.currentData['Handrit-ID'].values.tolist()
     state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList, help="This will export your selected references as a CSV file for Citavi.")
     if st.button('Export'):
         state.currentCitaviData, sink = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
@@ -253,7 +256,7 @@ def postprocessing():
     if state.postStep == 'CSV':
         csv = state.currentData.to_csv(index=False)
         b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        href = f'<b> There is a bug! Use "Right Click -> Save As" or it will break!</b><br /><a href="data:file/csv;base64,{b64}">Download CSV File</a><br /> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
         st.markdown(href, unsafe_allow_html=True)
     if st.button("Export references to Citavi"):
         state.postStep = 'Citavi'
@@ -263,14 +266,12 @@ def postprocessing():
         state.postStep = 'Cleaning'
     if state.postStep == 'Cleaning':
         dataCleaner()
-    if st.button('Plot dating'):
-        state.postStep = 'Plotting'
+    if state.resultMode == "Metadata":
+        if st.button('Plot dating'):
+            state.postStep = 'Plotting'
     if state.postStep == 'Plotting':
-        if state.resultMode == "Metadata":
             fig = date_plotting(state.currentData)
             st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.write('No data to plot!')
 
 
 # def dataInspector():
