@@ -294,17 +294,18 @@ def date_plotting(inDF):
 
 
 def dataCleaner():
+    state.currentData = state.currentData.replace('None', np.nan)
     if state.resultMode == 'Metadata':
         index = state.currentData.index
         itemsPrev = len(index)
-        newDF = state.currentData.dropna()
+        newDF = state.currentData.dropna(axis=1, how='all')
         index1 = newDF.index
         itemsAfter = len(index1)
         diff = itemsPrev - itemsAfter
         st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values.")
     else:
         itemsPrev = len(state.currentData.columns)
-        # newDF = 
+        newDF = state.currentData.dropna(axis=1, how='all')
         itemsAfter = len(newDF.columns)
         newDF = newDF.loc[:,~newDF.columns.duplicated()]
         itemsAfter1 = len(newDF.columns)
