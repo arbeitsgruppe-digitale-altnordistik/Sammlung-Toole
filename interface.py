@@ -243,7 +243,7 @@ def citaviExporter():
         st.write(state.currentCitaviData)
         csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
         b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        href = f'<b> There is a bug! Use "Right Click -> Save As" or it will break!</b><br /><a href="data:file/csv;base64,{b64}">Download CSV File</a><br /> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
         st.markdown(href, unsafe_allow_html=True)
 
 
