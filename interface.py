@@ -25,6 +25,7 @@ from datetime import datetime
 import metadata
 import sessionState
 from handrit_tamer import get_data_from_browse_list as multiBrowse
+import markdown
 
 
 
@@ -376,6 +377,13 @@ def static_reports():
     eval(selected + "()")
 
 
+def help():
+    st.title("How to use this tool")
+    with open('CITAVI-README.md', 'r') as citread:
+        helpme = markdown.markdown(citread.read())
+    st.markdown(helpme, unsafe_allow_html=True)
+
+
 # Menu Functions
 # --------------
 
@@ -385,7 +393,7 @@ def full_menu():
     all the other functions containing sub pages.
     '''
 
-    MenuOptions = {"Home": "mainPage", "Search Functions": "search_page", "Reports": "static_reports", "Advanced Settings": "adv_options"}
+    MenuOptions = {"Home": "mainPage", "Search Functions": "search_page", "Reports": "static_reports", "Advanced Settings": "adv_options", "Help": "help"}
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
     selected = MenuOptions[selection]
     eval(selected + "()")
