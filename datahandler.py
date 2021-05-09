@@ -14,18 +14,24 @@ import handrit_tamer_2 as tamer
 from util import utils
 from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
 from stqdm import stqdm
-import jsonpickle
+from util.utils import Settings
 
 
 log = utils.get_logger(__name__)
+settings = Settings.get_settings()
 
 
 class DataHandler:
-    def __init__(self, manuscripts: pd.DataFrame = None, texts: pd.DataFrame = None, persons: pd.DataFrame = None, max_res: int = -1, prog: Any = None,
-                 xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None):
+    def __init__(self,
+                 manuscripts: pd.DataFrame = None,
+                 texts: pd.DataFrame = None,
+                 persons: pd.DataFrame = None,
+                 prog: Any = None,
+                 xmls: Optional[pd.DataFrame] = None,
+                 contents: Optional[pd.DataFrame] = None):
         """"""  # CHORE: documentation
         log.info("Creating new handler")
-        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(max_res=max_res, prog=prog, df=xmls, contents=contents)
+        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(prog=prog, df=xmls, contents=contents)
         log.info("Loaded MS Info")
         self.texts = texts if texts else pd.DataFrame()  # TODO: implement
         self.persons = persons if persons else pd.DataFrame()  # TODO: implement
@@ -45,6 +51,7 @@ class DataHandler:
                     obj = pickle.load(file)
                     sys.setrecursionlimit(prev)
                     if isinstance(obj, DataHandler):
+                        obj._truncate()
                         return obj
             except Exception:
                 log.exception("Cound not load handler from pickle")
@@ -65,16 +72,20 @@ class DataHandler:
             p = pd.read_csv(ppls)
             if p.empty:
                 return None
-            return DataHandler(manuscripts=m, texts=t, persons=p)
+            handler = DataHandler(manuscripts=m, texts=t, persons=p)
+            handler._truncate()
+            return handler
         return None
 
     @staticmethod
-    def _load_ms_info(max_res: int = -1, prog: Any = None, df: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    def _load_ms_info(prog: Any = None,
+                      df: Optional[pd.DataFrame] = None,
+                      contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
         # LATER: look into `tqdm.contrib.concurrent:process_map`
         if df is None or contents is None:
-            df, contents = crawler.crawl_xmls(max_res=max_res)
-        if max_res > 0 and len(df.index) > max_res:
-            df = df[:max_res]
+            df, contents = crawler.crawl_xmls()
+        if len(df.index) > settings.max_res:
+            df = df[:settings.max_res]
         df = pd.merge(df, contents, on='xml_file')
         stqdm.pandas(desc="Cooking soups from XML contents...")
         if prog:
@@ -104,30 +115,29 @@ class DataHandler:
     # =============
 
     @classmethod
-    def get_handler(cls, xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None, max_res: int = -1, prog: Any = None) -> DataHandler:
+    def get_handler(cls, xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None, prog: Any = None) -> DataHandler:
         """Get a DataHandler
 
         Factory method to get a DataHandler object.
 
         Args:
-            max_res (int, optional): maximum number of results, mostly for testing purposes. Defaults to -1.
             # CHORE: prog
 
         Returns:
             DataHandler: A DataHandler, either loaded from cache or created anew.
         """
         log.info("Getting DataHandler")
-        res: Optional[DataHandler] = cls._from_pickle()  # TODO: max_res
+        res: Optional[DataHandler] = cls._from_pickle()
         if res:
             res._backup()
             return res
         log.info("Could not get DataHandler from pickle")
-        res = cls._from_backup()  # TODO: max_res
+        res = cls._from_backup()
         if res:
             res._to_pickle()
             return res
         log.info("Could not get DataHandler from backup")
-        res = cls(max_res=max_res, prog=prog, xmls=xmls, contents=contents)
+        res = cls(prog=prog, xmls=xmls, contents=contents)
         res._to_pickle()
         res._backup()
         return res
@@ -149,6 +159,11 @@ class DataHandler:
     def _backup(self) -> None:
         self.manuscripts.to_csv(HANDLER_BACKUP_PATH_MSS, encoding='utf-8', index=False)
         # TODO: implement backing up other props to csv/json
+
+    def _truncate(self) -> None:
+        if len(self.manuscripts.index) > settings.max_res:
+            self.manuscripts = self.manuscripts[:settings.max_res]
+        # TODO: truncate other props aswell
 
     # API Methods
     # -----------
