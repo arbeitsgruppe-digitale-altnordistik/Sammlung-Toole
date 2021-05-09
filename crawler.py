@@ -422,9 +422,11 @@ def has_data_available() -> bool:
     return False
 
 
-def crawl(prog: Any = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def crawl(use_cache: bool = False, prog: Any = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """crawl everything as fast as possible"""
     log.info(f'Start crawling: {datetime.now()}')
+
+    settings.use_cache = use_cache
 
     if not settings.use_cache:
         _wipe_cache()

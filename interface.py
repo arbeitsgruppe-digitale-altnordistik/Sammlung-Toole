@@ -2,19 +2,18 @@ from typing import Optional
 import streamlit as st
 import pandas as pd
 import crawler
-from handrit_tamer import get_data_from_search_url as hSr
-from handrit_tamer import get_data_from_browse_url as hBr
 import base64
 from contextlib import contextmanager
 from io import StringIO
 from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
 from threading import current_thread
-import sys
-from handrit_tamer import get_from_search_list as multiSearch
 from datetime import datetime
 import metadata
 from util import sessionState
+from util import utils
 from util.constants import IMAGE_HOME
+from util.stateHandler import StateHandler
+from util.utils import Settings
 from datahandler import DataHandler
 
 # unused?
@@ -22,6 +21,16 @@ import matplotlib
 import plotly.figure_factory as ff
 import plotly.express as px
 import streamlit.components.v1 as comps
+import sys
+
+log = utils.get_logger(__name__)
+settings = Settings.get_settings()
+
+
+# XXX: get rid of this
+# from handrit_tamer import get_data_from_search_url as hSr
+# from handrit_tamer import get_data_from_browse_url as hBr
+# from handrit_tamer import get_from_search_list as multiSearch
 
 
 # System
@@ -30,46 +39,46 @@ import streamlit.components.v1 as comps
 # These three functions can be used as wrapper functions to redirect prints from terminal to the
 # web interface. This will not work directly with cached functions.
 
+# QUESTION: still needed?
+# @contextmanager
+# def st_redirect(src, dst):
+#     placeholder = st.empty()
+#     output_func = getattr(placeholder, dst)
 
-@contextmanager
-def st_redirect(src, dst):
-    placeholder = st.empty()
-    output_func = getattr(placeholder, dst)
+#     with StringIO() as buffer:
+#         old_write = src.write
 
-    with StringIO() as buffer:
-        old_write = src.write
+#         def new_write(b):
+#             if getattr(current_thread(), REPORT_CONTEXT_ATTR_NAME, None):
+#                 buffer.write(b)
+#                 output_func(b)
+#             else:
+#                 old_write(b)
 
-        def new_write(b):
-            if getattr(current_thread(), REPORT_CONTEXT_ATTR_NAME, None):
-                buffer.write(b)
-                output_func(b)
-            else:
-                old_write(b)
-
-        try:
-            src.write = new_write
-            yield
-        finally:
-            src.write = old_write
-
-
-@contextmanager
-def st_stdout(dst):
-    with st_redirect(sys.stdout, dst):
-        yield
+#         try:
+#             src.write = new_write
+#             yield
+#         finally:
+#             src.write = old_write
 
 
-@contextmanager
-def st_stderr(dst):
-    with st_redirect(sys.stderr, dst):
-        yield
+# @contextmanager
+# def st_stdout(dst):
+#     with st_redirect(sys.stdout, dst):
+#         yield
+
+
+# @contextmanager
+# def st_stderr(dst):
+#     with st_redirect(sys.stderr, dst):
+#         yield
 
 
 # Utility Functions
 # -----------------
 
 
-def get_handler():
+def get_handler() -> None:
     st.spinner('Grabbing data handler...')
     if DataHandler.is_cached() or DataHandler.has_data_available():
         rebuild_handler()
@@ -78,7 +87,7 @@ def get_handler():
         adv_options()
 
 
-def rebuild_all_button():
+def rebuild_all_button() -> None:
     ''' This will run the crawl() function from the crawler, which will download everything
     from handrit
     '''
@@ -90,14 +99,14 @@ def rebuild_all_button():
         rebuild_handler(xmls, contents)
 
 
-def reload_with_cache():
+def reload_with_cache() -> None:
     st.write(f'Start: {datetime.now()}')
     container = st.beta_container()
     crawler.crawl(use_cache=True, prog=container)
     st.write(f'Finished: {datetime.now()}')
 
 
-def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None):
+def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
     st.write(f'Start: {datetime.now()}')
     container = st.beta_container()
     state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents, prog=container)
@@ -134,7 +143,7 @@ def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.D
 # --------------------------------------
 
 
-def mainPage():
+def mainPage() -> None:
     '''Landing page'''
 
     st.title("Welcome to Sammlung Toole")
@@ -142,7 +151,7 @@ def mainPage():
     st.image(IMAGE_HOME)
 
 
-def adv_options():
+def adv_options() -> None:
     '''Shows the advanced options menu'''
 
     st.title("Advanced Options Menu")
@@ -158,7 +167,7 @@ def adv_options():
     # LATER: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
 
 
-def search_page():
+def search_page() -> None:
     '''Workbench. Proper doc to follow soon.'''
 
     st.title("Result Workflow Builder")
@@ -177,7 +186,7 @@ def search_page():
             state.didRun = 'Started, dnf.'
             state.CurrentStep = 'Processing'
             # This block handles data delivery
-            if state.currentSURL and state.multiSearch == False:
+            if state.currentSURL and state.multiSearch == False:  # False or 'false'?
                 dataS = search_results(state.currentSURL, state.resultMode)
             if state.currentSURL and state.multiSearch == True:
                 baseList = [x.strip() for x in state.currentSURL.split(',')]
@@ -221,7 +230,7 @@ def search_page():
             state.CurrentStep = 'Preprocessing'
 
 
-def citaviExporter():
+def citaviExporter() -> None:
     foundListList = list(state.currentData.columns)
     foundList = [i for x in foundListList for i in x]
     state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
@@ -235,7 +244,7 @@ def citaviExporter():
         st.markdown(href, unsafe_allow_html=True)
 
 
-def postprocessing():
+def postprocessing() -> None:
     st.header("Postprocessing menu")
     st.header("Current result data set")
     st.write(state.currentData)
@@ -259,7 +268,7 @@ def postprocessing():
 # def dataInspector():
 
 
-def dataCleaner():
+def dataCleaner() -> None:
     if state.resultMode == 'Maditadata':
         index = state.currentData.index
         itemsPrev = len(index)
@@ -283,7 +292,7 @@ def dataCleaner():
         state.currentData = newDF
 
 
-def search_results(inURL: str, DataType: str):
+def search_results(inURL: str, DataType: str) -> pd.DataFrame:  # TODO: see, to what extent this can be moved to the handler
     ''' Actual call to handrit tamer to get the desired results from the search URL.
 
     The data frame to be returned depends on the DataType variable (cf. below).
@@ -308,7 +317,7 @@ def search_results(inURL: str, DataType: str):
     return data
 
 
-def browse_results(inURL: str, DataType: str):
+def browse_results(inURL: str, DataType: str) -> pd.DataFrame:  # TODO: see, to what extent this can be moved to the handler
     ''' Actual call to handrit tamer to get the desired results from the browse URL.
 
     The data frame to be returned depends on the DataType variable (cf. below).
@@ -334,7 +343,7 @@ def browse_results(inURL: str, DataType: str):
     return data
 
 
-def static_reports():
+def static_reports() -> None:
     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
     st.text("Currently not available")
     # reports = {"Dating of all MSs": "all_MS_datings"}  # QUESTION: function not defined
@@ -343,7 +352,7 @@ def static_reports():
     # eval(selected + "()")
 
 
-def browse_data():
+def browse_data() -> None:
     handler: DataHandler = state.data_handler
     st.title("Currently Loaded Dataset")
 
@@ -380,7 +389,7 @@ def browse_data():
 # --------------
 
 
-def full_menu():
+def full_menu() -> None:
     '''This is basically the main() and will load and display the full menu, which in turn calls
     all the other functions containing sub pages.
     '''
@@ -402,19 +411,6 @@ def full_menu():
 # Run
 # ----
 if __name__ == '__main__':
-    state = sessionState.get(currentData=pd.DataFrame(),
-                             resultMode='',
-                             currentSURL='',
-                             currentBURL='',
-                             URLType='',
-                             multiSearch='False',
-                             multiBrowse='False',
-                             joinMode='All',
-                             didRun='dnr',
-                             CitaviSelect=[],
-                             CurrentStep='Preprocessing',
-                             postStep='',
-                             currentCitaviData=pd.DataFrame(),
-                             #  data_handler=get_handler()
-                             data_handler=None)
+    session_state: sessionState.SessionState = sessionState.get(state=StateHandler())  # type: ignore
+    state: StateHandler = session_state.state  # type: ignore
     full_menu()

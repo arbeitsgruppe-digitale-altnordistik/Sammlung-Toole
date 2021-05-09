@@ -62,18 +62,18 @@ def get_cleaned_text(carrot: Tag) -> str:
     return res
 
 
-def get_structure(mylist: List[tuple], mytuple: Tuple[str]):  # TODO: might get obsolete?
-    """Adds tuple to list.
+# def get_structure(mylist: List[tuple], mytuple: Tuple[str]):  # TODO: might get obsolete?
+#     """Adds tuple to list.
 
-    Args:
-        mylist (list): list containing tuples
-        mytuple (tuple): tuple containing metadata
+#     Args:
+#         mylist (list): list containing tuples
+#         mytuple (tuple): tuple containing metadata
 
-    Returns:
-        list: mylist
-    """
-    mylist.append(mytuple)
-    return mylist
+#     Returns:
+#         list: mylist
+#     """
+#     mylist.append(mytuple)
+#     return mylist
 
 
 def _get_digits(text: str) -> int:
@@ -104,11 +104,11 @@ def _get_digits(text: str) -> int:
 # ---------------
 
 
-def get_tag(soup):  # TODO: should become obsolete
-    tag = soup.msDesc
-    handritID = str(tag['xml:id'])
-    name = handritID[0:-3]
-    return name
+# def get_tag(soup):  # TODO: should become obsolete
+#     tag = soup.msDesc
+#     handritID = str(tag['xml:id'])
+#     name = handritID[0:-3]
+#     return name
 
 
 def _get_key(leek: Tag) -> Optional[str]:
@@ -196,6 +196,7 @@ def get_creator(soup: BeautifulSoup) -> str:
             creators = hands.find_all('name', {'type': 'person'})
 
             if not creators:
+                # LATER: find out why, if that happens
                 pretty_creators = "Scribe(s) unknown"
             else:
                 pretty_creators = ""
@@ -208,6 +209,7 @@ def get_creator(soup: BeautifulSoup) -> str:
                     pretty_creators = pretty_creators + "; " + pretty_creator
                 pretty_creators = pretty_creators[2:]
         except:
+            # LATER: find out why, if that happens
             pretty_creators = "Scribe(s) unknown"
     else:
         pretty_creators = "Scribe(s) unknown"
@@ -626,7 +628,7 @@ def get_msID(soup: BeautifulSoup) -> Tuple[str, str, str, str]:
     return signature, country, settlement, repository
 
 
-def check_graphic(soup: BeautifulSoup):
+def check_graphic(soup: BeautifulSoup) -> bool:
     graphic = soup.find('graphic')
 
     if graphic:
@@ -640,59 +642,59 @@ def check_graphic(soup: BeautifulSoup):
 # ----------------
 
 
-def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: should become obsolete when these methods are called from handler
-    """ Create dataframe for usage in interface
+# def get_all_data(inData: List[str], DataType: str = 'urls') -> Tuple[pd.DataFrame, str]:    # TODO: should become obsolete when these methods are called from handler
+#     """ Create dataframe for usage in interface
 
-    The dataframe contains the following collumns:
-    "Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"
+#     The dataframe contains the following collumns:
+#     "Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"
 
-    Args:
-        inData (list): list of urls or ids
-        DataType: Whether its a list of URLs or IDs. Allowed: 'urls', 'ids'
+#     Args:
+#         inData (list): list of urls or ids
+#         DataType: Whether its a list of URLs or IDs. Allowed: 'urls', 'ids'
 
-    Returns:
-        tuple: pd.DataFrame (containing manuscript meta data), file_name
-    """
+#     Returns:
+#         tuple: pd.DataFrame (containing manuscript meta data), file_name
+#     """
 
-    mylist = []
+#     mylist = []
 
-    i = 0
-    for thing in inData:
+#     i = 0
+#     for thing in inData:
 
-        log.info(f'Loading: {i}, which is {thing}')
-        i += 1
-        if DataType == 'urls':
-            soup = load_xml(thing)
+#         log.info(f'Loading: {i}, which is {thing}')
+#         i += 1
+#         if DataType == 'urls':
+#             soup = load_xml(thing)
 
-        if DataType == 'ids':
-            presoup = load_xmls_by_id(thing)
-            soup = list(presoup.values())[0]  # TODO: do we really want to hard-exclude multi language like this?
+#         if DataType == 'ids':
+#             presoup = load_xmls_by_id(thing)
+#             soup = list(presoup.values())[0]  # TODO: do we really want to hard-exclude multi language like this?
 
-        # gets soup from url (without crawler)
-        # soup = get_soup(url)
+#         # gets soup from url (without crawler)
+#         # soup = get_soup(url)
 
-        name = get_tag(soup)
-        location = get_location(soup)
-        shorttitle = get_shorttitle(soup)
-        creator = get_creator(soup)
-        dimensions = get_dimensions(soup)
-        folio = get_folio(soup)
-        origin = get_origin(soup)
-        support = get_support(soup)
-        graphic = check_graphic(soup)
-        dates = get_date(soup)
+#         name = get_tag(soup)
+#         location = get_location(soup)
+#         shorttitle = get_shorttitle(soup)
+#         creator = get_creator(soup)
+#         dimensions = get_dimensions(soup)
+#         folio = get_folio(soup)
+#         origin = get_origin(soup)
+#         support = get_support(soup)
+#         graphic = check_graphic(soup)
+#         dates = get_date(soup)
 
-        mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,) + dates + (graphic,)
-        structure = get_structure(mylist, mytuple)
+#         mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,) + dates + (graphic,)
+#         structure = get_structure(mylist, mytuple)
 
-        columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement",
-                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio",
-                   "Date", "Tempus post quem", "Tempus ante quem", "Mean Date", "Year Range", "Digitized"]
-        data = pandafy_data(structure, columns)
+#         columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement",
+#                    "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio",
+#                    "Date", "Tempus post quem", "Tempus ante quem", "Mean Date", "Year Range", "Digitized"]
+#         data = pandafy_data(structure, columns)
 
-    log.info(f'Loaded:  {i}',)
+#     log.info(f'Loaded:  {i}',)
 
-    return data
+#     return data
 
 
 # Get metadata and citavify
@@ -734,7 +736,7 @@ def summarize_location(location: Tuple[str, str, str, str, str, str]) -> Tuple[s
     return settlement, archive, signature
 
 
-def get_citavified_data(inData: list, DataType: str = 'urls') -> tuple:
+def get_citavified_data(inData: List[str], DataType: str = 'urls') -> Tuple[pd.DataFrame, str]:  # XXX: get this to work
     """ Create dataframe for usage in interface
 
     The dataframe contains the following columns:
@@ -843,8 +845,6 @@ def pandafy_data(result: list, columns: list) -> DataFrame:
     Returns:
         pandas.core.frame.DataFrame: panda dataframe
     """
-
-    data = []
     data = pd.DataFrame(result)
     data.columns = columns
 
