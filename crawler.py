@@ -201,6 +201,7 @@ def crawl_xmls(df: pd.DataFrame = None, prog: Any = None) -> Tuple[pd.DataFrame,
 
 
 def _get_existing_xmls(potentials: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
+    # LATER: store which files returned !=200 so they can be skipped next run
     if len(potentials.index) > (3 * settings.max_res):
         potentials = potentials[:(settings.max_res * 3)]
     if prog:

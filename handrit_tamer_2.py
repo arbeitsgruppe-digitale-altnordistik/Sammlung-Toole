@@ -1,11 +1,11 @@
-from typing import Set
+from typing import List, Set
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 import pandas as pd
 import crawler
 import requests
 from bs4 import BeautifulSoup
-from metadata import get_all_data as maddyData  # TODO: should become obsolete
+# from metadata import get_all_data as maddyData  # TODO: should become obsolete
 import metadata
 from util import utils
 
@@ -128,7 +128,7 @@ def get_msinfo(soup: BeautifulSoup):
 # ------------------------------------
 
 
-def get_search_result_pages(url):
+def get_search_result_pages(url: str) -> List[str]:
     """Get multiple result pages from search with 26+ hits.
 
     This function returns a list of all result pages from one search result,
@@ -151,7 +151,7 @@ def get_search_result_pages(url):
     return res
 
 
-def get_shelfmarks_from_urls(urls):
+def get_shelfmarks_from_urls(urls: List[str]) -> List[str]:
     results = []
     if len(urls) == 1:
         url = urls[0]
@@ -189,7 +189,7 @@ def get_shelfmarks(url):
     return shelfmarks
 
 
-def efnisordResult(inURL):
+def efnisordResult(inURL: str) -> List[str]:
     resultPage = requests.get(inURL).content
     pho = BeautifulSoup(resultPage, "lxml")
     theGoods = pho.find("tbody")

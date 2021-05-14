@@ -179,6 +179,31 @@ class DataHandler:
         # CHORE: documentation: one of these arguments must be passed, return df to mss
         pass  # TODO: implement
 
+    def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> List[str]:
+        # CHORE: documentation
+        msss: List[pd.DataFrame] = []
+        for url in urls:
+            if "/search/results/" in url:
+                pages = tamer.get_search_result_pages(url)
+                shelfmarks = tamer.get_shelfmarks_from_urls(pages)
+                print(shelfmarks)
+                mss = self.manuscripts[self.manuscripts['shelfmark'].isin(shelfmarks)]
+            else:
+                ids = tamer.efnisordResult(url)
+                mss = self.manuscripts[self.manuscripts['id'].isin(ids)]
+            msss.append(mss)
+
+        print(msss)
+        if sharedMode:
+            res = self.manuscripts
+            for df in msss:
+                res = pd.merge(res, df, on='xml_url', how='inner')
+            return list(res['xml_url'])
+        else:
+            all_hits: pd.DataFrame = pd.concat(msss)
+            unique_hits = all_hits.drop_duplicates().reset_index(drop=True)
+            return list(unique_hits['xml_url'])
+
     # TASKS: more handler API
     # - more options how to get ms data
     # - options to get texts

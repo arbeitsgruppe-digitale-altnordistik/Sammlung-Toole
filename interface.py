@@ -15,6 +15,7 @@ from util.constants import IMAGE_HOME
 from util.stateHandler import StateHandler
 from util.utils import Settings
 from datahandler import DataHandler
+from gui.guiUtils import Texts
 
 # unused?
 import matplotlib
@@ -173,26 +174,41 @@ def search_page() -> None:
     st.title("Result Workflow Builder")
     if state.CurrentStep == 'Preprocessing':
         st.header("Preprocessing")
-        st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
-        state.currentSURL = st.text_input("Input handrit search URL here")
-        state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False,
-                                        help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
-        state.currentBURL = st.text_input("Input handrit browse URL here")
-        state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False,
-                                        help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
+        # TODO: combine search and browse url
+        st.markdown(Texts.SearchPage.instructions)
+        # st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
+        state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per Line.")
+        # TODO: could do it so that urls are being looked up right after entering
+        # state.currentSURL = st.text_area("Input handrit search URL(s) here", help="If multiple URLs, put one URL per Line.")
+        # state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False,
+        #                                 help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
+        # state.currentBURL = st.text_area("Input handrit browse URL(s) here", help="If multiple URLs, put one URL per Line.")
+        # state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False,
+        #                                 help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
         state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata', 'Maditadata'], index=0)
         state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
             state.didRun = 'Started, dnf.'
             state.CurrentStep = 'Processing'
             # This block handles data delivery
-            if state.currentSURL and state.multiSearch == False:  # False or 'false'?
-                dataS = search_results(state.currentSURL, state.resultMode)
-            if state.currentSURL and state.multiSearch == True:
-                baseList = [x.strip() for x in state.currentSURL.split(',')]
-                dataS = multiSearch(baseList, DataType=state.resultMode, joinMode=state.joinMode)
-            if state.currentBURL and state.multiBrowse == False:
-                dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
+            # if state.currentSURL:
+            if state.currentURLs_str:
+                # if state.currentSURL and state.multiSearch == False:  # False or 'false'?
+                s_urls = [url.strip() for url in state.currentURLs_str.splitlines()]
+                url_list = state.data_handler.get_ms_urls_from_search_or_browse_urls(urls=s_urls, sharedMode=(state.joinMode == 'Shared'))
+                st.write("Processed Manuscript URLs:")
+                st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
+                state.currentURL_list += url_list
+                st.write("Oveall MS URLs:")
+                st.write(state.currentURL_list)
+                # dataS = search_results(state.currentSURL, state.resultMode)
+            # if state.currentSURL and state.multiSearch == True:
+            #     baseList = [x.strip() for x in state.currentSURL.split(',')]
+            #     dataS = multiSearch(baseList, DataType=state.resultMode, joinMode=state.joinMode)
+            # if state.currentBURL and state.multiBrowse == False:
+            #     dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
+
+            # TODO: here should be the option to save the subcorpus
 
             # This block will check the data the got delivered and display it
             if state.resultMode == 'Contents':
