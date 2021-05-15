@@ -432,6 +432,8 @@ def full_menu() -> None:
         full_menu()
 
 
+# TODO: move logger to session state, so that it doesn't multi-log
+
 # Run
 # ----
 if __name__ == '__main__':

@@ -9,7 +9,10 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from stqdm import stqdm
+from tqdm import tqdm
 from lxml import etree
+
+from streamlit.report_thread import add_report_ctx
 
 from util import utils
 from util.utils import Settings
@@ -185,20 +188,20 @@ def crawl_xmls(df: pd.DataFrame = None, prog: Any = None) -> Tuple[pd.DataFrame,
                 contents = pickle.load(file)
         else:
             contents = _load_all_contents(xmls, prog=prog)
-        return xmls, contents
-        # LATER: get this to work again
-        # if res is not None and not res.empty and _is_urls_complete(res):
-        # LATER: improve working with half finished caches (e.g. after max_res)
-        #    if verbose:
-        #         print('Loaded XML URLs from cache.')
-        #     return res
+        if _is_urls_complete(xmls):
+            return xmls, contents
+        else:
+            pass
+            # LATER: do something here
     log.info("Loading XML URLs.")
     if df is None:
         df = crawl_ids(df=None)
     if settings.max_res < len(df.index):
         df = df[:settings.max_res]
     log.info("Building potential URLs")
+    log.debug(f'IDs for building URLs: {len(df.index)}')
     potentials = _get_potential_xmls(df, prog=prog)
+    log.debug(f"Potential URLs: {len(potentials.index)}")
     log.info("Loading actual XMLs")
     xmls = _get_existing_xmls(potentials, prog=prog)
     xmls['shelfmark'] = xmls['content'].apply(_get_shelfmark)
@@ -216,10 +219,13 @@ def crawl_xmls(df: pd.DataFrame = None, prog: Any = None) -> Tuple[pd.DataFrame,
 def _get_existing_xmls(potentials: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
     if len(potentials.index) > (3 * settings.max_res):
         potentials = potentials[:(settings.max_res * 3)]
+    log.debug(f'Loading XMLs from {len(potentials.index)} potential URLs')
     if prog:
         with prog:
-            stqdm.pandas(desc="Loading XMLs")
-            potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)
+            # tqdm.pandas(desc="Loading XMLs")
+            # stqdm.pandas(desc="Loading XMLs")
+            # potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)
+            potentials['content'] = potentials.apply(_get_xml_content, axis=1)
     else:
         stqdm.pandas(desc="Loading XMLs")
         potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)
@@ -239,7 +245,11 @@ def _get_xml_content(row: pd.Series) -> Optional[str]:
     if not content:
         return None
     if settings.cache:
-        Thread(target=_cache_xml_content, args=(content, path)).start()
+        # _cache_xml_content(content, path)
+        th = Thread(target=_cache_xml_content, args=(content, path))
+        # add_report_ctx(th)
+        th.start()
+        # th.join()
     return content
 
 
@@ -259,14 +269,23 @@ def _load_all_contents(xmls: pd.DataFrame = None, prog: Any = None) -> pd.DataFr
 
 
 def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
+    non_existing: List[str] = []
+    if settings.use_cache and os.path.exists(CRAWLER_PATH_404S):
+        with open(CRAWLER_PATH_404S, 'r+', encoding='utf-8') as f:
+            non_existing = f.read().split('\n')
+        log.info(f'Number of known non-existing URLs: {len(non_existing)}')
     if settings.use_cache and os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS):
         log.info("Loading XML URLs from cache.")
         res = pd.read_csv(CRAWLER_PATH_POTENTIAL_XMLS)
-        return res
-    non_existing: List[str] = []
+        colls = crawl_collections()
+        if len(res.index) >= colls['ms_count'].sum() * 3:
+            not_nons = res[~res['xml_url'].isin(non_existing)]
+            log.debug(f'Reduced options of potential URLs from {len(res.index)} to {len(not_nons.index)} by disregarding known non-existing URLs')
+            return not_nons
 
     def iterate() -> pd.DataFrame:
         df = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url'])
+        log.info(f'Number of known non-existing URLs: {len(non_existing)}')
         for _, row in stqdm(id_df.iterrows(), total=len(id_df.index), desc="Calculating Potential URLs"):
             langs = ('en', 'da', 'is')
             for l in langs:
@@ -274,6 +293,7 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
                 url = f'{PREFIX_XML_URL}{file}'
                 if url in non_existing:
                     non_existing.remove(url)
+                    log.debug(f'Skipping URL because previousely it did not exist: {url}')
                     continue
                 df = df.append({'collection': row[0],
                                 'id': row[1],
@@ -282,9 +302,6 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
                                 'xml_file': file
                                 }, ignore_index=True)
         return df
-    if settings.use_cache and os.path.exists(CRAWLER_PATH_404S):
-        with open(CRAWLER_PATH_404S, 'r+', encoding='utf-8') as f:
-            non_existing = f.readlines()
     if prog:
         with prog:
             df = iterate()
@@ -296,10 +313,15 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
 
 
 def _is_urls_complete(df: pd.DataFrame) -> bool:
-    # LATER: improve this
     ids_a = len(crawl_ids()['id'].unique())
     ids_b = len(df['id'].unique())
-    return ids_a == ids_b
+    if ids_a == ids_b:
+        return True
+    if len(df.index) >= settings.max_res:
+        log.debug('Not all URLs available but enough to satisfy max_res')
+        return True
+    log.info('Cache not containing enough URLs')
+    return False
 
 
 def _cache_xml_content(content: str, path: str) -> None:
