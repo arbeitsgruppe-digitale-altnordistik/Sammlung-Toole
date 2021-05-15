@@ -80,9 +80,9 @@ settings = Settings.get_settings()
 
 
 def get_handler() -> None:
-    st.spinner('Grabbing data handler...')
     if DataHandler.is_cached() or DataHandler.has_data_available():
-        rebuild_handler()
+        with st.spinner('Grabbing data handler...'):
+            rebuild_handler()
     else:
         st.sidebar.text("No data at hand. Needs loading first.")
         adv_options()
@@ -103,8 +103,9 @@ def rebuild_all_button() -> None:
 def reload_with_cache() -> None:
     st.write(f'Start: {datetime.now()}')
     container = st.beta_container()
-    crawler.crawl(use_cache=True, prog=container)
+    xmls, contents = crawler.crawl(use_cache=True, prog=container)
     st.write(f'Finished: {datetime.now()}')
+    rebuild_handler(xmls, contents)
 
 
 def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
@@ -112,7 +113,7 @@ def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.D
     container = st.beta_container()
     state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents, prog=container)
     st.write(f'Finished: {datetime.now()}')
-    full_menu()
+    # full_menu()
 
 
 # def redo_xmls_wrap():  # QUESTION: is this even used?
@@ -163,6 +164,12 @@ def adv_options() -> None:
         reload_with_cache()
     if st.sidebar.button("Rebuild Data Handler"):
         rebuild_handler()
+    if st.sidebar.button("Wipe cache"):
+        crawler._wipe_cache()
+    settings.max_res = st.sidebar.number_input("Maximum number of manuscripts to load",
+                                               min_value=1,
+                                               max_value=1000000,
+                                               value=1000000)
 
     # generate_reports()
     # LATER: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
@@ -422,6 +429,7 @@ def full_menu() -> None:
         selected_function()
     else:
         get_handler()
+        full_menu()
 
 
 # Run

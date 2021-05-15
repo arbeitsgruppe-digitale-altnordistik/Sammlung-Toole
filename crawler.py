@@ -15,20 +15,17 @@ from util import utils
 from util.utils import Settings
 from util.constants import HANDLER_BACKUP_PATH_MSS, CRAWLER_PATH_IDS
 from util.constants import PREFIX_XML_DATA, PREFIX_XML_URL
-from util.constants import CRAWLER_PATH_CONTENT_PICKLE, CRAWLER_PICKLE_PATH, CRAWLER_PATH_URLS, CRAWLER_PATH_COLLECTIONS, CRAWLER_PATH_POTENTIAL_XMLS
+from util.constants import CRAWLER_PATH_CONTENT_PICKLE, CRAWLER_PICKLE_PATH, CRAWLER_PATH_URLS, CRAWLER_PATH_COLLECTIONS, CRAWLER_PATH_POTENTIAL_XMLS, CRAWLER_PATH_404S
 
 
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
 
 
-verbose = True
-
-
 # Crawl Collections
 # -----------------
 
-def crawl_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFrame:
+def crawl_collections() -> pd.DataFrame:
     """Load all collections from handrit.is.
 
     The dataframe contains the following informations:
@@ -36,21 +33,17 @@ def crawl_collections(use_cache: bool = True, cache: bool = True) -> pd.DataFram
     - Number of Manuscripts listed for the Collection (`ms_count`)
     - Collection URL (`url`)
 
-    Args:
-        use_cache (bool, optional): Flag true if local cache should be used; false to force download. Defaults to True.
-        cache (bool, optional): Flag true if result should be written to cache. Defaults to True.
-
     Returns:
         pd.DataFrame: Data frame containing basic information on collections.
     """
     log.info('Loading Collegtions')
-    if use_cache and os.path.exists(CRAWLER_PATH_COLLECTIONS):
+    if settings.use_cache and os.path.exists(CRAWLER_PATH_COLLECTIONS):
         cols = pd.read_csv(CRAWLER_PATH_COLLECTIONS)
         if cols is not None and not cols.empty:
             log.info('Loaded collections from cache.')
             return cols
     cols = _load_collections()
-    if cache:
+    if settings.cache:
         cols.to_csv(CRAWLER_PATH_COLLECTIONS, encoding='utf-8', index=False)
     log.info(f"Loaded {len(cols.index)} collections.")
     return cols
@@ -86,15 +79,21 @@ def crawl_ids(df: pd.DataFrame = None) -> pd.DataFrame:
     """
     # LATER: could add progressbar to this one too
     log.info('Loading Manuscript IDs')
-    if settings.use_cache and os.path.exists(CRAWLER_PATH_IDS):
-        ids = pd.read_csv(CRAWLER_PATH_IDS)
-        if ids is not None and not ids.empty and _is_ids_complete(ids):
-            # LATER: improve working with half finished caches (e.g. after max_res)
-            log.info('Loaded manuscript IDs from cache.')
-            return ids
     if df is None:
         df = crawl_collections()
-    ids = _load_ids(df)
+    preloaded_ids = None
+    if settings.use_cache and os.path.exists(CRAWLER_PATH_IDS):
+        ids = pd.read_csv(CRAWLER_PATH_IDS)
+        if ids is not None and not ids.empty:
+            if _is_ids_complete(ids):
+                log.info('Loaded manuscript IDs from cache.')
+                return ids
+            else:
+                preloaded_ids = _load_ids(df, ids)
+                # LATER: improve working with half finished caches (e.g. after max_res)
+                pass
+    if preloaded_ids is not None and not preloaded_ids.empty:
+        ids = _load_ids(df)
     if len(ids.index) >= settings.max_res:
         ids = ids[:settings.max_res]
     ids.sort_values(by=['collection', 'id'])
@@ -106,19 +105,30 @@ def crawl_ids(df: pd.DataFrame = None) -> pd.DataFrame:
 
 def _is_ids_complete(ids: pd.DataFrame) -> bool:
     """indicates if the number of IDs matches the number indicated by the collections"""
-    # LATER: improve this
     colls = crawl_collections()
     if colls['ms_count'].sum() == len(ids.index):
+        return True
+    if len(ids.index) >= settings.max_res:
+        log.info('Not all IDs available, but enough to meet max_res limitation')
         return True
     log.warning('Number of manuscripts does not match the number indicated by collections')
     return False
 
 
-def _load_ids(df: pd.DataFrame) -> pd.DataFrame:
+def _load_ids(df: pd.DataFrame, preloaded: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """Load IDs"""
 
     def get_iter(df: pd.DataFrame) -> Generator[Tuple[str, str], None, None]:
         hits = 0
+        if preloaded is not None and not preloaded.empty:
+            for _, row in preloaded.iterrows():
+                if hits >= settings.max_res:
+                    break
+                col = row['collection']
+                id_ = row['id']
+                log.debug(f'Skipped ID: {id_}')
+                yield (col, id_,)
+                hits += 1
         cols = list(df.collection)
         for col in cols:
             if hits >= settings.max_res:
@@ -127,6 +137,9 @@ def _load_ids(df: pd.DataFrame) -> pd.DataFrame:
             for res in _download_ids_from_url(url, col):
                 if hits >= settings.max_res:
                     break
+                if preloaded is not None and res[1] in preloaded['id']:
+                    log.debug(f'Skipped {res} because it had been preloaded')
+                    continue
                 yield res
                 hits += 1
 
@@ -201,7 +214,6 @@ def crawl_xmls(df: pd.DataFrame = None, prog: Any = None) -> Tuple[pd.DataFrame,
 
 
 def _get_existing_xmls(potentials: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
-    # LATER: store which files returned !=200 so they can be skipped next run
     if len(potentials.index) > (3 * settings.max_res):
         potentials = potentials[:(settings.max_res * 3)]
     if prog:
@@ -251,6 +263,7 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
         log.info("Loading XML URLs from cache.")
         res = pd.read_csv(CRAWLER_PATH_POTENTIAL_XMLS)
         return res
+    non_existing: List[str] = []
 
     def iterate() -> pd.DataFrame:
         df = pd.DataFrame(columns=['collection', 'id', 'lang', 'xml_url'])
@@ -259,6 +272,9 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
             for l in langs:
                 file = f'{row[1]}-{l}.xml'
                 url = f'{PREFIX_XML_URL}{file}'
+                if url in non_existing:
+                    non_existing.remove(url)
+                    continue
                 df = df.append({'collection': row[0],
                                 'id': row[1],
                                 'lang': l,
@@ -266,6 +282,9 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
                                 'xml_file': file
                                 }, ignore_index=True)
         return df
+    if settings.use_cache and os.path.exists(CRAWLER_PATH_404S):
+        with open(CRAWLER_PATH_404S, 'r+', encoding='utf-8') as f:
+            non_existing = f.readlines()
     if prog:
         with prog:
             df = iterate()
@@ -292,6 +311,9 @@ def _load_xml_content(url: str) -> Optional[str]:
     """Load XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
     if response.status_code != 200:
+        if settings.cache:
+            with open(CRAWLER_PATH_404S, mode='a', encoding='utf-8') as f:
+                f.write(url + '\n')
         return None
     bytes_ = response.text.encode(response.encoding)
     if bytes_.startswith(b'<!DOCTYPE html'):
@@ -464,3 +486,7 @@ def _wipe_cache() -> None:
         os.remove(HANDLER_BACKUP_PATH_MSS)
     if os.path.exists(CRAWLER_PICKLE_PATH):
         os.remove(CRAWLER_PICKLE_PATH)
+    if os.path.exists(CRAWLER_PATH_404S):
+        os.remove(CRAWLER_PATH_404S)
+
+    # TODO: ensure that all folders exist that might be needed

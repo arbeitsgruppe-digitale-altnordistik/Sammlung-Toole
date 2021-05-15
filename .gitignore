@@ -135,6 +135,7 @@ dmypy.json
 .vscode/
 quickTest.py
 *.csv
+*.txt
 .backup_data/
 
 # pickled data
