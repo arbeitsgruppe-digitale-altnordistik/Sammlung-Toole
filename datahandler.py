@@ -128,7 +128,7 @@ class DataHandler:
         """
         log.info("Getting DataHandler")
         res: Optional[DataHandler] = cls._from_pickle()
-        if res:
+        if res and res._ms_complete():
             res._backup()
             return res
         log.info("Could not get DataHandler from pickle")
@@ -164,6 +164,16 @@ class DataHandler:
         if len(self.manuscripts.index) > settings.max_res:
             self.manuscripts = self.manuscripts[:settings.max_res]
         # TODO: truncate other props aswell
+
+    def _ms_complete(self) -> bool:
+        if self.manuscripts is None or self.manuscripts.empty:
+            return False
+        length = len(self.manuscripts.index)
+        if length >= settings.max_res:
+            return True
+        if length >= crawler.crawl_collections()['ms_count'].sum():
+            return True
+        return False
 
     # API Methods
     # -----------

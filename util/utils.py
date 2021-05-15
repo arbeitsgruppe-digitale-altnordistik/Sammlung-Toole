@@ -13,7 +13,8 @@ class Settings:
     def __init__(self) -> None:
         self.__verbose = True
         self.__debug = True
-        self.__max_res = sys.maxsize
+        self.__max_res = 100
+        # self.__max_res = sys.maxsize
         self.cache = True
         self.use_cache = True
         global __last

@@ -169,7 +169,7 @@ def adv_options() -> None:
     settings.max_res = st.sidebar.number_input("Maximum number of manuscripts to load",
                                                min_value=1,
                                                max_value=1000000,
-                                               value=1000000)
+                                               value=100)
 
     # generate_reports()
     # LATER: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
