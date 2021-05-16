@@ -1,4 +1,5 @@
 from typing import Optional
+import numpy as np
 import streamlit as st
 import pandas as pd
 import crawler
@@ -8,6 +9,7 @@ from io import StringIO
 from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
 from threading import current_thread
 from datetime import datetime
+import markdown
 import metadata
 from util import sessionState
 from util import utils
@@ -261,9 +263,9 @@ def citaviExporter() -> None:
     if st.button('Export'):
         state.currentCitaviData, _ = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
         st.write(state.currentCitaviData)
-        csv = state.currentCitaviData.to_csv(index=False)
+        csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
         b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        href = f'<b> There is a bug! Use "Right Click -> Save As" or it will break!</b><br /><a href="data:file/csv;base64,{b64}">Download CSV File</a><br /> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
         st.markdown(href, unsafe_allow_html=True)
 
 
@@ -292,18 +294,18 @@ def postprocessing() -> None:
 
 
 def dataCleaner() -> None:
+    state.currentData = state.currentData.replace('None', np.nan)
     if state.resultMode == 'Maditadata':
         index = state.currentData.index
         itemsPrev = len(index)
-        newDF = state.currentData.dropna()
+        newDF = state.currentData.dropna(axis=1, how='all')
         index1 = newDF.index
         itemsAfter = len(index1)
         diff = itemsPrev - itemsAfter
         st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values.")
     else:
         itemsPrev = len(state.currentData.columns)
-        # newDF =
-        newDF = pd.DataFrame()  # QUESTION: newDF not defined? (added this to get rid of warning)
+        newDF = state.currentData.dropna(axis=1, how='all')
         itemsAfter = len(newDF.columns)
         newDF = newDF.loc[:, ~newDF.columns.duplicated()]
         itemsAfter1 = len(newDF.columns)
@@ -408,6 +410,13 @@ def browse_data() -> None:
     st.write(subs)
 
 
+def help() -> None:
+    st.title("How to use this tool")
+    with open('CITAVI-README.md', 'r') as citread:
+        helpme = markdown.markdown(citread.read())
+    st.markdown(helpme, unsafe_allow_html=True)
+
+
 # Menu Functions
 # --------------
 
@@ -423,7 +432,7 @@ def full_menu() -> None:
                        "Search Functions": search_page,
                        "Reports": static_reports,
                        "Advanced Settings": adv_options,
-                       }
+                       "Help": help}
         selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
         selected_function = MenuOptions[selection]
         selected_function()
