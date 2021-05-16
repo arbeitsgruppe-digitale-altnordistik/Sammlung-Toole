@@ -96,6 +96,8 @@ def crawl_ids(df: pd.DataFrame = None) -> pd.DataFrame:
                 # LATER: improve working with half finished caches (e.g. after max_res)
                 pass
     if preloaded_ids is not None and not preloaded_ids.empty:
+        ids = preloaded_ids
+    else:
         ids = _load_ids(df)
     if len(ids.index) >= settings.max_res:
         ids = ids[:settings.max_res]
@@ -200,6 +202,7 @@ def crawl_xmls(df: pd.DataFrame = None, prog: Any = None) -> Tuple[pd.DataFrame,
         df = df[:settings.max_res]
     log.info("Building potential URLs")
     log.debug(f'IDs for building URLs: {len(df.index)}')
+    # XXX: handle loading cached XMLs first of all, as it should be the quickest way
     potentials = _get_potential_xmls(df, prog=prog)
     log.debug(f"Potential URLs: {len(potentials.index)}")
     log.info("Loading actual XMLs")
@@ -223,11 +226,11 @@ def _get_existing_xmls(potentials: pd.DataFrame, prog: Any = None) -> pd.DataFra
     if prog:
         with prog:
             # tqdm.pandas(desc="Loading XMLs")
-            # stqdm.pandas(desc="Loading XMLs")
-            # potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)
-            potentials['content'] = potentials.apply(_get_xml_content, axis=1)
+            stqdm.pandas(desc="Loading XMLs")
+            potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)  # FIXME: why is this not working anymore?
+            # potentials['content'] = potentials.apply(_get_xml_content, axis=1)
     else:
-        stqdm.pandas(desc="Loading XMLs")
+        tqdm.pandas(desc="Loading XMLs")
         potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)
     potentials['exists'] = potentials['content'].apply(lambda x: True if x else False)
     df = potentials[potentials['exists'] == True]
@@ -263,7 +266,7 @@ def _load_all_contents(xmls: pd.DataFrame = None, prog: Any = None) -> pd.DataFr
     else:
         res = pd.DataFrame()
         res['xml_url'] = xmls['xml_url']
-        stqdm.pandas(desc="Loading XMLs")
+        tqdm.pandas(desc="Loading XMLs")
         res['content'] = res.progress_apply(_get_xml_content, axis=1)
     return res
 
@@ -279,7 +282,7 @@ def _get_potential_xmls(id_df: pd.DataFrame, prog: Any = None) -> pd.DataFrame:
         res = pd.read_csv(CRAWLER_PATH_POTENTIAL_XMLS)
         colls = crawl_collections()
         if len(res.index) >= colls['ms_count'].sum() * 3:
-            not_nons = res[~res['xml_url'].isin(non_existing)]
+            not_nons = res[~res['xml_url'].isin(non_existing)].reindex()
             log.debug(f'Reduced options of potential URLs from {len(res.index)} to {len(not_nons.index)} by disregarding known non-existing URLs')
             return not_nons
 

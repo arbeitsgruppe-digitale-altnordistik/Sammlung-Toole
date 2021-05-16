@@ -115,6 +115,7 @@ def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.D
     container = st.beta_container()
     state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents, prog=container)
     st.write(f'Finished: {datetime.now()}')
+    st.experimental_rerun()
     # full_menu()
 
 
@@ -171,7 +172,7 @@ def adv_options() -> None:
     settings.max_res = st.sidebar.number_input("Maximum number of manuscripts to load",
                                                min_value=1,
                                                max_value=1000000,
-                                               value=100)
+                                               value=1000000)
 
     # generate_reports()
     # LATER: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
@@ -438,7 +439,6 @@ def full_menu() -> None:
         selected_function()
     else:
         get_handler()
-        full_menu()
 
 
 # TODO: move logger to session state, so that it doesn't multi-log
