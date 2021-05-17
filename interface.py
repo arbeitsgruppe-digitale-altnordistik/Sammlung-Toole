@@ -4,10 +4,10 @@ import streamlit as st
 import pandas as pd
 import crawler
 import base64
-from contextlib import contextmanager
-from io import StringIO
-from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
-from threading import current_thread
+# from contextlib import contextmanager
+# from io import StringIO
+# from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
+# from threading import current_thread
 from datetime import datetime
 import markdown
 import metadata
@@ -20,11 +20,11 @@ from datahandler import DataHandler
 from gui.guiUtils import Texts
 
 # unused?
-import matplotlib
-import plotly.figure_factory as ff
-import plotly.express as px
-import streamlit.components.v1 as comps
-import sys
+# import matplotlib
+# import plotly.figure_factory as ff
+# import plotly.express as px
+# import streamlit.components.v1 as comps
+# import sys
 
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
@@ -80,6 +80,7 @@ settings = Settings.get_settings()
 # Utility Functions
 # -----------------
 
+# TODO: this should be simplified: move to main window part; make cache a checkbox option; improve max-res?
 
 def get_handler() -> None:
     if DataHandler.is_cached() or DataHandler.has_data_available():
@@ -158,7 +159,7 @@ def mainPage() -> None:
 
 def adv_options() -> None:
     '''Shows the advanced options menu'''
-
+    # LATER: At some point we should consider changing crawling into a background task
     st.title("Advanced Options Menu")
     st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
@@ -174,8 +175,7 @@ def adv_options() -> None:
                                                max_value=1000000,
                                                value=1000000)
 
-    # generate_reports()
-    # LATER: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
+    # generate_reports()  # QUESTION: what's the deal with this? commented out because it caused an error
 
 
 def search_page() -> None:
@@ -185,7 +185,7 @@ def search_page() -> None:
     if state.CurrentStep == 'Preprocessing':
         st.header("Preprocessing")
         # TODO: combine search and browse url
-        st.markdown(Texts.SearchPage.instructions)
+        st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
         # st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
         state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per Line.")
         # TODO: could do it so that urls are being looked up right after entering
@@ -218,9 +218,10 @@ def search_page() -> None:
             # if state.currentBURL and state.multiBrowse == False:
             #     dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
 
-            # TODO: here should be the option to save the subcorpus
+            # LATER: here should be the option to save the subcorpus
 
             # This block will check the data the got delivered and display it
+            # XXX: only runs until here
             if state.resultMode == 'Contents':
                 if state.currentSURL and state.currentBURL:
                     state.currentData = pd.concat([dataS, dataB], axis=1)
@@ -267,7 +268,7 @@ def citaviExporter() -> None:
         csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
         b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
         href = f'<b> There is a bug! Use "Right Click -> Save As" or it will break!</b><br /><a href="data:file/csv;base64,{b64}">Download CSV File</a><br /> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
-        st.markdown(href, unsafe_allow_html=True)
+        st.markdown(href, unsafe_allow_html=True)  # TODO: check if href can be opened in separate tab?
 
 
 def postprocessing() -> None:

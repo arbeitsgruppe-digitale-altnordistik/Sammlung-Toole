@@ -2,6 +2,8 @@ from typing import Any, List, Optional
 import pandas as pd
 from datahandler import DataHandler
 
+# LATER: this could be divided with nested classes for more order
+
 
 class StateHandler:
     def __init__(self) -> None:
@@ -10,7 +12,7 @@ class StateHandler:
         self.currentURLs_str: str = ''
         self.currentURL_list: List[str] = []
         self.currentSURL: str = ''
-        self.currentBURL = ''
+        self.currentBURL = ''  # TODO: check what's still used
         self.URLType = ''
         # self.multiSearch = 'False'
         self.multiBrowse = 'False'

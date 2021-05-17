@@ -10,10 +10,11 @@ __logs: List[logging.Logger] = []
 
 
 class Settings:
+    """Data structure to hold settings for the application."""
+
     def __init__(self) -> None:
         self.__verbose = True
         self.__debug = True
-        # self.__max_res = 100
         self.__max_res = sys.maxsize
         self.cache = True
         self.use_cache = True
@@ -79,9 +80,7 @@ def get_soup(url: str, parser: str = 'xml') -> BeautifulSoup:
 
 
 def get_logger(name: str) -> logging.Logger:
-    """
-    returns a preconfigured logger
-    """
+    """returns a pre-configured logger"""
     log = logging.getLogger(name)
 
     global __last
@@ -118,6 +117,18 @@ def get_logger(name: str) -> logging.Logger:
 
 
 def set_log_level(debug: bool = False, verbose: bool = True) -> None:
+    """Set Log Levels
+
+    Set the log levels of all created logs of the application (usually three)self.
+
+    If both `debug` and `verbose` are set `False`, the log level will be `logging.WARNING`.
+
+    Default is `logging.INFO`/`verbose`
+
+    Args:
+        debug (bool, optional): Set `True` if the new log level should be `logging.DEBUG`. Defaults to False.
+        verbose (bool, optional): Set `True` if the new log level should be `logging.INFO`. Defaults to True.
+    """
     if debug:
         level = logging.DEBUG
     elif verbose:

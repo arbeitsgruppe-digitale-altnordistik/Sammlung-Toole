@@ -1,3 +1,5 @@
+# TODO: rename file eventually
+
 from typing import List, Set
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -5,7 +7,6 @@ import pandas as pd
 import crawler
 import requests
 from bs4 import BeautifulSoup
-# from metadata import get_all_data as maddyData  # TODO: should become obsolete
 import metadata
 from util import utils
 

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Generator, List, Optional, Tuple
 import os
 import glob
 from datetime import datetime
@@ -7,17 +7,17 @@ from threading import Thread
 
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 from stqdm import stqdm
 from tqdm import tqdm
 from lxml import etree
 
-from streamlit.report_thread import add_report_ctx
+# from streamlit.report_thread import add_report_ctx
 
 from util import utils
 from util.utils import Settings
 from util.constants import HANDLER_BACKUP_PATH_MSS, CRAWLER_PATH_IDS
-from util.constants import PREFIX_XML_DATA, PREFIX_XML_URL
+from util.constants import PREFIX_XML_DATA, PREFIX_XML_URL, PREFIX_BACKUPS
 from util.constants import CRAWLER_PATH_CONTENT_PICKLE, CRAWLER_PICKLE_PATH, CRAWLER_PATH_URLS, CRAWLER_PATH_COLLECTIONS, CRAWLER_PATH_POTENTIAL_XMLS, CRAWLER_PATH_404S
 
 
@@ -53,8 +53,7 @@ def crawl_collections() -> pd.DataFrame:
 
 
 def _load_collections() -> pd.DataFrame:
-    """Load collections from website
-    """
+    """Load collections from website"""
     soup = utils.get_soup('https://handrit.is/#collection', 'lxml')
     collection_tags = soup.find_all('div', attrs={'class': 'collection'})
     collections = [(c.find('span', attrs={'class': 'mark'}).text,
@@ -67,7 +66,7 @@ def _load_collections() -> pd.DataFrame:
 # Crawl Manuscript IDs
 # --------------------
 
-def crawl_ids(df: pd.DataFrame = None) -> pd.DataFrame:
+def crawl_ids(df: pd.DataFrame = None, prog: Any = None) -> pd.DataFrame:
     """Load all manuscript IDs.
 
     The dataframe contains the following collumns:
@@ -76,6 +75,7 @@ def crawl_ids(df: pd.DataFrame = None) -> pd.DataFrame:
 
     Args:
         df (pd.DataFrame, optional): Dataframe containing the available collections on handrit. If `None` is passed, `get_collections()` will be called. Defaults to None.
+        prog (Any, optional): Optional streamlit progress bar. Defaults to None.
 
     Returns:
         pd.DataFrame: Dataframe containing the manuscript IDs.
@@ -96,7 +96,7 @@ def crawl_ids(df: pd.DataFrame = None) -> pd.DataFrame:
                 # LATER: improve working with half finished caches (e.g. after max_res)
                 pass
     if preloaded_ids is not None and not preloaded_ids.empty:
-        ids = preloaded_ids
+        ids = preloaded_ids  # LATER: this doesn't do anything
     else:
         ids = _load_ids(df)
     if len(ids.index) >= settings.max_res:
@@ -120,9 +120,9 @@ def _is_ids_complete(ids: pd.DataFrame) -> bool:
     return False
 
 
-def _load_ids(df: pd.DataFrame, preloaded: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+def _load_ids(df: pd.DataFrame, preloaded: Optional[pd.DataFrame] = None, prog: Any = None) -> pd.DataFrame:
     """Load IDs"""
-
+    # LATER: progress bar
     def get_iter(df: pd.DataFrame) -> Generator[Tuple[str, str], None, None]:
         hits = 0
         if preloaded is not None and not preloaded.empty:
@@ -177,7 +177,7 @@ def crawl_xmls(df: pd.DataFrame = None, prog: Any = None) -> Tuple[pd.DataFrame,
 
     Args:
         df (pd.DataFrame, optional): Dataframe containing the available manuscript IDs. If `None` is passed, `get_ids()` will be called. Defaults to None.
-        prog (streamlit.beta_container, optional): streamlit context for displaying progress bars
+        prog (streamlit.beta_container, optional): streamlit context for displaying progress bars. Defaults to None.
 
     Returns:
         pd.DataFrame: Dataframe containing manuscript URLs.
@@ -202,7 +202,7 @@ def crawl_xmls(df: pd.DataFrame = None, prog: Any = None) -> Tuple[pd.DataFrame,
         df = df[:settings.max_res]
     log.info("Building potential URLs")
     log.debug(f'IDs for building URLs: {len(df.index)}')
-    # XXX: handle loading cached XMLs first of all, as it should be the quickest way
+    # TODO: handle loading cached XMLs first of all, as it should be the quickest way
     potentials = _get_potential_xmls(df, prog=prog)
     log.debug(f"Potential URLs: {len(potentials.index)}")
     log.info("Loading actual XMLs")
@@ -225,10 +225,9 @@ def _get_existing_xmls(potentials: pd.DataFrame, prog: Any = None) -> pd.DataFra
     log.debug(f'Loading XMLs from {len(potentials.index)} potential URLs')
     if prog:
         with prog:
-            # tqdm.pandas(desc="Loading XMLs")
             stqdm.pandas(desc="Loading XMLs")
-            potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)  # FIXME: why is this not working anymore?
-            # potentials['content'] = potentials.apply(_get_xml_content, axis=1)
+            potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)
+            # TODO: why is this not working anymore? or is it?
     else:
         tqdm.pandas(desc="Loading XMLs")
         potentials['content'] = potentials.progress_apply(_get_xml_content, axis=1)
@@ -248,11 +247,8 @@ def _get_xml_content(row: pd.Series) -> Optional[str]:
     if not content:
         return None
     if settings.cache:
-        # _cache_xml_content(content, path)
         th = Thread(target=_cache_xml_content, args=(content, path))
-        # add_report_ctx(th)
         th.start()
-        # th.join()
     return content
 
 
@@ -403,62 +399,63 @@ def _get_shelfmark(content: str) -> str:
 # Access XML Directly
 # -------------------
 
-# TODO: rethink this part: is it still the way to go? or is this handler domain?
+# LATER: remove unless really needed
 
-def load_xml(url: str) -> BeautifulSoup:
-    """Load XML from URL.
+# def load_xml(url: str) -> BeautifulSoup:
+#     """Load XML from URL.
 
-    Args:
-        url (str): URL of an XML on handrit.is.
+#     Args:
+#         url (str): URL of an XML on handrit.is.
 
-    Returns:
-        BeautifulSoup: XML content.
-    """
-    filename = url.rsplit('/', 1)[1]
-    return load_xml_by_filename(filename=filename)
-
-
-def load_xml_by_filename(filename: str) -> BeautifulSoup:  # TODO: see where we actually use this
-    """Load XML by file name.
-
-    Args:
-        filename (str): XML file name.
-
-    Returns:
-        BeautifulSoup: XML content.
-    """
-    path = PREFIX_XML_DATA + filename
-    if settings.use_cache and os.path.exists(path):
-        with open(path, 'r', encoding='utf-8') as f:
-            return BeautifulSoup(f, 'xml')
-    xml = _load_xml_content(PREFIX_XML_URL + filename)
-    if settings.cache and xml:
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(xml)
-    soup = BeautifulSoup(xml, 'xml')
-    return soup
+#     Returns:
+#         BeautifulSoup: XML content.
+#     """
+#     filename = url.rsplit('/', 1)[1]
+#     return load_xml_by_filename(filename=filename)
 
 
-def load_xmls_by_id(id_: str) -> Dict[str, str]:
-    """Load XML(s) by manuscript ID.
+# def load_xml_by_filename(filename: str) -> BeautifulSoup:
+#     """Load XML by file name.
 
-    Args:
-        id_ (str): Manuscript ID
+#     Args:
+#         filename (str): XML file name.
 
-    Returns:
-        dict: dict of the XMLs found by this ID. Follows the structure `{language: BeautifulSoup}` (i.e. `{'da': 'soup', 'is': 'soup}`).
-    """
-    res = {}
-    df, _ = crawl_xmls()
-    hits = df.loc[df['id'] == id_]
-    for _, row in hits.iterrows():
-        lang = row['lang']
-        url = row['xml_url']
-        res[lang] = load_xml(url)
-    return res
+#     Returns:
+#         BeautifulSoup: XML content.
+#     """
+#     path = PREFIX_XML_DATA + filename
+#     if settings.use_cache and os.path.exists(path):
+#         with open(path, 'r', encoding='utf-8') as f:
+#             return BeautifulSoup(f, 'xml')
+#     xml = _load_xml_content(PREFIX_XML_URL + filename)
+#     if settings.cache and xml:
+#         with open(path, 'w', encoding='utf-8') as f:
+#             f.write(xml)
+#     soup = BeautifulSoup(xml, 'xml')
+#     return soup
+
+
+# def load_xmls_by_id(id_: str) -> Dict[str, str]:
+#     """Load XML(s) by manuscript ID.
+
+#     Args:
+#         id_ (str): Manuscript ID
+
+#     Returns:
+#         dict: dict of the XMLs found by this ID. Follows the structure `{language: BeautifulSoup}` (i.e. `{'da': 'soup', 'is': 'soup}`).
+#     """
+#     res = {}
+#     df, _ = crawl_xmls()
+#     hits = df.loc[df['id'] == id_]
+#     for _, row in hits.iterrows():
+#         lang = row['lang']
+#         url = row['xml_url']
+#         res[lang] = load_xml(url)
+#     return res
 
 
 def has_data_available() -> bool:
+    """Check if data is available"""
     xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
     if xmls and \
             os.path.exists(CRAWLER_PATH_COLLECTIONS) and \
@@ -473,6 +470,7 @@ def has_data_available() -> bool:
 def crawl(use_cache: bool = False, prog: Any = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """crawl everything as fast as possible"""
     log.info(f'Start crawling: {datetime.now()}')
+    _ensure_directories()
 
     settings.use_cache = use_cache
 
@@ -494,6 +492,7 @@ def crawl(use_cache: bool = False, prog: Any = None) -> Tuple[pd.DataFrame, pd.D
 
 
 def _wipe_cache() -> None:
+    """Remove all cached files"""
     xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
     for xml in xmls:
         os.remove(xml)
@@ -514,4 +513,8 @@ def _wipe_cache() -> None:
     if os.path.exists(CRAWLER_PATH_404S):
         os.remove(CRAWLER_PATH_404S)
 
-    # TODO: ensure that all folders exist that might be needed
+
+def _ensure_directories() -> None:
+    """Ensure all caching directories exist"""
+    os.makedirs(PREFIX_XML_DATA, exist_ok=True)
+    os.makedirs(PREFIX_BACKUPS, exist_ok=True)
