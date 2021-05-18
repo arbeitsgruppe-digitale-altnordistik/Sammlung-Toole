@@ -1,14 +1,14 @@
 from typing import Dict, Generator, List, Optional, Tuple
-import requests
-import lxml
+# import requests
+# import lxml
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 import urllib
 import pandas as pd
 from pandas import DataFrame
 import copy
-from crawler import load_xml
-from crawler import load_xmls_by_id
+# from crawler import load_xml
+# from crawler import load_xmls_by_id
 from datetime import datetime
 import re
 import statistics
@@ -632,11 +632,11 @@ def check_graphic(soup: BeautifulSoup) -> bool:
     graphic = soup.find('graphic')
 
     if graphic:
-        graphic = True
+        g = True
     else:
-        graphic = False
+        g = False
 
-    return graphic
+    return g
 
 # Get all metadata
 # ----------------
@@ -851,10 +851,9 @@ def pandafy_data(result: list, columns: list) -> DataFrame:
     return data
 
 
-def CSVExport(FileName: str, DataFrame):
+def CSVExport(FileName: str, DataFrame: pd.DataFrame) -> None:
     DataFrame.to_csv(FileName+".csv", sep='\t', encoding='utf-8', index=False)
     log.info("File exported")
-    return
 
 
 # Test Runner
@@ -869,39 +868,39 @@ def CSVExport(FileName: str, DataFrame):
 # myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 # myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
 # myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
-myURLList = ['AM02-0002', 'AM02-0022', 'AM02-190-b']
+# myURLList = ['AM02-0002', 'AM02-0022', 'AM02-190-b']
 
 
-if __name__ == "__main__":
-    print("Test Runner:")
-    print("------------")
-    print(f'Start: {datetime.now()}')
+# if __name__ == "__main__":
+#     print("Test Runner:")
+#     print("------------")
+#     print(f'Start: {datetime.now()}')
 
-    '''Hier zwei Funktionen zum Citavi-freundliches Data oder alles Data zu bekommen (unten der Export)'''
+#     '''Hier zwei Funktionen zum Citavi-freundliches Data oder alles Data zu bekommen (unten der Export)'''
 
-    # Get data for citavi
-    # -----------------------
-    data_c, file_name_c = get_citavified_data(myURLList)
+#     # Get data for citavi
+#     # -----------------------
+#     data_c, file_name_c = get_citavified_data(myURLList)
 
-    # Get all data
-    # ----------------
-    # data = get_all_data(myURLList, DataType='ids')
-    # print(data)
+#     # Get all data
+#     # ----------------
+#     # data = get_all_data(myURLList, DataType='ids')
+#     # print(data)
 
-    '''Hier ist noch Balduins Titel-Finder. Allerdings noch nicht in einem richtigen Dataframe oder dergleichen!'''
-    # Get all titles
-    # --------------
-    #list_of_results = do_it_my_way(myURLList)
-    # for url, result in list_of_results:
-    #    print(url)
-    #    for vals in result:
-    #        print(vals)
-    #    print('\n------------------\n')
+#     '''Hier ist noch Balduins Titel-Finder. Allerdings noch nicht in einem richtigen Dataframe oder dergleichen!'''
+#     # Get all titles
+#     # --------------
+#     #list_of_results = do_it_my_way(myURLList)
+#     # for url, result in list_of_results:
+#     #    print(url)
+#     #    for vals in result:
+#     #        print(vals)
+#     #    print('\n------------------\n')
 
-    # CSV exports
-    # ----------
-    # CSVExport(file_name_c, data_c)
-    # CSVExport(file_name, data)
+#     # CSV exports
+#     # ----------
+#     # CSVExport(file_name_c, data_c)
+#     # CSVExport(file_name, data)
 
-    print(f'Finished: {datetime.now()}')
-    print("------------")
+#     print(f'Finished: {datetime.now()}')
+#     print("------------")
