@@ -19,68 +19,10 @@ from util.utils import Settings
 from datahandler import DataHandler
 from gui.guiUtils import Texts
 
-# unused?
-# import matplotlib
-# import plotly.figure_factory as ff
-# import plotly.express as px
-# import streamlit.components.v1 as comps
-# import sys
 
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
 
-
-# XXX: get rid of this
-# from handrit_tamer import get_data_from_search_url as hSr
-# from handrit_tamer import get_data_from_browse_url as hBr
-# from handrit_tamer import get_from_search_list as multiSearch
-
-
-# System
-# ------
-
-# These three functions can be used as wrapper functions to redirect prints from terminal to the
-# web interface. This will not work directly with cached functions.
-
-# QUESTION: still needed?
-# @contextmanager
-# def st_redirect(src, dst):
-#     placeholder = st.empty()
-#     output_func = getattr(placeholder, dst)
-
-#     with StringIO() as buffer:
-#         old_write = src.write
-
-#         def new_write(b):
-#             if getattr(current_thread(), REPORT_CONTEXT_ATTR_NAME, None):
-#                 buffer.write(b)
-#                 output_func(b)
-#             else:
-#                 old_write(b)
-
-#         try:
-#             src.write = new_write
-#             yield
-#         finally:
-#             src.write = old_write
-
-
-# @contextmanager
-# def st_stdout(dst):
-#     with st_redirect(sys.stdout, dst):
-#         yield
-
-
-# @contextmanager
-# def st_stderr(dst):
-#     with st_redirect(sys.stderr, dst):
-#         yield
-
-
-# Utility Functions
-# -----------------
-
-# TODO: this should be simplified: move to main window part; make cache a checkbox option; improve max-res?
 
 def get_handler() -> None:
     if DataHandler.is_cached() or DataHandler.has_data_available():
@@ -120,31 +62,6 @@ def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.D
     # full_menu()
 
 
-# def redo_xmls_wrap():  # QUESTION: is this even used?
-#     ''' Wrapper for XML redo function to redirect output to web interface.
-#     '''
-#     with st_stdout('code'):
-#         noMSs = crawler.cache_all_xml_data(use_cache=False)
-#     return noMSs
-
-
-# def msNumber_button():  # QUESTION: obsolete with browse data function?
-#     ''' Displays the button that shows the number of MS IDs cached. Not strictly necessary.
-#     '''
-#     if st.sidebar.button("Show number of MS IDs cached"):
-#         with open(_id_path) as m:
-#             MScount = sum(1 for row in m)
-#         st.write(f"There are currently {MScount:,d} manuscript IDs in cache!")
-
-
-# def collections_button():  # QUESTION: obsolete with browse data function?
-#     '''Self explanatory
-#     '''
-#     if st.sidebar.button("Show all collections"):
-#         cols = crawler.get_collections()
-#         st.write(cols)
-
-
 # Functions which create sub pages
 # --------------------------------------
 
@@ -175,7 +92,7 @@ def adv_options() -> None:
                                                max_value=1000000,
                                                value=1000000)
 
-    # generate_reports()  # QUESTION: what's the deal with this? commented out because it caused an error
+
 
 
 def search_page() -> None:
@@ -188,61 +105,23 @@ def search_page() -> None:
         st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
         # st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
         state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per Line.")
-        # TODO: could do it so that urls are being looked up right after entering
-        # state.currentSURL = st.text_area("Input handrit search URL(s) here", help="If multiple URLs, put one URL per Line.")
-        # state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False,
-        #                                 help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
-        # state.currentBURL = st.text_area("Input handrit browse URL(s) here", help="If multiple URLs, put one URL per Line.")
-        # state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False,
-        #                                 help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
+       
         state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata', 'Maditadata'], index=0)
         state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
             state.didRun = 'Started, dnf.'
             state.CurrentStep = 'Processing'
             # This block handles data delivery
-            # if state.currentSURL:
+
             if state.currentURLs_str:
-                # if state.currentSURL and state.multiSearch == False:  # False or 'false'?
                 s_urls = [url.strip() for url in state.currentURLs_str.splitlines()]
                 url_list = state.data_handler.get_ms_urls_from_search_or_browse_urls(urls=s_urls, sharedMode=(state.joinMode == 'Shared'))
                 st.write("Processed Manuscript URLs:")
                 st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
                 state.currentURL_list += url_list
-                st.write("Oveall MS URLs:")
+                st.write("Overall MS URLs:")
                 st.write(state.currentURL_list)
-                # dataS = search_results(state.currentSURL, state.resultMode)
-            # if state.currentSURL and state.multiSearch == True:
-            #     baseList = [x.strip() for x in state.currentSURL.split(',')]
-            #     dataS = multiSearch(baseList, DataType=state.resultMode, joinMode=state.joinMode)
-            # if state.currentBURL and state.multiBrowse == False:
-            #     dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
-
-            # LATER: here should be the option to save the subcorpus
-
-            # This block will check the data the got delivered and display it
-            # XXX: only runs until here
-            if state.resultMode == 'Contents':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=1)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
-            if state.resultMode == 'Maditadata':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=0).drop_duplicates().reset_index(drop=True)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
-            if state.resultMode == 'Metadata':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=1)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
+             
             if not state.currentData.empty:
                 state.didRun = 'OK'
         if state.didRun == 'OK':
