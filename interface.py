@@ -2,7 +2,7 @@ from typing import Optional
 import numpy as np
 import streamlit as st
 import pandas as pd
-import crawler
+import util.crawler as crawler
 import base64
 # from contextlib import contextmanager
 # from io import StringIO
@@ -10,13 +10,13 @@ import base64
 # from threading import current_thread
 from datetime import datetime
 import markdown
-import metadata
+import util.metadata as metadata
 from util import sessionState
 from util import utils
 from util.constants import IMAGE_HOME
 from util.stateHandler import StateHandler
 from util.utils import Settings
-from datahandler import DataHandler
+from util.datahandler import DataHandler
 from gui.guiUtils import Texts
 
 

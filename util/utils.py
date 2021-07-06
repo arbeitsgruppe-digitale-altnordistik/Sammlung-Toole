@@ -96,12 +96,12 @@ def get_logger(name: str) -> logging.Logger:
 
     format = logging.Formatter('%(asctime)s [ %(name)s ] - %(levelname)s:   %(message)s')
 
-    f_handler = logging.FileHandler('warnings.log', mode='a')
+    f_handler = logging.FileHandler('logs/warnings.log', mode='a')
     f_handler.setLevel(logging.WARNING)
     f_handler.setFormatter(format)
     log.addHandler(f_handler)
 
-    f_handler2 = logging.FileHandler('log.log', mode='a')
+    f_handler2 = logging.FileHandler('logs/log.log', mode='a')
     f_handler2.setLevel(logging.DEBUG)
     f_handler2.setFormatter(format)
     log.addHandler(f_handler2)

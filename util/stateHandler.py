@@ -1,6 +1,6 @@
 from typing import Any, List, Optional
 import pandas as pd
-from datahandler import DataHandler
+from util.datahandler import DataHandler
 
 # LATER: this could be divided with nested classes for more order
 
