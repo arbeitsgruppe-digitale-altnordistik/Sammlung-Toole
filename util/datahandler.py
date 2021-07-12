@@ -106,7 +106,7 @@ class DataHandler:
 
     @staticmethod
     def has_data_available() -> bool:
-        return crawler.has_data_available()
+        return tamer.has_data_available()
 
     # Class Methods
     # =============
@@ -200,16 +200,15 @@ class DataHandler:
                 mss = self.manuscripts[self.manuscripts['id'].isin(ids)]
             msss.append(mss)
 
-        print(msss)
         if sharedMode:
             res = self.manuscripts
             for df in msss:
-                res = pd.merge(res, df, on='xml_url', how='inner')
-            return list(res['xml_url'])
+                res = pd.merge(res, df, on='shelfmark', how='inner')
+            return list(res['shelfmark']), res
         else:
             all_hits: pd.DataFrame = pd.concat(msss)
             unique_hits = all_hits.drop_duplicates().reset_index(drop=True)
-            return list(unique_hits['xml_url'])
+            return list(unique_hits['shelfmark']), unique_hits
 
     # TASKS: more handler API
     # - more options how to get ms data

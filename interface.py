@@ -101,12 +101,10 @@ def search_page() -> None:
     st.title("Result Workflow Builder")
     if state.CurrentStep == 'Preprocessing':
         st.header("Preprocessing")
-        # TODO: combine search and browse url
         st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
-        # st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
         state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per Line.")
        
-        state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata', 'Maditadata'], index=0)
+        state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
         state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
             state.didRun = 'Started, dnf.'
@@ -114,13 +112,14 @@ def search_page() -> None:
             # This block handles data delivery
 
             if state.currentURLs_str:
-                s_urls = [url.strip() for url in state.currentURLs_str.splitlines()]
-                url_list = state.data_handler.get_ms_urls_from_search_or_browse_urls(urls=s_urls, sharedMode=(state.joinMode == 'Shared'))
+                s_urls = [url.strip() for url in state.currentURLs_str.split(',')]
+                url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(urls=s_urls, sharedMode=(state.joinMode == 'Shared'))
                 st.write("Processed Manuscript URLs:")
                 st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
                 state.currentURL_list += url_list
                 st.write("Overall MS URLs:")
-                st.write(state.currentURL_list)
+                st.write(state.currentURL_list) # TODO: Required?
+
              
             if not state.currentData.empty:
                 state.didRun = 'OK'
@@ -134,6 +133,7 @@ def search_page() -> None:
         postprocessing()
         if st.button("Go back to preprocessing"):
             state.CurrentStep = 'Preprocessing'
+            st.experimental_rerun()
 
 
 def citaviExporter() -> None:
@@ -171,9 +171,6 @@ def postprocessing() -> None:
         dataCleaner()
 
 
-# def dataInspector():
-
-
 def dataCleaner() -> None:
     state.currentData = state.currentData.replace('None', np.nan)
     if state.resultMode == 'Maditadata':
@@ -196,57 +193,6 @@ def dataCleaner() -> None:
     st.write(newDF)
     if st.button("Keep cleaned data"):
         state.currentData = newDF
-
-
-def search_results(inURL: str, DataType: str) -> pd.DataFrame:  # TODO: see, to what extent this can be moved to the handler
-    ''' Actual call to handrit tamer to get the desired results from the search URL.
-
-    The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-
-    Args:
-        inURL(str, required): A URL pointing to a handrit search result page.
-        DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-
-    Returns:
-        pd.DataFrame: DataFrame containing MS contents or meta data.
-    '''
-    data = hSr(inURL, DataType)
-    return data
-
-
-def browse_results(inURL: str, DataType: str) -> pd.DataFrame:  # TODO: see, to what extent this can be moved to the handler
-    ''' Actual call to handrit tamer to get the desired results from the browse URL.
-
-    The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-
-    Args:
-        inURL(str, required): A URL pointing to a handrit search result page.
-        DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-
-    Returns:
-        pd.DataFrame: DataFrame containing MS contents or meta data.
-    '''
-
-    data = hBr(inURL, DataType)
-    return data
 
 
 def static_reports() -> None:

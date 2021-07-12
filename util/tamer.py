@@ -9,6 +9,8 @@ from util.constants import PREFIX_XML_DATA, PREFIX_XML_RAW
 import zipfile
 import glob
 from lxml import etree
+import requests
+import time
 
 
 log = utils.get_logger(__name__)
@@ -58,7 +60,6 @@ def load_xml_contents() -> pd.DataFrame:
     all_stored_xmls = glob.iglob(PREFIX_XML_DATA + '*xml')
     outDF = pd.DataFrame(columns=['shelfmark', 'content'])
     for individual_xml_file in all_stored_xmls:
-        print(individual_xml_file)
         file_contents = _load_xml_file(individual_xml_file)
         shelfmark = _get_shelfmark(file_contents)
         outDF = outDF.append({'shelfmark': shelfmark, 'content': file_contents}, ignore_index=True)
@@ -99,6 +100,14 @@ def deliver_handler_data() -> pd.DataFrame:
 
 # Data extraction
 # ---------------
+def _find_id(soup: BeautifulSoup) -> str:
+    id_raw = soup.find('msDesc')
+    id = id_raw.get('xml:id')
+    if 'da' in id or 'en' in id or 'is' in id:
+        id1 = id.rsplit('-', 1)
+        id = id1[0]
+    return id
+
 
 def get_msinfo(soup: BeautifulSoup):
     shorttitle = metadata.get_shorttitle(soup)
@@ -111,6 +120,7 @@ def get_msinfo(soup: BeautifulSoup):
     creator = metadata.get_creator(soup)
     extent = metadata.get_extent(soup)
     description = metadata.get_description(soup)
+    id = _find_id(soup)
 
     return pd.Series({"signature": signature,
                       "shorttitle": shorttitle,
@@ -129,4 +139,68 @@ def get_msinfo(soup: BeautifulSoup):
                       "width": width,
                       "extent": extent,
                       "description": description,
-                      "creator": creator})
+                      "creator": creator,
+                      "id": id})
+
+
+def efnisordResult(inURL):
+  resultPage = requests.get(inURL).content
+  pho = BeautifulSoup(resultPage, 'lxml')
+  theGoods = pho.find('tbody')
+  identifierSoup = theGoods.find_all(class_='id')
+  identifierList = []
+  for indi in identifierSoup:
+    identifier = indi.get_text()
+    identifierList.append(identifier)
+  return identifierList
+
+
+def get_search_result_pages(url):
+    """Get multiple result pages from search with 26+ hits.
+    This function returns a list of all result pages from one search result,
+    if the search got too many hits to display on one page.
+    Args:
+        url (str): URL to a multi page search result
+    Returns:
+        List[str]: a list with URLs for all pages of the search result
+    """
+    res = [url]
+    htm = requests.get(url).text
+    soup = BeautifulSoup(htm, 'lxml')
+    links = soup.select("div.t-data-grid-pager > a")
+    urls = [l['href'] for l in links]
+    for u in urls:
+      if u not in res:
+        res.append(u)
+    return res
+
+
+def get_shelfmarks(url):
+    """Get Shelfmarks from an URL
+    This function returns a list of strings containing shelfmarks from a page on handrit.is.
+    Args:
+        url (str): a URL to a search result page on handrit.is
+    Returns:
+        List[str]: A list of Shelfmarks
+    """
+    htm = requests.get(url).text
+    soup = BeautifulSoup(htm, 'lxml')
+    subsoups = soup.select("td.shelfmark")
+    print(subsoups)
+    shelfmarks = [ss.get_text() for ss in subsoups]
+    shelfmarks = [sm.strip() for sm in shelfmarks]
+    print(f"At 'get_shelfmarks', I still have {len(shelfmarks)}, and these are:")
+    print(shelfmarks)
+    return shelfmarks
+
+
+def get_shelfmarks_from_urls(urls): # -> somethings fucky
+  results = []
+  if len(urls) == 1:
+    url = urls[0]
+    results += get_shelfmarks(url)
+    return list(set(results))
+  for url in urls:
+    results += get_shelfmarks(url)
+    time.sleep(0.2)
+  return list(set(results))
