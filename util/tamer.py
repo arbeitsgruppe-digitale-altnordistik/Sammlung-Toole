@@ -97,9 +97,21 @@ def deliver_handler_data() -> pd.DataFrame:
     outDF = load_xml_contents()
     return outDF
 
+# Helpers
+# -------
+
+def _get_mstexts(soup):
+    msItems = soup.find_all('msContents')
+    curr_titles = []
+    for i in msItems:
+        title = i.title.get_text()
+        curr_titles.append(title)
+    
+    return curr_titles
 
 # Data extraction
 # ---------------
+
 def _find_id(soup: BeautifulSoup) -> str:
     id_raw = soup.find('msDesc')
     id = id_raw.get('xml:id')
@@ -109,7 +121,7 @@ def _find_id(soup: BeautifulSoup) -> str:
     return id
 
 
-def get_msinfo(soup: BeautifulSoup):
+def get_msinfo(soup: BeautifulSoup) -> pd.Series:
     shorttitle = metadata.get_shorttitle(soup)
     signature, country, settlement, repository = metadata.get_msID(soup)
     origin = metadata.get_origin(soup)
@@ -122,15 +134,14 @@ def get_msinfo(soup: BeautifulSoup):
     description = metadata.get_description(soup)
     id = _find_id(soup)
 
-    return pd.Series({"signature": signature,
-                      "shorttitle": shorttitle,
+    return pd.Series({"shorttitle": shorttitle,
                       "country": country,
                       "settlement": settlement,
                       "repository": repository,
                       "origin": origin,
                       "date": date,
-                      "tp": tp,
-                      "ta": ta,
+                      "Terminus post quem": tp,
+                      "Terminus ante quem": ta,
                       "meandate": meandate,
                       "yearrange": yearrange,
                       "support": support,
@@ -194,7 +205,7 @@ def get_shelfmarks(url):
     return shelfmarks
 
 
-def get_shelfmarks_from_urls(urls): # -> somethings fucky
+def get_shelfmarks_from_urls(urls):
   results = []
   if len(urls) == 1:
     url = urls[0]

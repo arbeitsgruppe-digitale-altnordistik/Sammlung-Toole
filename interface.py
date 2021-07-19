@@ -4,10 +4,6 @@ import streamlit as st
 import pandas as pd
 import util.crawler as crawler
 import base64
-# from contextlib import contextmanager
-# from io import StringIO
-# from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
-# from threading import current_thread
 from datetime import datetime
 import markdown
 import util.metadata as metadata
@@ -104,8 +100,8 @@ def search_page() -> None:
         st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
         state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per Line.")
        
-        state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
-        state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
+        # state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+        # state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
             state.didRun = 'Started, dnf.'
             state.CurrentStep = 'Processing'
@@ -129,25 +125,14 @@ def search_page() -> None:
     if state.didRun == 'OK':
         if st.button("Go to postprocessing"):
             state.CurrentStep = 'Postprocessing'
+            state.didRun = None
+            st.experimental_rerun()
     if state.CurrentStep == 'Postprocessing':
         postprocessing()
         if st.button("Go back to preprocessing"):
             state.CurrentStep = 'Preprocessing'
+            state.currentData = None
             st.experimental_rerun()
-
-
-def citaviExporter() -> None:
-    foundListList = list(state.currentData.columns)
-    foundList = [i for x in foundListList for i in x]
-    state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
-                                        help="This will export your selected references as a CSV file for Citavi.")
-    if st.button('Export'):
-        state.currentCitaviData, _ = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
-        st.write(state.currentCitaviData)
-        csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
-        b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<b> There is a bug! Use "Right Click -> Save As" or it will break!</b><br /><a href="data:file/csv;base64,{b64}">Download CSV File</a><br /> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
-        st.markdown(href, unsafe_allow_html=True)  # TODO: check if href can be opened in separate tab?
 
 
 def postprocessing() -> None:
@@ -169,27 +154,37 @@ def postprocessing() -> None:
         state.postStep = 'Cleaning'
     if state.postStep == 'Cleaning':
         dataCleaner()
+    if st.button('Plot dating'):
+        state.postStep = 'Plotting'
+    if state.postStep == 'Plotting':
+        fig = utils.date_plotting(state.currentData)
+        st.plotly_chart(fig, use_container_width=True)
 
 
-def dataCleaner() -> None:
+def citaviExporter() -> None:
+    foundListList = list(state.currentData.columns)
+    foundList = [i for x in foundListList for i in x]
+    state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
+                                        help="This will export your selected references as a CSV file for Citavi.")
+    if st.button('Export'):
+        state.currentCitaviData, _ = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
+        st.write(state.currentCitaviData)
+        csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
+        b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
+        href = f'<b> There is a bug! Use "Right Click -> Save As" or it will break!</b><br /><a href="data:file/csv;base64,{b64}">Download CSV File</a><br /> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
+        st.markdown(href, unsafe_allow_html=True)  # TODO: check if href can be opened in separate tab?
+
+
+def dataCleaner() -> None: # TODO: Should not be neccessary. Should be done on handler construction.
     state.currentData = state.currentData.replace('None', np.nan)
-    if state.resultMode == 'Maditadata':
-        index = state.currentData.index
-        itemsPrev = len(index)
-        newDF = state.currentData.dropna(axis=1, how='all')
-        index1 = newDF.index
-        itemsAfter = len(index1)
-        diff = itemsPrev - itemsAfter
-        st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values.")
-    else:
-        itemsPrev = len(state.currentData.columns)
-        newDF = state.currentData.dropna(axis=1, how='all')
-        itemsAfter = len(newDF.columns)
-        newDF = newDF.loc[:, ~newDF.columns.duplicated()]
-        itemsAfter1 = len(newDF.columns)
-        diff0 = itemsPrev - itemsAfter
-        diff1 = itemsAfter - itemsAfter1
-        st.write(f"Started out with {itemsPrev} results, dropped {diff0} NaN values, dropped {diff1} duplicates. Remaining unique results: {itemsAfter1}")
+    itemsPrev = len(state.currentData.index)
+    newDF = state.currentData.dropna(axis=0, how='all')
+    itemsAfter = len(newDF.index)
+    diff = itemsPrev - itemsAfter
+    newDF = newDF.drop_duplicates(subset='shelfmark').reset_index(drop=True)
+    itemsAfter = len(newDF.index)
+    diff1 = itemsPrev - itemsAfter
+    st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values. Found and removed {diff1} duplicates.")
     st.write(newDF)
     if st.button("Keep cleaned data"):
         state.currentData = newDF

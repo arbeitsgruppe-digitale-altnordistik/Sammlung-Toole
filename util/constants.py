@@ -15,3 +15,5 @@ HANDLER_BACKUP_PATH_MSS = "data/backups/mss.csv"
 HANDLER_PATH_PICKLE = "data/handler_cache.pickle"
 
 IMAGE_HOME = 'data/title.png'
+
+DOC_CITAVI = 'docs/CITAVI-README.md'

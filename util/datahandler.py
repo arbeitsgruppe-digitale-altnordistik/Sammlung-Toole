@@ -13,7 +13,6 @@ import util.crawler as crawler
 import util.tamer as tamer
 from util import utils
 from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
-from stqdm import stqdm
 from util.utils import Settings
 
 
@@ -26,12 +25,11 @@ class DataHandler:
                  manuscripts: pd.DataFrame = None,
                  texts: pd.DataFrame = None,
                  persons: pd.DataFrame = None,
-                 prog: Any = None,
                  xmls: Optional[pd.DataFrame] = None,
                  contents: Optional[pd.DataFrame] = None):
         """"""  # CHORE: documentation
         log.info("Creating new handler")
-        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(prog=None, df=xmls, contents=contents)
+        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents)
         log.info("Loaded MS Info")
         self.texts = texts if texts else pd.DataFrame()  # TODO: implement
         self.persons = persons if persons else pd.DataFrame()  # TODO: implement
@@ -78,23 +76,14 @@ class DataHandler:
         return None
 
     @staticmethod
-    def _load_ms_info(prog: Any = None,
-                      df: Optional[pd.DataFrame] = None,
+    def _load_ms_info(df: Optional[pd.DataFrame] = None,
                       contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
         # LATER: look into `tqdm.contrib.concurrent:process_map`
         if df is None or contents is None:
             df = tamer.deliver_handler_data()
         if len(df.index) > settings.max_res:
             df = df[:settings.max_res]
-        stqdm.pandas(desc="Cooking soups from XML contents...")
-        # if prog: Prog fucks up the whole shit
-        #     with prog:
-        #         df['soup'] = df['content'].progress_apply(lambda x: BeautifulSoup(x, 'xml'))
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
-        stqdm.pandas(desc="Boiling soups down to the essence of metadata...")
-        # if prog:
-        #     with prog:
-        #         msinfo = df['soup'].progress_apply(tamer.get_msinfo)
         msinfo = df['soup'].apply(tamer.get_msinfo)
         log.info("Loaded MS Info")
         df = df.join(msinfo)
@@ -112,13 +101,12 @@ class DataHandler:
     # =============
 
     @classmethod
-    def get_handler(cls, xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None, prog: Any = None) -> DataHandler:
+    def get_handler(cls, xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None,) -> DataHandler:
         """Get a DataHandler
 
         Factory method to get a DataHandler object.
 
         Args:
-            # CHORE: prog
 
         Returns:
             DataHandler: A DataHandler, either loaded from cache or created anew.
@@ -134,7 +122,7 @@ class DataHandler:
             res._to_pickle()
             return res
         log.info("Could not get DataHandler from backup")
-        res = cls(prog=prog, xmls=xmls, contents=contents)
+        res = cls(xmls=xmls, contents=contents)
         res._to_pickle()
         res._backup()
         return res
@@ -200,7 +188,7 @@ class DataHandler:
                 mss = self.manuscripts[self.manuscripts['id'].isin(ids)]
             msss.append(mss)
 
-        if sharedMode:
+        if sharedMode: # Don't these two return the exact same result?! Shared was for textworks...
             res = self.manuscripts
             for df in msss:
                 res = pd.merge(res, df, on='shelfmark', how='inner')

@@ -4,6 +4,8 @@ from typing import List, Optional
 import requests
 from bs4 import BeautifulSoup
 import sys
+import plotly.express as px
+import pandas as pd
 
 
 __logs: List[logging.Logger] = []
@@ -142,3 +144,20 @@ def set_log_level(debug: bool = False, verbose: bool = True) -> None:
 
 
 __log = get_logger(__name__)
+
+
+# Util functions for interface
+# ----------------------------
+
+def date_plotting(inDF: pd.DataFrame): # TODO Update doc
+    ''' Plots the data of a given set of MSs. Used with MS metadata results. Returns scatterplot.
+    Args:
+        inDF(dataFrame, required): pandas DataFrame
+    Returns:
+        scatterplot data for plotly to be drawn with corresponding function
+    '''
+
+    inDF = inDF[inDF['Terminus ante quem'] != 0]
+    inDF = inDF[inDF['Terminus post quem'] != 0]
+    fig = px.scatter(inDF, x='Terminus post quem', y='Terminus ante quem', color='Signature')
+    return fig
