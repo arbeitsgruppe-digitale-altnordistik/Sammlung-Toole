@@ -1,18 +1,17 @@
 from typing import Dict, Generator, List, Optional, Tuple
-# import requests
-# import lxml
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 import urllib
 import pandas as pd
 from pandas import DataFrame
 import copy
-# from crawler import load_xml
-# from crawler import load_xmls_by_id
 from datetime import datetime
 import re
 import statistics
 from util import utils
+from util.constants import PERSON_CACHE_PATH as people
+from os import path, read
+import csv
 
 
 log = utils.get_logger(__name__)
@@ -173,11 +172,20 @@ def _get_persName(id: str) -> str:  # LATER: improved person handling anyways
     Returns:
         str: person name
     """
-    url = "https://handrit.is/is/biography/xml/" + id
-    stew = get_soup(url)
-    persName = stew.find('persName')
-    pretty_persName = get_cleaned_text(persName)
-    return pretty_persName
+    cachedFolks = {}
+    with open(people, 'r', encoding='UTF-8') as infile:
+        reader = csv.reader(infile)
+        cachedFolks = {rows[0]: rows[1] for rows in reader}
+    if id in cachedFolks:
+        return cachedFolks[id]
+    else:
+        url = "https://handrit.is/is/biography/xml/" + id
+        stew = get_soup(url)
+        persName = stew.find('persName')
+        pretty_persName = get_cleaned_text(persName)
+        with open(people, 'a', encoding='UTF-8') as outfile:
+            outfile.write(f"\n{id},{pretty_persName}")
+        return pretty_persName
 
 
 def get_creator(soup: BeautifulSoup) -> str:

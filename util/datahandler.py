@@ -88,6 +88,7 @@ class DataHandler:
         log.info("Loaded MS Info")
         df = df.join(msinfo)
         return df
+    
 
     @staticmethod
     def is_cached() -> bool:

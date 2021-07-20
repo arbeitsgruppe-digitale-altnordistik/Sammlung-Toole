@@ -36,7 +36,7 @@ def rebuild_all_button() -> None:
     if st.sidebar.button("Download everything"):
         st.write(f'Start: {datetime.now()}')
         container = st.beta_container()
-        xmls, contents = crawler.crawl(use_cache=False, prog=container)
+        xmls, contents = crawler.crawl(use_cache=False)
         st.write(f'Finished: {datetime.now()}')
         rebuild_handler(xmls, contents)
 
@@ -44,7 +44,7 @@ def rebuild_all_button() -> None:
 def reload_with_cache() -> None:
     st.write(f'Start: {datetime.now()}')
     container = st.beta_container()
-    xmls, contents = crawler.crawl(use_cache=True, prog=container)
+    xmls, contents = crawler.crawl(use_cache=True)
     st.write(f'Finished: {datetime.now()}')
     rebuild_handler(xmls, contents)
 
@@ -52,7 +52,7 @@ def reload_with_cache() -> None:
 def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
     st.write(f'Start: {datetime.now()}')
     container = st.beta_container()
-    state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents, prog=container)
+    state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents)
     st.write(f'Finished: {datetime.now()}')
     st.experimental_rerun()
     # full_menu()

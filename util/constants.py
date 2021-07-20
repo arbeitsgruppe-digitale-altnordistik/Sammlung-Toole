@@ -17,3 +17,5 @@ HANDLER_PATH_PICKLE = "data/handler_cache.pickle"
 IMAGE_HOME = 'data/title.png'
 
 DOC_CITAVI = 'docs/CITAVI-README.md'
+
+PERSON_CACHE_PATH = 'data/perscache.csv'
