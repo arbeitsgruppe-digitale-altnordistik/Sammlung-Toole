@@ -24,7 +24,8 @@ import utils
 # myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
 # myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
 # myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
-myURLList = ['JSFragm-0003', 'JSFragm-0020', 'AM02-0002', 'AM02-0022', 'AM02-190-b', 'Lbs04-1495', 'Einkaeign-0021', 'IB08-0174', 'NKS04-1809', 'Lbs04-4982', 'Acc-0001', 'JS04-0251', 'IB08-0174', 'AM02-0344', 'AM02-0115']
+myURLList = ['JSFragm-0003', 'JSFragm-0020', 'AM02-0002', 'AM02-0022', 'AM02-190-b', 'Lbs04-1495', 'Einkaeign-0021',
+             'IB08-0174', 'NKS04-1809', 'Lbs04-4982', 'Acc-0001', 'JS04-0251', 'IB08-0174', 'AM02-0344', 'AM02-0115']
 #myURLList = ['AM02-0002', 'Acc-0001', 'Lbs04-4982']
 #myURLList = ['Acc-0001']
 # Constants
@@ -275,6 +276,7 @@ def get_support(soup: BeautifulSoup) -> str:
 
     return pretty_support
 
+
 def get_folio(soup: BeautifulSoup) -> int:
     """Returns: total of folios.
     Find <extent> and make copy.
@@ -318,9 +320,9 @@ def get_folio(soup: BeautifulSoup) -> int:
     try:
         copy_no_period = clean_extent_copy.replace('.', '')
         copy_no_space = copy_no_period.replace(' ', '')
-        
+
         perfect_copy = copy_no_space.isdigit()
-        
+
         if perfect_copy == True:
             folio_total = copy_no_space
 
@@ -341,12 +343,12 @@ def get_folio(soup: BeautifulSoup) -> int:
                     pass
 
                 clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
-                
+
                 brackets: str = clean_extent_copy.find("()")
 
                 if brackets == -1:
                     folio_total = _get_digits(clean_extent_copy)
-                
+
                 else:
                     while brackets > 0:
                         first_bit: str = clean_extent_copy[:brackets]
@@ -583,7 +585,7 @@ def get_date(soup: BeautifulSoup):
         ta = int(n)
         meandate = int(statistics.mean([int(tp), int(ta)]))
         yearrange = int(ta) - int(tp)
-    
+
     return date, tp, ta, meandate, yearrange
 
 
@@ -603,9 +605,10 @@ def get_msID(soup):
         signature = si.get_text() if si else ""
     return signature, country, settlement, repository
 
+
 def check_graphic(soup: BeautifulSoup):
     graphic = soup.find('graphic')
-    
+
     if graphic:
         graphic = True
     else:
@@ -641,7 +644,11 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: shou
 
         if DataType == 'ids':
             presoup = load_xmls_by_id(thing)
-            soup = list(presoup.values())[0]  # TODO: do we really want to hard-exclude multi language like this?
+            try:
+                soup = list(presoup.values())[0]  # TODO: do we really want to hard-exclude multi language like this?
+            except Exception:
+                log.warn(f'Had an issue in: {thing} ... skipped it to be sure.')
+                continue
 
         # gets soup from url (without crawler)
         # soup = get_soup(url)
@@ -660,8 +667,8 @@ def get_all_data(inData: list, DataType: str = 'urls') -> tuple:    # TODO: shou
         mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,) + dates + (graphic,)
         structure = get_structure(mylist, mytuple)
 
-        columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement",
-                   "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio", "Date", "Terminus post quem", "Terminus ante quem", "Mean Date", "Year Range", "Digitized"]
+        columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature",
+                   "Support", "Height", "Width", "Folio", "Date", "Terminus post quem", "Terminus ante quem", "Mean Date", "Year Range", "Digitized"]
         data = pandafy_data(structure, columns)
 
     log.info(f'Loaded:  {i}',)
