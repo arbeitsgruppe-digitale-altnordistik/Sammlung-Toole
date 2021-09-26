@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import sys
 import plotly.express as px
 import pandas as pd
+import os
 
 
 __logs: List[logging.Logger] = []
@@ -97,6 +98,9 @@ def get_logger(name: str) -> logging.Logger:
         log.setLevel(logging.WARNING)
 
     format = logging.Formatter('%(asctime)s [ %(name)s ] - %(levelname)s:   %(message)s')
+    
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
 
     f_handler = logging.FileHandler('logs/warnings.log', mode='a')
     f_handler.setLevel(logging.WARNING)
