@@ -78,17 +78,15 @@ class DataHandler:
     @staticmethod
     def _load_ms_info(df: Optional[pd.DataFrame] = None,
                       contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-        # LATER: look into `tqdm.contrib.concurrent:process_map`
         if df is None or contents is None:
             df = tamer.deliver_handler_data()
-        if len(df.index) > settings.max_res:
-            df = df[:settings.max_res]
+        # if len(df.index) > settings.max_res:
+        #     df = df[:settings.max_res]
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
         msinfo = df['soup'].apply(tamer.get_msinfo)
         log.info("Loaded MS Info")
         df = df.join(msinfo)
         return df
-    
 
     @staticmethod
     def is_cached() -> bool:
@@ -152,14 +150,16 @@ class DataHandler:
         # TODO: truncate other props aswell
 
     def _ms_complete(self) -> bool:
-        if self.manuscripts is None or self.manuscripts.empty:
-            return False
-        length = len(self.manuscripts.index)
-        if length >= settings.max_res:
-            return True
-        if length >= crawler.crawl_collections()['ms_count'].sum():
-            return True
-        return False
+        return True
+        # TODO: implement more reasonable solution
+        # if self.manuscripts is None or self.manuscripts.empty:
+        #     return False
+        # length = len(self.manuscripts.index)
+        # if length >= settings.max_res:
+        #     return True
+        # if length >= crawler.crawl_collections()['ms_count'].sum():
+        #     return True
+        # return False
 
     # API Methods
     # -----------
@@ -189,7 +189,7 @@ class DataHandler:
                 mss = self.manuscripts[self.manuscripts['id'].isin(ids)]
             msss.append(mss)
 
-        if sharedMode: # Don't these two return the exact same result?! Shared was for textworks...
+        if sharedMode:  # Don't these two return the exact same result?! Shared was for textworks...
             res = self.manuscripts
             for df in msss:
                 res = pd.merge(res, df, on='shelfmark', how='inner')

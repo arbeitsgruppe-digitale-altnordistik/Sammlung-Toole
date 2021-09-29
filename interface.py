@@ -82,8 +82,8 @@ def adv_options() -> None:
     #     reload_with_cache()
     # if st.sidebar.button("Rebuild Data Handler"):
     #     rebuild_handler()
-    # if st.sidebar.button("Wipe cache"):
-    #     crawler._wipe_cache()
+    if st.sidebar.button("Wipe cache"):
+        crawler._wipe_cache()
     # settings.max_res = st.sidebar.number_input("Maximum number of manuscripts to load",
     #                                            min_value=1,
     #                                            max_value=1000000,
@@ -206,8 +206,9 @@ def browse_data() -> None:
     st.header("Manuscripts")
     st.write(f"Currently loaded data: Dataframe with {len(mss.index)} entries, {len(mss.columns)} columns each.")
     st.write("Each manuscript can have entries in multiple languages (English, Icelandic, Danish)")
-    st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts, \
-             stored in {mss['collection'].unique().size} collections.")
+    # st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts, \
+    #          stored in {mss['collection'].unique().size} collections.")
+    st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts.")
     st.write("Head and tail of the dataset:")
     st.dataframe(mss.head().append(mss.tail()))
 
@@ -232,7 +233,7 @@ def browse_data() -> None:
 
 def help() -> None:
     st.title("How to use this tool")
-    with open('CITAVI-README.md', 'r') as citread:
+    with open('docs/CITAVI-README.md', 'r') as citread:
         helpme = markdown.markdown(citread.read())
     st.markdown(helpme, unsafe_allow_html=True)
 

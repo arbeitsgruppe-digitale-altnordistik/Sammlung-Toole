@@ -184,7 +184,8 @@ def crawl_xmls(df: pd.DataFrame = None, prog: Any = None) -> Tuple[pd.DataFrame,
     """
     if settings.use_cache and os.path.exists(CRAWLER_PATH_URLS):
         log.info("Loading XML URLs from cache.")
-        import pdb; pdb.set_trace()
+        import pdb
+        pdb.set_trace()
         xmls = pd.read_csv(CRAWLER_PATH_URLS)
         if os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
             with open(CRAWLER_PATH_CONTENT_PICKLE, mode='rb') as file:
@@ -329,7 +330,7 @@ def _cache_xml_content(content: str, path: str) -> None:
         file.write(content)
 
 
-def _load_xml_content(url: str) -> Optional[str]: # NOTE: Keep this function for later!
+def _load_xml_content(url: str) -> Optional[str]:  # NOTE: Keep this function for later!
     """Load XML content from URL, ensuring the encoding is correct."""
     response = requests.get(url)
     if response.status_code != 200:
@@ -383,18 +384,18 @@ def _load_xml_content(url: str) -> Optional[str]: # NOTE: Keep this function for
                 return None
 
 
-def _get_shelfmark(content: str) -> str:
-    try:
-        root = etree.fromstring(content.encode())
-        idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
-        log.debug(f'Shelfmark: {etree.tostring(idno)}')
-        if idno is not None:
-            return str(idno.text)
-        else:
-            return ""
-    except Exception:
-        log.exception(f"Faild to load Shelfmark XML:\n\n{content}\n\n")
-        return ""
+# def _get_shelfmark(content: str) -> str:
+#     try:
+#         root = etree.fromstring(content.encode())
+#         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
+#         log.debug(f'Shelfmark: {etree.tostring(idno)}')
+#         if idno is not None:
+#             return str(idno.text)
+#         else:
+#             return ""
+#     except Exception:
+#         log.exception(f"Faild to load Shelfmark XML:\n\n{content}\n\n")
+#         return ""
 
 
 # Access XML Directly

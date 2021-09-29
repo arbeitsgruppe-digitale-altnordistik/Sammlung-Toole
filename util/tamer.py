@@ -1,3 +1,4 @@
+import os
 from typing import List, Set
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -11,12 +12,14 @@ import glob
 from lxml import etree
 import requests
 import time
+from pathlib import Path
 
 
 log = utils.get_logger(__name__)
 
 # Data preparation
 # ----------------
+
 
 def has_data_available() -> bool:
     """Check if data is available"""
@@ -32,10 +35,16 @@ def unzipper() -> bool:
     """Unzips xml files from source directory into target directory. 
     Returns True on success.
     """
-    zip = glob.glob(PREFIX_XML_RAW + '*.zip')
+    zip = glob.glob(PREFIX_XML_RAW + 'xml.zip')
     if zip:
         with zipfile.ZipFile(zip[0], 'r') as file:
             file.extractall(PREFIX_XML_DATA)
+            xmls = glob.glob(PREFIX_XML_DATA+'xml/*.xml')
+            for xml in xmls:
+                p = Path(xml)
+                dest = os.path.join(PREFIX_XML_DATA, p.name)
+                os.replace(xml, dest)
+            os.rmdir(PREFIX_XML_DATA+'xml')
             log.info('Extracted XMLs from zip file.')
             return True
     log.info('No zip file found. No data. Nothing to do.')
@@ -54,7 +63,7 @@ def _get_files_in_place() -> bool:
             log.error('Could not find any data!')
             return False
     return True
-    
+
 
 def load_xml_contents() -> pd.DataFrame:
     all_stored_xmls = glob.iglob(PREFIX_XML_DATA + '*xml')
@@ -68,14 +77,15 @@ def load_xml_contents() -> pd.DataFrame:
 
 def _load_xml_file(xml_file) -> str:
     with open(xml_file, encoding='utf-8', mode='r+') as file:
-            return file.read()
+        return file.read()
 
 
 def _get_shelfmark(content: str) -> str:
     try:
         root = etree.fromstring(content.encode())
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
-        log.debug(f'Shelfmark: {etree.tostring(idno)}')
+        # log.debug(f'Shelfmark: {etree.tostring(idno)}')
+        log.debug(f'Shelfmark: {idno.text}')
         if idno is not None:
             return str(idno.text)
         else:
@@ -100,17 +110,19 @@ def deliver_handler_data() -> pd.DataFrame:
 # Helpers
 # -------
 
+
 def _get_mstexts(soup):
     msItems = soup.find_all('msContents')
     curr_titles = []
     for i in msItems:
         title = i.title.get_text()
         curr_titles.append(title)
-    
+
     return curr_titles
 
 # Data extraction
 # ---------------
+
 
 def _find_id(soup: BeautifulSoup) -> str:
     id_raw = soup.find('msDesc')
@@ -155,15 +167,15 @@ def get_msinfo(soup: BeautifulSoup) -> pd.Series:
 
 
 def efnisordResult(inURL):
-  resultPage = requests.get(inURL).content
-  pho = BeautifulSoup(resultPage, 'lxml')
-  theGoods = pho.find('tbody')
-  identifierSoup = theGoods.find_all(class_='id')
-  identifierList = []
-  for indi in identifierSoup:
-    identifier = indi.get_text()
-    identifierList.append(identifier)
-  return identifierList
+    resultPage = requests.get(inURL).content
+    pho = BeautifulSoup(resultPage, 'lxml')
+    theGoods = pho.find('tbody')
+    identifierSoup = theGoods.find_all(class_='id')
+    identifierList = []
+    for indi in identifierSoup:
+        identifier = indi.get_text()
+        identifierList.append(identifier)
+    return identifierList
 
 
 def get_search_result_pages(url):
@@ -181,8 +193,8 @@ def get_search_result_pages(url):
     links = soup.select("div.t-data-grid-pager > a")
     urls = [l['href'] for l in links]
     for u in urls:
-      if u not in res:
-        res.append(u)
+        if u not in res:
+            res.append(u)
     return res
 
 
@@ -206,12 +218,12 @@ def get_shelfmarks(url):
 
 
 def get_shelfmarks_from_urls(urls):
-  results = []
-  if len(urls) == 1:
-    url = urls[0]
-    results += get_shelfmarks(url)
+    results = []
+    if len(urls) == 1:
+        url = urls[0]
+        results += get_shelfmarks(url)
+        return list(set(results))
+    for url in urls:
+        results += get_shelfmarks(url)
+        time.sleep(0.2)
     return list(set(results))
-  for url in urls:
-    results += get_shelfmarks(url)
-    time.sleep(0.2)
-  return list(set(results))
