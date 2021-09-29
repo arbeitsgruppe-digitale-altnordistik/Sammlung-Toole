@@ -10,7 +10,7 @@ import pandas as pd
 import pickle
 import os
 import util.tamer as tamer
-from util import utils
+from util import utils, metadata
 from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
 from util.utils import Settings
 
@@ -30,7 +30,7 @@ class DataHandler:
         log.info("Creating new handler")
         self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents)
         log.info("Loaded MS Info")
-        self.texts = texts if texts else pd.DataFrame()  # TODO: implement
+        self.texts = texts if texts else DataHandler._load_texts(self.manuscripts)
         self.persons = persons if persons else pd.DataFrame()  # TODO: implement
         self.subcorpora: List[Any] = []  # TODO: implement
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
@@ -86,6 +86,24 @@ class DataHandler:
         log.info("Loaded MS Info")
         df = df.join(msinfo)
         return df
+
+    @staticmethod
+    def _load_texts(df: pd.DataFrame) -> pd.DataFrame:
+        if not 'content' in df.columns:
+            df = tamer.deliver_handler_data()
+        if not 'soup' in df.columns:
+            df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
+        res = pd.DataFrame(index=df['full_id'])
+        for _, row in df.iterrows():
+            id_ = row['full_id']
+            title_tuples = metadata._title_from_soup(row['soup'])
+            titles = [t[1] for t in title_tuples]
+            for t in titles:
+                if t not in res.columns:
+                    res[t] = False
+                res.at[id_, t] = True
+
+        return res
 
     @staticmethod
     def is_cached() -> bool:
@@ -174,6 +192,9 @@ class DataHandler:
         # CHORE: documentation: one of these arguments must be passed, return df to mss
         pass  # TODO: implement
 
+    def get_all_texts(self) -> pd.DataFrame:
+        return self.texts
+
     def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> Tuple[List[str], pd.DataFrame]:
         # CHORE: documentation
         msss: List[pd.DataFrame] = []
@@ -203,3 +224,4 @@ class DataHandler:
     # - options to get texts
     # - options to get persons
     # - options to work with subcorpora?
+    # - add rubrics?

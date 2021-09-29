@@ -827,13 +827,18 @@ def dictionarize(items):
     return res
 
 
+def _title_from_soup(soup: BeautifulSoup) -> List[Tuple[str, str, str]]:
+    items = soup.find_all('msItem')
+    copies = [copy.copy(item) for item in items]
+    cleaned_copies = clean_msitems(copies)
+    structure = dictionarize(cleaned_copies)
+    return structure
+
+
 def do_it_my_way(links):
     for url in links:
         soup = get_soup(url)
-        items = soup.find_all('msItem')
-        copies = [copy.copy(item) for item in items]
-        cleaned_copies = clean_msitems(copies)
-        structure = dictionarize(cleaned_copies)
+        structure = _title_from_soup(soup)
         yield url, structure
 
 

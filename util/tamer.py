@@ -123,12 +123,22 @@ def _get_mstexts(soup: BeautifulSoup) -> List[str]:
 # ---------------
 
 
+def _find_filename(soup: BeautifulSoup) -> str:
+    id = _find_full_id(soup)
+    return f"{id}.xml"
+
+
 def _find_id(soup: BeautifulSoup) -> str:
-    id_raw = soup.find('msDesc')
-    id = id_raw.get('xml:id')
+    id = _find_full_id(soup)
     if 'da' in id or 'en' in id or 'is' in id:
         id1 = id.rsplit('-', 1)
         id = id1[0]
+    return str(id)
+
+
+def _find_full_id(soup: BeautifulSoup) -> str:
+    id_raw = soup.find('msDesc')
+    id = id_raw.get('xml:id')
     return str(id)
 
 
@@ -144,6 +154,8 @@ def get_msinfo(soup: BeautifulSoup) -> pd.Series:
     extent = metadata.get_extent(soup)
     description = metadata.get_description(soup)
     id = _find_id(soup)
+    full_id = _find_full_id(soup)
+    filename = _find_filename(soup)
 
     return pd.Series({"shorttitle": shorttitle,
                       "country": country,
@@ -162,7 +174,9 @@ def get_msinfo(soup: BeautifulSoup) -> pd.Series:
                       "extent": extent,
                       "description": description,
                       "creator": creator,
-                      "id": id})
+                      "id": id,
+                      "full_id": full_id,
+                      "filename": filename})
 
 
 def efnisordResult(inURL: str) -> List[str]:
