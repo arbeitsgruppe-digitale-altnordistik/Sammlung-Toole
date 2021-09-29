@@ -222,11 +222,11 @@ def get_shelfmarks(url: str) -> List[str]:
     htm = requests.get(url).text
     soup = BeautifulSoup(htm, 'lxml')
     subsoups = soup.select("td.shelfmark")
-    print(subsoups)
+    # print(subsoups)
     shelfmarks = [ss.get_text() for ss in subsoups]
     shelfmarks = [sm.strip() for sm in shelfmarks]
-    print(f"At 'get_shelfmarks', I still have {len(shelfmarks)}, and these are:")
-    print(shelfmarks)
+    log.info(f"At 'get_shelfmarks', I still have {len(shelfmarks)}")
+    log.debug(f"These are: {shelfmarks}")
     return shelfmarks
 
 
