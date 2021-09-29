@@ -29,21 +29,18 @@ def get_handler() -> None:
         adv_options()
 
 
-def rebuild_all_button() -> None:
+def rebuild_all() -> None:
     ''' This will run the crawl() function from the crawler, which will download everything
     from handrit
     '''
-    if st.sidebar.button("Download everything"):
-        st.write(f'Start: {datetime.now()}')
-        container = st.beta_container()
-        xmls, contents = crawler.crawl(use_cache=False)
-        st.write(f'Finished: {datetime.now()}')
-        rebuild_handler(xmls, contents)
+    st.write(f'Start: {datetime.now()}')
+    xmls, contents = crawler.crawl(use_cache=False)
+    st.write(f'Finished: {datetime.now()}')
+    rebuild_handler(xmls, contents)
 
 
 def reload_with_cache() -> None:
     st.write(f'Start: {datetime.now()}')
-    container = st.beta_container()
     xmls, contents = crawler.crawl(use_cache=True)
     st.write(f'Finished: {datetime.now()}')
     rebuild_handler(xmls, contents)
@@ -51,7 +48,6 @@ def reload_with_cache() -> None:
 
 def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
     st.write(f'Start: {datetime.now()}')
-    container = st.beta_container()
     state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents)
     st.write(f'Finished: {datetime.now()}')
     st.experimental_rerun()
@@ -76,19 +72,22 @@ def adv_options() -> None:
     st.title("Advanced Options Menu")
     st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
-    rebuild_all_button()
-    if st.sidebar.button("Reload Missing Data"):
-        reload_with_cache()
-    if st.sidebar.button("Rebuild Data Handler"):
-        rebuild_handler()
-    if st.sidebar.button("Wipe cache"):
-        crawler._wipe_cache()
-    settings.max_res = st.sidebar.number_input("Maximum number of manuscripts to load",
-                                               min_value=1,
-                                               max_value=1000000,
-                                               value=1000000)
 
+    if st.button("Reload Data Handler"):
+        state.data_handler = DataHandler.get_handler()
 
+    # if st.sidebar.button("Download everything"):
+    #     rebuild_all()
+    # if st.sidebar.button("Reload Missing Data"):
+    #     reload_with_cache()
+    # if st.sidebar.button("Rebuild Data Handler"):
+    #     rebuild_handler()
+    # if st.sidebar.button("Wipe cache"):
+    #     crawler._wipe_cache()
+    # settings.max_res = st.sidebar.number_input("Maximum number of manuscripts to load",
+    #                                            min_value=1,
+    #                                            max_value=1000000,
+    #                                            value=1000000)  # TODO: still necessary?
 
 
 def search_page() -> None:
@@ -99,7 +98,7 @@ def search_page() -> None:
         st.header("Preprocessing")
         st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
         state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per Line.")
-       
+
         # state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
         # state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
@@ -114,9 +113,8 @@ def search_page() -> None:
                 st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
                 state.currentURL_list += url_list
                 st.write("Overall MS URLs:")
-                st.write(state.currentURL_list) # TODO: Required?
+                st.write(state.currentURL_list)  # TODO: Required?
 
-             
             if not state.currentData.empty:
                 state.didRun = 'OK'
         if state.didRun == 'OK':
@@ -175,7 +173,7 @@ def citaviExporter() -> None:
         st.markdown(href, unsafe_allow_html=True)  # TODO: check if href can be opened in separate tab?
 
 
-def dataCleaner() -> None: # TODO: Should not be neccessary. Should be done on handler construction.
+def dataCleaner() -> None:  # TODO: Should not be neccessary. Should be done on handler construction.
     state.currentData = state.currentData.replace('None', np.nan)
     itemsPrev = len(state.currentData.index)
     newDF = state.currentData.dropna(axis=0, how='all')
