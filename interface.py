@@ -219,6 +219,15 @@ def browse_data() -> None:
     st.dataframe(txt.head())
     if st.button("Show text matrix"):
         st.dataframe(txt)
+    if st.button("List all texts"):
+        st.write(txt.columns)
+    if st.button("Show text counts"):
+        counts = txt.apply(
+            lambda x: pd.Series({"count": x[x == True].count()})).transpose().sort_values(
+            by=['count'],
+            ascending=False).reset_index().rename(
+            columns={"index": "text"})
+        st.write(counts)
 
     # Persons
     pers = handler.persons
