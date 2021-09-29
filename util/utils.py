@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 from typing import List, Optional
+from plotly.missing_ipywidgets import FigureWidget
 import requests
 from bs4 import BeautifulSoup
 import sys
@@ -98,7 +99,7 @@ def get_logger(name: str) -> logging.Logger:
         log.setLevel(logging.WARNING)
 
     format = logging.Formatter('%(asctime)s [ %(name)s ] - %(levelname)s:   %(message)s')
-    
+
     if not os.path.exists('logs'):
         os.mkdir('logs')
 
@@ -153,7 +154,7 @@ __log = get_logger(__name__)
 # Util functions for interface
 # ----------------------------
 
-def date_plotting(inDF: pd.DataFrame): # TODO Update doc
+def date_plotting(inDF: pd.DataFrame) -> FigureWidget:  # TODO Update doc  # LATER: maybe have a separate module for plotting stuff/reports
     ''' Plots the data of a given set of MSs. Used with MS metadata results. Returns scatterplot.
     Args:
         inDF(dataFrame, required): pandas DataFrame
@@ -163,5 +164,5 @@ def date_plotting(inDF: pd.DataFrame): # TODO Update doc
 
     inDF = inDF[inDF['Terminus ante quem'] != 0]
     inDF = inDF[inDF['Terminus post quem'] != 0]
-    fig = px.scatter(inDF, x='Terminus post quem', y='Terminus ante quem', color='Signature')
+    fig = px.scatter(inDF, x='Terminus post quem', y='Terminus ante quem', color='shelfmark')
     return fig

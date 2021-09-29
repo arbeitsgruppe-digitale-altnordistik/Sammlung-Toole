@@ -1,22 +1,24 @@
+import os
 from typing import List, Set
 from bs4 import BeautifulSoup
-from bs4.element import Tag
 import pandas as pd
 from bs4 import BeautifulSoup
 import util.metadata as metadata
 import util.utils as utils
-from util.constants import PREFIX_XML_DATA, PREFIX_XML_RAW
+from util.constants import *
 import zipfile
 import glob
 from lxml import etree
 import requests
 import time
+from pathlib import Path
 
 
 log = utils.get_logger(__name__)
 
 # Data preparation
 # ----------------
+
 
 def has_data_available() -> bool:
     """Check if data is available"""
@@ -32,10 +34,16 @@ def unzipper() -> bool:
     """Unzips xml files from source directory into target directory. 
     Returns True on success.
     """
-    zip = glob.glob(PREFIX_XML_RAW + '*.zip')
+    zip = glob.glob(PREFIX_XML_RAW + 'xml.zip')
     if zip:
         with zipfile.ZipFile(zip[0], 'r') as file:
             file.extractall(PREFIX_XML_DATA)
+            xmls = glob.glob(PREFIX_XML_DATA+'xml/*.xml')
+            for xml in xmls:
+                p = Path(xml)
+                dest = os.path.join(PREFIX_XML_DATA, p.name)
+                os.replace(xml, dest)
+            os.rmdir(PREFIX_XML_DATA+'xml')
             log.info('Extracted XMLs from zip file.')
             return True
     log.info('No zip file found. No data. Nothing to do.')
@@ -54,7 +62,7 @@ def _get_files_in_place() -> bool:
             log.error('Could not find any data!')
             return False
     return True
-    
+
 
 def load_xml_contents() -> pd.DataFrame:
     all_stored_xmls = glob.iglob(PREFIX_XML_DATA + '*xml')
@@ -66,16 +74,17 @@ def load_xml_contents() -> pd.DataFrame:
     return outDF
 
 
-def _load_xml_file(xml_file) -> str:
+def _load_xml_file(xml_file: str) -> str:
     with open(xml_file, encoding='utf-8', mode='r+') as file:
-            return file.read()
+        return file.read()
 
 
 def _get_shelfmark(content: str) -> str:
     try:
         root = etree.fromstring(content.encode())
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
-        log.debug(f'Shelfmark: {etree.tostring(idno)}')
+        # log.debug(f'Shelfmark: {etree.tostring(idno)}')
+        log.debug(f'Shelfmark: {idno.text}')
         if idno is not None:
             return str(idno.text)
         else:
@@ -100,17 +109,19 @@ def deliver_handler_data() -> pd.DataFrame:
 # Helpers
 # -------
 
-def _get_mstexts(soup):
+
+def _get_mstexts(soup: BeautifulSoup) -> List[str]:
     msItems = soup.find_all('msContents')
     curr_titles = []
     for i in msItems:
         title = i.title.get_text()
         curr_titles.append(title)
-    
+
     return curr_titles
 
 # Data extraction
 # ---------------
+
 
 def _find_id(soup: BeautifulSoup) -> str:
     id_raw = soup.find('msDesc')
@@ -118,7 +129,7 @@ def _find_id(soup: BeautifulSoup) -> str:
     if 'da' in id or 'en' in id or 'is' in id:
         id1 = id.rsplit('-', 1)
         id = id1[0]
-    return id
+    return str(id)
 
 
 def get_msinfo(soup: BeautifulSoup) -> pd.Series:
@@ -154,19 +165,19 @@ def get_msinfo(soup: BeautifulSoup) -> pd.Series:
                       "id": id})
 
 
-def efnisordResult(inURL):
-  resultPage = requests.get(inURL).content
-  pho = BeautifulSoup(resultPage, 'lxml')
-  theGoods = pho.find('tbody')
-  identifierSoup = theGoods.find_all(class_='id')
-  identifierList = []
-  for indi in identifierSoup:
-    identifier = indi.get_text()
-    identifierList.append(identifier)
-  return identifierList
+def efnisordResult(inURL: str) -> List[str]:
+    resultPage = requests.get(inURL).content
+    pho = BeautifulSoup(resultPage, 'lxml')
+    theGoods = pho.find('tbody')
+    identifierSoup = theGoods.find_all(class_='id')
+    identifierList = []
+    for indi in identifierSoup:
+        identifier = indi.get_text()
+        identifierList.append(identifier)
+    return identifierList
 
 
-def get_search_result_pages(url):
+def get_search_result_pages(url: str) -> List[str]:
     """Get multiple result pages from search with 26+ hits.
     This function returns a list of all result pages from one search result,
     if the search got too many hits to display on one page.
@@ -181,12 +192,12 @@ def get_search_result_pages(url):
     links = soup.select("div.t-data-grid-pager > a")
     urls = [l['href'] for l in links]
     for u in urls:
-      if u not in res:
-        res.append(u)
+        if u not in res:
+            res.append(u)
     return res
 
 
-def get_shelfmarks(url):
+def get_shelfmarks(url: str) -> List[str]:
     """Get Shelfmarks from an URL
     This function returns a list of strings containing shelfmarks from a page on handrit.is.
     Args:
@@ -205,13 +216,42 @@ def get_shelfmarks(url):
     return shelfmarks
 
 
-def get_shelfmarks_from_urls(urls):
-  results = []
-  if len(urls) == 1:
-    url = urls[0]
-    results += get_shelfmarks(url)
+def get_shelfmarks_from_urls(urls: List[str]) -> List[str]:
+    results = []
+    if len(urls) == 1:
+        url = urls[0]
+        results += get_shelfmarks(url)
+        return list(set(results))
+    for url in urls:
+        results += get_shelfmarks(url)
+        time.sleep(0.2)
     return list(set(results))
-  for url in urls:
-    results += get_shelfmarks(url)
-    time.sleep(0.2)
-  return list(set(results))
+
+
+def _wipe_cache() -> None:
+    """Remove all cached files"""
+    xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
+    for xml in xmls:
+        os.remove(xml)
+    if os.path.exists(CRAWLER_PATH_COLLECTIONS):
+        os.remove(CRAWLER_PATH_COLLECTIONS)
+    if os.path.exists(CRAWLER_PATH_IDS):
+        os.remove(CRAWLER_PATH_IDS)
+    if os.path.exists(CRAWLER_PATH_URLS):
+        os.remove(CRAWLER_PATH_URLS)
+    if os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS):
+        os.remove(CRAWLER_PATH_POTENTIAL_XMLS)
+    if os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
+        os.remove(CRAWLER_PATH_CONTENT_PICKLE)
+    if os.path.exists(HANDLER_BACKUP_PATH_MSS):
+        os.remove(HANDLER_BACKUP_PATH_MSS)
+    if os.path.exists(CRAWLER_PICKLE_PATH):
+        os.remove(CRAWLER_PICKLE_PATH)
+    if os.path.exists(CRAWLER_PATH_404S):
+        os.remove(CRAWLER_PATH_404S)
+
+
+def _ensure_directories() -> None:
+    """Ensure all caching directories exist"""
+    os.makedirs(PREFIX_XML_DATA, exist_ok=True)
+    os.makedirs(PREFIX_BACKUPS, exist_ok=True)
