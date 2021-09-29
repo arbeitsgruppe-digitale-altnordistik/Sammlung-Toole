@@ -4,12 +4,11 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 import sys
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Tuple, Union
 from bs4 import BeautifulSoup
 import pandas as pd
 import pickle
 import os
-import util.crawler as crawler
 import util.tamer as tamer
 from util import utils
 from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
@@ -78,17 +77,15 @@ class DataHandler:
     @staticmethod
     def _load_ms_info(df: Optional[pd.DataFrame] = None,
                       contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-        # LATER: look into `tqdm.contrib.concurrent:process_map`
         if df is None or contents is None:
             df = tamer.deliver_handler_data()
-        if len(df.index) > settings.max_res:
-            df = df[:settings.max_res]
+        # if len(df.index) > settings.max_res:
+        #     df = df[:settings.max_res]
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
         msinfo = df['soup'].apply(tamer.get_msinfo)
         log.info("Loaded MS Info")
         df = df.join(msinfo)
         return df
-    
 
     @staticmethod
     def is_cached() -> bool:
@@ -152,14 +149,16 @@ class DataHandler:
         # TODO: truncate other props aswell
 
     def _ms_complete(self) -> bool:
-        if self.manuscripts is None or self.manuscripts.empty:
-            return False
-        length = len(self.manuscripts.index)
-        if length >= settings.max_res:
-            return True
-        if length >= crawler.crawl_collections()['ms_count'].sum():
-            return True
-        return False
+        return True
+        # TODO: implement more reasonable solution
+        # if self.manuscripts is None or self.manuscripts.empty:
+        #     return False
+        # length = len(self.manuscripts.index)
+        # if length >= settings.max_res:
+        #     return True
+        # if length >= crawler.crawl_collections()['ms_count'].sum():
+        #     return True
+        # return False
 
     # API Methods
     # -----------
@@ -175,21 +174,21 @@ class DataHandler:
         # CHORE: documentation: one of these arguments must be passed, return df to mss
         pass  # TODO: implement
 
-    def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> List[str]:
+    def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> Tuple[List[str], pd.DataFrame]:
         # CHORE: documentation
         msss: List[pd.DataFrame] = []
         for url in urls:
             if "/search/results/" in url:
                 pages = tamer.get_search_result_pages(url)
                 shelfmarks = tamer.get_shelfmarks_from_urls(pages)
-                print(shelfmarks)
+                log.info(f"Loaded Shelfmarks: {shelfmarks}")
                 mss = self.manuscripts[self.manuscripts['shelfmark'].isin(shelfmarks)]
             else:
                 ids = tamer.efnisordResult(url)
                 mss = self.manuscripts[self.manuscripts['id'].isin(ids)]
             msss.append(mss)
 
-        if sharedMode: # Don't these two return the exact same result?! Shared was for textworks...
+        if sharedMode:  # Don't these two return the exact same result?! Shared was for textworks...  # TODO: find this out
             res = self.manuscripts
             for df in msss:
                 res = pd.merge(res, df, on='shelfmark', how='inner')

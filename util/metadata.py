@@ -1,16 +1,14 @@
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 import urllib
 import pandas as pd
 from pandas import DataFrame
 import copy
-from datetime import datetime
 import re
 import statistics
 from util import utils
 from util.constants import PERSON_CACHE_PATH as people
-from os import path, read
 import csv
 
 
