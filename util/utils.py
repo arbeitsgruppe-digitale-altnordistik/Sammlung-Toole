@@ -164,5 +164,5 @@ def date_plotting(inDF: pd.DataFrame) -> FigureWidget:  # TODO Update doc  # LAT
 
     inDF = inDF[inDF['Terminus ante quem'] != 0]
     inDF = inDF[inDF['Terminus post quem'] != 0]
-    fig = px.scatter(inDF, x='Terminus post quem', y='Terminus ante quem', color='Signature')
+    fig = px.scatter(inDF, x='Terminus post quem', y='Terminus ante quem', color='shelfmark')
     return fig
