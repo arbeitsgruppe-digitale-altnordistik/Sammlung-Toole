@@ -210,14 +210,24 @@ def browse_data() -> None:
     # st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts.")
     st.write("Head and tail of the dataset:")
     st.dataframe(mss.head().append(mss.tail()))
-    if st.button("Show all data"):
+    if st.button("Show all manuscripts"):
         st.dataframe(mss)
 
     # Texts
     txt = handler.texts
     st.header("Texts")
-    st.write("Not yet implemented")
     st.dataframe(txt.head())
+    if st.button("Show text matrix"):
+        st.dataframe(txt)
+    if st.button("List all texts"):
+        st.write(txt.columns)
+    if st.button("Show text counts"):
+        counts = txt.apply(
+            lambda x: pd.Series({"count": x[x == True].count()})).transpose().sort_values(
+            by=['count'],
+            ascending=False).reset_index().rename(
+            columns={"index": "text"})
+        st.write(counts)
 
     # Persons
     pers = handler.persons
