@@ -206,11 +206,13 @@ def browse_data() -> None:
     st.header("Manuscripts")
     st.write(f"Currently loaded data: Dataframe with {len(mss.index)} entries, {len(mss.columns)} columns each.")
     st.write("Each manuscript can have entries in multiple languages (English, Icelandic, Danish)")
-    # st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts, \
-    #          stored in {mss['collection'].unique().size} collections.")
-    st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts.")
+    st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts, \
+             stored in {mss['repository'].unique().size} collections.")
+    # st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts.")
     st.write("Head and tail of the dataset:")
     st.dataframe(mss.head().append(mss.tail()))
+    if st.button("Show all data"):
+        st.dataframe(mss)
 
     # Texts
     txt = handler.texts
