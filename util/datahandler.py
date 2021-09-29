@@ -4,12 +4,11 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 import sys
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Tuple, Union
 from bs4 import BeautifulSoup
 import pandas as pd
 import pickle
 import os
-import util.crawler as crawler
 import util.tamer as tamer
 from util import utils
 from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
@@ -175,21 +174,21 @@ class DataHandler:
         # CHORE: documentation: one of these arguments must be passed, return df to mss
         pass  # TODO: implement
 
-    def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> List[str]:
+    def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> Tuple[List[str], pd.DataFrame]:
         # CHORE: documentation
         msss: List[pd.DataFrame] = []
         for url in urls:
             if "/search/results/" in url:
                 pages = tamer.get_search_result_pages(url)
                 shelfmarks = tamer.get_shelfmarks_from_urls(pages)
-                print(shelfmarks)
+                log.info(f"Loaded Shelfmarks: {shelfmarks}")
                 mss = self.manuscripts[self.manuscripts['shelfmark'].isin(shelfmarks)]
             else:
                 ids = tamer.efnisordResult(url)
                 mss = self.manuscripts[self.manuscripts['id'].isin(ids)]
             msss.append(mss)
 
-        if sharedMode:  # Don't these two return the exact same result?! Shared was for textworks...
+        if sharedMode:  # Don't these two return the exact same result?! Shared was for textworks...  # TODO: find this out
             res = self.manuscripts
             for df in msss:
                 res = pd.merge(res, df, on='shelfmark', how='inner')

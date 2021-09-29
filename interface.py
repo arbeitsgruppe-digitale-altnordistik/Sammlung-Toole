@@ -2,12 +2,11 @@ from typing import Optional
 import numpy as np
 import streamlit as st
 import pandas as pd
-import util.crawler as crawler
 import base64
 from datetime import datetime
 import markdown
 import util.metadata as metadata
-from util import sessionState
+from util import sessionState, tamer
 from util import utils
 from util.constants import IMAGE_HOME
 from util.stateHandler import StateHandler
@@ -29,21 +28,21 @@ def get_handler() -> None:
         adv_options()
 
 
-def rebuild_all() -> None:
-    ''' This will run the crawl() function from the crawler, which will download everything
-    from handrit
-    '''
-    st.write(f'Start: {datetime.now()}')
-    xmls, contents = crawler.crawl(use_cache=False)
-    st.write(f'Finished: {datetime.now()}')
-    rebuild_handler(xmls, contents)
+# def rebuild_all() -> None:
+#     ''' This will run the crawl() function from the crawler, which will download everything
+#     from handrit
+#     '''
+#     st.write(f'Start: {datetime.now()}')
+#     xmls, contents = crawler.crawl(use_cache=False)
+#     st.write(f'Finished: {datetime.now()}')
+#     rebuild_handler(xmls, contents)
 
 
-def reload_with_cache() -> None:
-    st.write(f'Start: {datetime.now()}')
-    xmls, contents = crawler.crawl(use_cache=True)
-    st.write(f'Finished: {datetime.now()}')
-    rebuild_handler(xmls, contents)
+# def reload_with_cache() -> None:
+#     st.write(f'Start: {datetime.now()}')
+#     xmls, contents = crawler.crawl(use_cache=True)
+#     st.write(f'Finished: {datetime.now()}')
+#     rebuild_handler(xmls, contents)
 
 
 def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
@@ -83,7 +82,7 @@ def adv_options() -> None:
     # if st.sidebar.button("Rebuild Data Handler"):
     #     rebuild_handler()
     if st.sidebar.button("Wipe cache"):
-        crawler._wipe_cache()
+        tamer._wipe_cache()
     # settings.max_res = st.sidebar.number_input("Maximum number of manuscripts to load",
     #                                            min_value=1,
     #                                            max_value=1000000,
@@ -123,7 +122,7 @@ def search_page() -> None:
     if state.didRun == 'OK':
         if st.button("Go to postprocessing"):
             state.CurrentStep = 'Postprocessing'
-            state.didRun = None
+            state.didRun = None  # type: ignore  # LATER: find solution for this type error
             st.experimental_rerun()
     if state.CurrentStep == 'Postprocessing':
         postprocessing()
