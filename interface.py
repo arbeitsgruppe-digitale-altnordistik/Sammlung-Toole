@@ -210,14 +210,15 @@ def browse_data() -> None:
     # st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts.")
     st.write("Head and tail of the dataset:")
     st.dataframe(mss.head().append(mss.tail()))
-    if st.button("Show all data"):
+    if st.button("Show all manuscripts"):
         st.dataframe(mss)
 
     # Texts
     txt = handler.texts
     st.header("Texts")
-    st.write("Not yet implemented")
     st.dataframe(txt.head())
+    if st.button("Show text matrix"):
+        st.dataframe(txt)
 
     # Persons
     pers = handler.persons
