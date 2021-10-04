@@ -742,7 +742,7 @@ def summarize_location(location: Tuple[str, str, str, str, str, str]) -> Tuple[s
     return settlement, archive, signature
 
 
-def get_citavified_data(inData: List[str], DataType: str = 'urls') -> Tuple[pd.DataFrame, str]:  # XXX: get this to work
+def get_citavified_data(inData: List[str], DataType: str = 'urls') -> Tuple[pd.DataFrame, str]:  # TODO: Obsolete? Now integrated in interface.
     """ Create dataframe for usage in interface
 
     The dataframe contains the following columns:
@@ -788,7 +788,7 @@ def get_citavified_data(inData: List[str], DataType: str = 'urls') -> Tuple[pd.D
         settlement, archive, signature = summarize_location(location)
 
         mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + (date,) + (origin,) + (settlement,) + (archive,) + (signature,)
-        structure = get_structure(mylist, mytuple)
+        structure = mylist.append(mytuple)
 
     columns = ["Handrit-ID", "Creator", "Short title", "Description", "Dating", "Origin",  "Settlement", "Archive", "Signature"]
 
