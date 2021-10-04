@@ -200,9 +200,37 @@ def get_search_result_pages(url: str) -> List[str]:
     Returns:
         List[str]: a list with URLs for all pages of the search result
     """
-    res = [url]
+    res = []
     htm = requests.get(url).text
     soup = BeautifulSoup(htm, 'lxml')
+    resDiv = soup.find(class_="t-data-grid-pager")
+    getNumberRow = resDiv.get_text()
+    muchResultsWow = False
+    if "..." in getNumberRow:
+        muchResultsWow = True
+    if muchResultsWow:
+        pageNosRaw = resDiv.find_all("a")
+        totalNo = 1
+        for i in pageNosRaw:
+            ix = i.get('title')
+            ino = [int(x) for x in ix.split() if x.isdigit()]
+            print(ino)
+            for no in ino:
+                if no > totalNo:
+                    totalNo = no
+        for i in range(totalNo):
+            htm = requests.get(res[i]).text
+            soup = BeautifulSoup(htm, 'lxml')
+            links = soup.select("div.t-data-grid-pager > a")
+            urls = [l['href'] for l in links]
+            for u in urls:
+                if u not in res:
+                    res.append(u)
+                    print(u)
+        if len(res) != totalNo:
+            print("Something smells fucky.")
+        return res
+
     links = soup.select("div.t-data-grid-pager > a")
     urls = [l['href'] for l in links]
     for u in urls:
@@ -222,7 +250,6 @@ def get_shelfmarks(url: str) -> List[str]:
     htm = requests.get(url).text
     soup = BeautifulSoup(htm, 'lxml')
     subsoups = soup.select("td.shelfmark")
-    # print(subsoups)
     shelfmarks = [ss.get_text() for ss in subsoups]
     shelfmarks = [sm.strip() for sm in shelfmarks]
     log.info(f"At 'get_shelfmarks', I still have {len(shelfmarks)}")

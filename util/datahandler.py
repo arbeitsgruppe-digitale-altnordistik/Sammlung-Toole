@@ -209,7 +209,7 @@ class DataHandler:
                 mss = self.manuscripts[self.manuscripts['id'].isin(ids)]
             msss.append(mss)
 
-        if sharedMode:  # Don't these two return the exact same result?! Shared was for textworks...  # TODO: find this out
+        if sharedMode:  # Looked it over, they don't return the same. I got confused between this branch and stable (stable squishes results in tamer).
             res = self.manuscripts
             for df in msss:
                 res = pd.merge(res, df, on='shelfmark', how='inner')
