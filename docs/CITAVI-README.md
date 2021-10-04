@@ -22,7 +22,6 @@ Or via the streamlit interface:
 4. Run
 5. Go to postprocessing
 6. Export references to Citavi
-7. ??? bug ???
 8. Save file
 
 ## Import CSV to Citavi

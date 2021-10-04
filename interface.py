@@ -140,9 +140,7 @@ def postprocessing() -> None:
         state.postStep = 'CSV'
     if state.postStep == 'CSV':
         csv = state.currentData.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
-        st.markdown(href, unsafe_allow_html=True)
+        st.download_button(label="Download", data=csv, file_name="citavi-export.csv")
     if st.button("Export references to Citavi"):
         state.postStep = 'Citavi'
     if state.postStep == 'Citavi':
@@ -159,17 +157,15 @@ def postprocessing() -> None:
 
 
 def citaviExporter() -> None:
-    foundListList = list(state.currentData.columns)
-    foundList = [i for x in foundListList for i in x]
+    foundList = state.currentData['shelfmark'].to_list()
     state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
                                         help="This will export your selected references as a CSV file for Citavi.")
     if st.button('Export'):
-        state.currentCitaviData, _ = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
+        state.currentCitaviData = state.currentData.loc(axis=0)[state.currentData['shelfmark'].isin(state.CitaviSelect)]
+        state.currentCitaviData = state.currentCitaviData[["id", "creator", "shorttitle", "description", "date", "origin",  "settlement", "repository", "shelfmark"]]
         st.write(state.currentCitaviData)
         csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
-        b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<b> There is a bug! Use "Right Click -> Save As" or it will break!</b><br /><a href="data:file/csv;base64,{b64}">Download CSV File</a><br /> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
-        st.markdown(href, unsafe_allow_html=True)  # TODO: check if href can be opened in separate tab?
+        st.download_button(label="Download Citavi file", data=csv, file_name="citavi-export.csv", help="There no longer is a bug. It is now safe to just click Download.")
 
 
 def dataCleaner() -> None:  # TODO: Should not be neccessary. Should be done on handler construction.
@@ -243,10 +239,11 @@ def browse_data() -> None:
 
 
 def help() -> None:
-    st.title("How to use this tool")
-    with open('docs/CITAVI-README.md', 'r') as citread:
-        helpme = markdown.markdown(citread.read())
-    st.markdown(helpme, unsafe_allow_html=True)
+    st.markdown(Texts.HowToPage.info)
+    if st.button("Show detailed help on Citavi import/export"):
+        with open('docs/CITAVI-README.md', 'r') as citread:
+            helpme = markdown.markdown(citread.read())
+        st.markdown(helpme, unsafe_allow_html=True)
 
 
 # Menu Functions
