@@ -47,7 +47,8 @@ def unzipper() -> bool:
                 p = Path(xml)
                 dest = os.path.join(PREFIX_XML_DATA, p.name)
                 os.replace(xml, dest)
-            os.rmdir(PREFIX_XML_DATA+'xml')
+            if os.path.exists(PREFIX_XML_DATA+'xml'):
+                os.rmdir(PREFIX_XML_DATA+'xml')
             log.info('Extracted XMLs from zip file.')
             return True
     log.info('No zip file found. No data. Nothing to do.')
@@ -309,7 +310,11 @@ def extract_person_info() -> None:
     nsmap = {None: "http://www.tei-c.org/ns/1.0"}
     xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
     for path in xmls:
-        xml = etree.parse(path)
+        try:
+            xml = etree.parse(path)
+        except Exception as e:
+            with open('person-warnings.log', mode='a') as warn:
+                print(f'Warning in {path}: {e}', file=warn)
         root = xml.getroot()
         names = root.findall(".//name", nsmap)
         for n in names:
@@ -319,7 +324,7 @@ def extract_person_info() -> None:
     l = len(personIDs)
     for i, key in enumerate(personIDs):
         url = PREFIX_PERSON_XML_URL + key
-        print(f'requesting: {url} --- {i+1}/{l} ({i/l}%)')
+        print(f'requesting: {url} --- {i+1}/{l} ({i/l*100}%)')
         try:
             with urlopen(url) as f:
                 person_xml = etree.parse(f)
