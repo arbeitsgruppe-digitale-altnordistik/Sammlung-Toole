@@ -296,3 +296,27 @@ def _ensure_directories() -> None:
     """Ensure all caching directories exist"""
     os.makedirs(PREFIX_XML_DATA, exist_ok=True)
     os.makedirs(PREFIX_BACKUPS, exist_ok=True)
+
+
+# person helper methods
+
+def extract_person_info() -> None:
+    personIDs = set()
+    nsmap = {None: "http://www.tei-c.org/ns/1.0"}
+    xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
+    for path in xmls:
+        xml = etree.parse(path)
+        # print(xml)
+        root = xml.getroot()
+        # print(root.tag)
+        # print(nsmap)
+        names = root.findall(".//name", nsmap)
+        for n in names:
+            # print(n)
+            # print(etree.tostring(n))
+            if n.get('type') == 'person' and n.get('key'):
+                personIDs.add(n.get('key'))
+    print(personIDs)
+    print(len(personIDs))
+    for key in personIDs:
+        print(key)

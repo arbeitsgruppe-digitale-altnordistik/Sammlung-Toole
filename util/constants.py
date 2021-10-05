@@ -10,6 +10,7 @@ PREFIX_XML_DATA = 'data/xml/'
 PREFIX_XML_RAW = 'data/funnel/'
 PREFIX_BACKUPS = 'data/backups/'
 PREFIX_XML_URL = 'https://handrit.is/en/manuscript/xml/'
+PREFIX_PERSON_XML_URL = 'https://handrit.is/en/biography/xml/'
 
 HANDLER_BACKUP_PATH_MSS = "data/backups/mss.csv"
 HANDLER_PATH_PICKLE = "data/handler_cache.pickle"
