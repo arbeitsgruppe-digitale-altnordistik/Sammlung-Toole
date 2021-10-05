@@ -7,6 +7,7 @@ CRAWLER_PATH_IDS = 'data/ms_ids.csv'
 CRAWLER_PATH_404S = 'data/404urls.txt'
 
 PREFIX_XML_DATA = 'data/xml/'
+PREFIX_PERSON_XML_DATA = 'data/person-xml/'
 PREFIX_XML_RAW = 'data/funnel/'
 PREFIX_BACKUPS = 'data/backups/'
 PREFIX_XML_URL = 'https://handrit.is/en/manuscript/xml/'

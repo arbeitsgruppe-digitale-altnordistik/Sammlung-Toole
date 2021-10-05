@@ -1,6 +1,8 @@
 import os
+import sys
 from typing import List, Set
 from bs4 import BeautifulSoup
+import lxml
 import pandas as pd
 from bs4 import BeautifulSoup
 import util.metadata as metadata
@@ -12,6 +14,8 @@ from lxml import etree
 import requests
 import time
 from pathlib import Path
+from urllib.request import urlopen
+from tqdm import tqdm
 
 
 log = utils.get_logger(__name__)
@@ -306,17 +310,21 @@ def extract_person_info() -> None:
     xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
     for path in xmls:
         xml = etree.parse(path)
-        # print(xml)
         root = xml.getroot()
-        # print(root.tag)
-        # print(nsmap)
         names = root.findall(".//name", nsmap)
         for n in names:
-            # print(n)
-            # print(etree.tostring(n))
             if n.get('type') == 'person' and n.get('key'):
                 personIDs.add(n.get('key'))
-    print(personIDs)
-    print(len(personIDs))
-    for key in personIDs:
-        print(key)
+    # for key in tqdm(personIDs):
+    l = len(personIDs)
+    for i, key in enumerate(personIDs):
+        url = PREFIX_PERSON_XML_URL + key
+        print(f'requesting: {url} --- {i+1}/{l} ({i/l}%)')
+        try:
+            with urlopen(url) as f:
+                person_xml = etree.parse(f)
+            person_xml.write(f'{PREFIX_PERSON_XML_DATA}{key}.xml', encoding='utf-8', pretty_print=True, xml_declaration=True)
+            time.sleep(0.5)
+        except Exception as e:
+            with open('person-warnings.log', mode='a') as warn:
+                print(f'{key}: {e} in: {url}', file=warn)
