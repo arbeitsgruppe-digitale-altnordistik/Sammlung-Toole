@@ -183,7 +183,7 @@ def browse_data() -> None:
     txt = handler.texts
     st.header("Texts")
     st.write(f'Found {len(txt.columns)} texts.')
-    st.dataframe(txt.head())
+    # st.dataframe(txt.head())
     if st.button("List all texts"):
         st.write(txt.columns)
     if st.button("Show text counts"):
