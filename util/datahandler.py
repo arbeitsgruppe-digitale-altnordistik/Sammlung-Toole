@@ -4,14 +4,14 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 import sys
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from bs4 import BeautifulSoup
 import pandas as pd
 import pickle
 import os
 import util.tamer as tamer
 from util import utils, metadata
-from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
+from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS
 from util.utils import Settings
 
 
@@ -28,10 +28,12 @@ class DataHandler:
                  contents: Optional[pd.DataFrame] = None):
         """"""  # CHORE: documentation
         log.info("Creating new handler")
+        self.persons = persons if persons else DataHandler._load_persons()
+        log.info("Loaded Person Info")
         self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents)
         log.info("Loaded MS Info")
         self.texts = texts if texts else DataHandler._load_texts(self.manuscripts)
-        self.persons = persons if persons else pd.DataFrame()  # TODO: implement
+        log.info("Loaded Text Info")
         self.subcorpora: List[Any] = []  # TODO: implement
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
 
@@ -102,8 +104,13 @@ class DataHandler:
                 if t not in res.columns:
                     res[t] = False
                 res.at[id_, t] = True
-
         return res
+
+    @staticmethod
+    def _load_persons() -> Dict[str, str]:
+        if not tamer.has_person_data_available():
+            tamer.unzip_person_xmls()
+        return tamer.get_person_names()
 
     @staticmethod
     def is_cached() -> bool:

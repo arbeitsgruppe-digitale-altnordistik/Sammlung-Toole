@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import List, Set
+from typing import Dict, List, Set
 from bs4 import BeautifulSoup
 import lxml
 import pandas as pd
@@ -15,10 +15,10 @@ import requests
 import time
 from pathlib import Path
 from urllib.request import urlopen
-from tqdm import tqdm
 
 
 log = utils.get_logger(__name__)
+nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
 
 # Data preparation
 # ----------------
@@ -31,6 +31,16 @@ def has_data_available() -> bool:
         log.info('XMLs found in directory.')
         return True
     log.info('No downloaded XMLs found.')
+    return False
+
+
+def has_person_data_available() -> bool:
+    """Check if data is available"""
+    xmls = glob.glob(PREFIX_PERSON_XML_DATA + '*.xml')
+    if xmls:
+        log.info('Person XMLs found in directory.')
+        return True
+    log.info('No downloaded person XMLs found.')
     return False
 
 
@@ -67,6 +77,27 @@ def _get_files_in_place() -> bool:
             log.error('Could not find any data!')
             return False
     return True
+
+
+def unzip_person_xmls() -> bool:
+    """Unzips xml files from source directory into target directory. 
+    Returns True on success.
+    """
+    path = PREFIX_XML_RAW + 'person-xml.zip'
+    if os.path.exists(path):
+        with zipfile.ZipFile(path, 'r') as file:
+            file.extractall(PREFIX_PERSON_XML_DATA)
+            xmls = glob.glob(PREFIX_PERSON_XML_DATA+'person-xml/*.xml')
+            for xml in xmls:
+                p = Path(xml)
+                dest = os.path.join(PREFIX_PERSON_XML_DATA, p.name)
+                os.replace(xml, dest)
+            if os.path.exists(PREFIX_PERSON_XML_DATA+'xml'):
+                os.rmdir(PREFIX_PERSON_XML_DATA+'xml')
+            log.info('Extracted person XMLs from zip file.')
+            return True
+    log.info('No zip file found. No data. Nothing to do.')
+    return False
 
 
 def load_xml_contents() -> pd.DataFrame:
@@ -205,7 +236,7 @@ def get_search_result_pages(url: str) -> List[str]:
     Returns:
         List[str]: a list with URLs for all pages of the search result
     """
-    res = []
+    res: List[str] = []
     htm = requests.get(url).text
     soup = BeautifulSoup(htm, 'lxml')
     resDiv = soup.find(class_="t-data-grid-pager")
@@ -274,27 +305,65 @@ def get_shelfmarks_from_urls(urls: List[str]) -> List[str]:
     return list(set(results))
 
 
+def get_person_names() -> Dict[str, str]:
+    res: Dict[str, str] = {}
+    xmls = glob.glob(PREFIX_PERSON_XML_DATA + '*.xml')
+    for xml_path in xmls:
+        try:
+            tree = etree.parse(xml_path)
+            root = tree.getroot()
+            person_tag = root.find('.//person', nsmap)
+            if person_tag is not None:
+                id_ = person_tag.get('{http://www.w3.org/XML/1998/namespace}id')
+                if id_ is not None:
+                    name_tag = person_tag.find('persName', nsmap)
+                    names = name_tag.findall('forename', nsmap) + name_tag.findall('surname', nsmap)
+                    name_dict: Dict[str, str] = {}
+                    for name in names:
+                        if not name.text:
+                            continue
+                        i = name.get('sort') or "1"
+                        n = name.text.strip()
+                        name_dict[i] = n
+                    ii = sorted(name_dict.keys())
+                    nn = [name_dict[i] for i in ii]
+                    full_name = ' '.join(nn)
+                    res[id_] = full_name
+        except Exception as e:
+            log.exception(f"Failed to load file {xml_path}")
+    return res
+
+
+# cache functions
+
+
 def _wipe_cache() -> None:
     """Remove all cached files"""
+    log.info("Wiping cache.")
     xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
     for xml in xmls:
         os.remove(xml)
-    if os.path.exists(CRAWLER_PATH_COLLECTIONS):
-        os.remove(CRAWLER_PATH_COLLECTIONS)
-    if os.path.exists(CRAWLER_PATH_IDS):
-        os.remove(CRAWLER_PATH_IDS)
-    if os.path.exists(CRAWLER_PATH_URLS):
-        os.remove(CRAWLER_PATH_URLS)
-    if os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS):
-        os.remove(CRAWLER_PATH_POTENTIAL_XMLS)
-    if os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
-        os.remove(CRAWLER_PATH_CONTENT_PICKLE)
+    xmls = glob.glob(PREFIX_PERSON_XML_DATA + '*.xml')
+    for xml in xmls:
+        os.remove(xml)
+    # if os.path.exists(CRAWLER_PATH_COLLECTIONS):
+    #     os.remove(CRAWLER_PATH_COLLECTIONS)
+    # if os.path.exists(CRAWLER_PATH_IDS):
+    #     os.remove(CRAWLER_PATH_IDS)
+    # if os.path.exists(CRAWLER_PATH_URLS):
+    #     os.remove(CRAWLER_PATH_URLS)
+    # if os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS):
+    #     os.remove(CRAWLER_PATH_POTENTIAL_XMLS)
+    # if os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
+    #     os.remove(CRAWLER_PATH_CONTENT_PICKLE)
     if os.path.exists(HANDLER_BACKUP_PATH_MSS):
         os.remove(HANDLER_BACKUP_PATH_MSS)
-    if os.path.exists(CRAWLER_PICKLE_PATH):
-        os.remove(CRAWLER_PICKLE_PATH)
-    if os.path.exists(CRAWLER_PATH_404S):
-        os.remove(CRAWLER_PATH_404S)
+    if os.path.exists(HANDLER_PATH_PICKLE):
+        os.remove(HANDLER_PATH_PICKLE)
+    # if os.path.exists(CRAWLER_PICKLE_PATH):
+    #     os.remove(CRAWLER_PICKLE_PATH)
+    # if os.path.exists(CRAWLER_PATH_404S):
+    #     os.remove(CRAWLER_PATH_404S)
 
 
 def _ensure_directories() -> None:
@@ -307,7 +376,6 @@ def _ensure_directories() -> None:
 
 def extract_person_info() -> None:
     personIDs = set()
-    nsmap = {None: "http://www.tei-c.org/ns/1.0"}
     xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
     for path in xmls:
         try:
