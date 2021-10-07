@@ -2,10 +2,8 @@ from typing import Optional
 import numpy as np
 import streamlit as st
 import pandas as pd
-import base64
 from datetime import datetime
 import markdown
-import util.metadata as metadata
 from util import sessionState, tamer
 from util import utils
 from util.constants import IMAGE_HOME
@@ -26,23 +24,6 @@ def get_handler() -> None:
     else:
         st.sidebar.text("No data at hand. Needs loading first.")
         adv_options()
-
-
-# def rebuild_all() -> None:
-#     ''' This will run the crawl() function from the crawler, which will download everything
-#     from handrit
-#     '''
-#     st.write(f'Start: {datetime.now()}')
-#     xmls, contents = crawler.crawl(use_cache=False)
-#     st.write(f'Finished: {datetime.now()}')
-#     rebuild_handler(xmls, contents)
-
-
-# def reload_with_cache() -> None:
-#     st.write(f'Start: {datetime.now()}')
-#     xmls, contents = crawler.crawl(use_cache=True)
-#     st.write(f'Finished: {datetime.now()}')
-#     rebuild_handler(xmls, contents)
 
 
 def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
@@ -72,21 +53,13 @@ def adv_options() -> None:
     st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
 
-    if st.button("Reload Data Handler"):
-        state.data_handler = DataHandler.get_handler()
-
-    # if st.sidebar.button("Download everything"):
-    #     rebuild_all()
-    # if st.sidebar.button("Reload Missing Data"):
-    #     reload_with_cache()
-    # if st.sidebar.button("Rebuild Data Handler"):
-    #     rebuild_handler()
-    if st.sidebar.button("Wipe cache"):
+    if st.button("Wipe cache"):
         tamer._wipe_cache()
-    # settings.max_res = st.sidebar.number_input("Maximum number of manuscripts to load",
-    #                                            min_value=1,
-    #                                            max_value=1000000,
-    #                                            value=1000000)  # TODO: still necessary?
+        st.success("Cach is wiped entirely. Please reload the data handler.")
+    if st.button("Reload Data Handler"):
+        with st.spinner("This may take a while..."):
+            state.data_handler = DataHandler.get_handler()
+        st.experimental_rerun()
 
 
 def search_page() -> None:
@@ -107,7 +80,8 @@ def search_page() -> None:
 
             if state.currentURLs_str:
                 s_urls = [url.strip() for url in state.currentURLs_str.split(',')]
-                url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(urls=s_urls, sharedMode=(state.joinMode == False))
+                url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(
+                    urls=s_urls, sharedMode=(state.joinMode == False))  # type: ignore  # LATER: find solution for this type error
                 st.write("Processed Manuscript URLs:")
                 st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
                 state.currentURL_list += url_list
@@ -203,7 +177,6 @@ def browse_data() -> None:
     st.write("Each manuscript can have entries in multiple languages (English, Icelandic, Danish)")
     st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts, \
              stored in {mss['repository'].unique().size} collections.")
-    # st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts.")
     st.write("Head and tail of the dataset:")
     st.dataframe(mss.head().append(mss.tail()))
     if st.button("Show all manuscripts"):
@@ -212,9 +185,8 @@ def browse_data() -> None:
     # Texts
     txt = handler.texts
     st.header("Texts")
-    st.dataframe(txt.head())
-    if st.button("Show text matrix"):
-        st.dataframe(txt)
+    st.write(f'Found {len(txt.columns)} texts.')
+    # st.dataframe(txt.head())
     if st.button("List all texts"):
         st.write(txt.columns)
     if st.button("Show text counts"):
@@ -223,13 +195,17 @@ def browse_data() -> None:
             by=['count'],
             ascending=False).reset_index().rename(
             columns={"index": "text"})
+        # TODO: the most numerous text is "" (empty), which is not how it should be, I suppose.
         st.write(counts)
 
     # Persons
-    pers = handler.persons
+    pers = handler.person_names
     st.header("Persons")
-    st.write("Not yet implemented")
-    st.dataframe(pers.head())
+    st.write(f'{len(pers.keys())} people loaded.')
+    if st.button("show all"):
+        st.write(list(pers.values()))
+    pers_matrix = handler.person_matrix
+    st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
 
     # Subcorpora
     subs = handler.subcorpora
