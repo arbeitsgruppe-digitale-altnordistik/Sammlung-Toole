@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 from bs4 import BeautifulSoup
 import lxml
 import pandas as pd
@@ -120,7 +120,7 @@ def _get_shelfmark(content: str) -> str:
         root = etree.fromstring(content.encode())
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
         # log.debug(f'Shelfmark: {etree.tostring(idno)}')
-        log.debug(f'Shelfmark: {idno.text}')
+        # log.debug(f'Shelfmark: {idno.text}')
         if idno is not None:
             return str(idno.text)
         else:
@@ -401,3 +401,27 @@ def extract_person_info() -> None:
         except Exception as e:
             with open('person-warnings.log', mode='a') as warn:
                 print(f'{key}: {e} in: {url}', file=warn)
+
+
+def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
+    ms_ids: List[str] = []
+    pers_ids: List[str] = []
+    coords: Set[Tuple[int, int]] = set()
+    for _, row in df.iterrows():
+        ms_id = row['full_id']
+        soup = row['soup']
+        persons = soup.find_all('name', {'type': 'person'})
+        # LATER: note that <handNote scribe="XYZ"/> won't be found like this (see e.g. Steph01-a-da.xml)
+        if persons:
+            ms_index = len(ms_ids)
+            ms_ids.append(ms_id)
+            for person in persons:
+                pers_id = person.get('key')
+                if pers_id:
+                    if pers_id in pers_ids:
+                        pers_index = pers_ids.index(pers_id)
+                    else:
+                        pers_index = len(pers_ids)
+                        pers_ids.append(pers_id)
+                    coords.add((ms_index, pers_index))
+    return ms_ids, pers_ids, list(coords)

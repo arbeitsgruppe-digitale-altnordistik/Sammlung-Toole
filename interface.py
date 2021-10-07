@@ -78,7 +78,8 @@ def search_page() -> None:
 
             if state.currentURLs_str:
                 s_urls = [url.strip() for url in state.currentURLs_str.split(',')]
-                url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(urls=s_urls, sharedMode=(state.joinMode == False))
+                url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(
+                    urls=s_urls, sharedMode=(state.joinMode == False))  # type: ignore  # LATER: find solution for this type error
                 st.write("Processed Manuscript URLs:")
                 st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
                 state.currentURL_list += url_list
@@ -199,6 +200,10 @@ def browse_data() -> None:
     pers = handler.person_names
     st.header("Persons")
     st.write(f'{len(pers.keys())} people loaded.')
+    if st.button("show all"):
+        st.write(list(pers.values()))
+    pers_matrix = handler.person_matrix
+    st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
 
     # Subcorpora
     subs = handler.subcorpora
