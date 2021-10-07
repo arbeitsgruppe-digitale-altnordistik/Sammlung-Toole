@@ -92,8 +92,8 @@ def unzip_person_xmls() -> bool:
                 p = Path(xml)
                 dest = os.path.join(PREFIX_PERSON_XML_DATA, p.name)
                 os.replace(xml, dest)
-            if os.path.exists(PREFIX_PERSON_XML_DATA+'xml'):
-                os.rmdir(PREFIX_PERSON_XML_DATA+'xml')
+            if os.path.exists(PREFIX_PERSON_XML_DATA+'person-xml'):
+                os.rmdir(PREFIX_PERSON_XML_DATA+'person-xml')
             log.info('Extracted person XMLs from zip file.')
             return True
     log.info('No zip file found. No data. Nothing to do.')
@@ -104,6 +104,7 @@ def load_xml_contents() -> pd.DataFrame:
     all_stored_xmls = glob.iglob(PREFIX_XML_DATA + '*xml')
     outDF = pd.DataFrame(columns=['shelfmark', 'content'])
     for individual_xml_file in all_stored_xmls:
+        log.debug(f'Loading: {individual_xml_file}')
         file_contents = _load_xml_file(individual_xml_file)
         shelfmark = _get_shelfmark(file_contents)
         outDF = outDF.append({'shelfmark': shelfmark, 'content': file_contents}, ignore_index=True)
@@ -112,15 +113,17 @@ def load_xml_contents() -> pd.DataFrame:
 
 def _load_xml_file(xml_file: str) -> str:
     with open(xml_file, encoding='utf-8', mode='r+') as file:
-        return file.read()
+        try:
+            return file.read()
+        except Exception as e:
+            log.exception(f'Failed to read file {xml_file}')
+            return ""
 
 
 def _get_shelfmark(content: str) -> str:
     try:
         root = etree.fromstring(content.encode())
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
-        # log.debug(f'Shelfmark: {etree.tostring(idno)}')
-        # log.debug(f'Shelfmark: {idno.text}')
         if idno is not None:
             return str(idno.text)
         else:
