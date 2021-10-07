@@ -1,6 +1,8 @@
 import os
-from typing import List, Set
+import sys
+from typing import Dict, List, Set, Tuple
 from bs4 import BeautifulSoup
+import lxml
 import pandas as pd
 from bs4 import BeautifulSoup
 import util.metadata as metadata
@@ -12,9 +14,11 @@ from lxml import etree
 import requests
 import time
 from pathlib import Path
+from urllib.request import urlopen
 
 
 log = utils.get_logger(__name__)
+nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
 
 # Data preparation
 # ----------------
@@ -27,6 +31,16 @@ def has_data_available() -> bool:
         log.info('XMLs found in directory.')
         return True
     log.info('No downloaded XMLs found.')
+    return False
+
+
+def has_person_data_available() -> bool:
+    """Check if data is available"""
+    xmls = glob.glob(PREFIX_PERSON_XML_DATA + '*.xml')
+    if xmls:
+        log.info('Person XMLs found in directory.')
+        return True
+    log.info('No downloaded person XMLs found.')
     return False
 
 
@@ -43,7 +57,8 @@ def unzipper() -> bool:
                 p = Path(xml)
                 dest = os.path.join(PREFIX_XML_DATA, p.name)
                 os.replace(xml, dest)
-            os.rmdir(PREFIX_XML_DATA+'xml')
+            if os.path.exists(PREFIX_XML_DATA+'xml'):
+                os.rmdir(PREFIX_XML_DATA+'xml')
             log.info('Extracted XMLs from zip file.')
             return True
     log.info('No zip file found. No data. Nothing to do.')
@@ -64,10 +79,32 @@ def _get_files_in_place() -> bool:
     return True
 
 
+def unzip_person_xmls() -> bool:
+    """Unzips xml files from source directory into target directory. 
+    Returns True on success.
+    """
+    path = PREFIX_XML_RAW + 'person-xml.zip'
+    if os.path.exists(path):
+        with zipfile.ZipFile(path, 'r') as file:
+            file.extractall(PREFIX_PERSON_XML_DATA)
+            xmls = glob.glob(PREFIX_PERSON_XML_DATA+'person-xml/*.xml')
+            for xml in xmls:
+                p = Path(xml)
+                dest = os.path.join(PREFIX_PERSON_XML_DATA, p.name)
+                os.replace(xml, dest)
+            if os.path.exists(PREFIX_PERSON_XML_DATA+'person-xml'):
+                os.rmdir(PREFIX_PERSON_XML_DATA+'person-xml')
+            log.info('Extracted person XMLs from zip file.')
+            return True
+    log.info('No zip file found. No data. Nothing to do.')
+    return False
+
+
 def load_xml_contents() -> pd.DataFrame:
     all_stored_xmls = glob.iglob(PREFIX_XML_DATA + '*xml')
     outDF = pd.DataFrame(columns=['shelfmark', 'content'])
     for individual_xml_file in all_stored_xmls:
+        log.debug(f'Loading: {individual_xml_file}')
         file_contents = _load_xml_file(individual_xml_file)
         shelfmark = _get_shelfmark(file_contents)
         outDF = outDF.append({'shelfmark': shelfmark, 'content': file_contents}, ignore_index=True)
@@ -76,15 +113,17 @@ def load_xml_contents() -> pd.DataFrame:
 
 def _load_xml_file(xml_file: str) -> str:
     with open(xml_file, encoding='utf-8', mode='r+') as file:
-        return file.read()
+        try:
+            return file.read()
+        except Exception as e:
+            log.exception(f'Failed to read file {xml_file}')
+            return ""
 
 
 def _get_shelfmark(content: str) -> str:
     try:
         root = etree.fromstring(content.encode())
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
-        # log.debug(f'Shelfmark: {etree.tostring(idno)}')
-        log.debug(f'Shelfmark: {idno.text}')
         if idno is not None:
             return str(idno.text)
         else:
@@ -142,15 +181,15 @@ def _find_full_id(soup: BeautifulSoup) -> str:
     return str(id)
 
 
-def get_msinfo(soup: BeautifulSoup) -> pd.Series:
+def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:
     shorttitle = metadata.get_shorttitle(soup)
-    signature, country, settlement, repository = metadata.get_msID(soup)
+    _, country, settlement, repository = metadata.get_msID(soup)
     origin = metadata.get_origin(soup)
     date, tp, ta, meandate, yearrange = metadata.get_date(soup)
     support = metadata.get_support(soup)
     folio = metadata.get_folio(soup)
     height, width = metadata.get_dimensions(soup)
-    creator = metadata.get_creator(soup)
+    creator = metadata.get_creator(soup, persons)
     extent = metadata.get_extent(soup)
     description = metadata.get_description(soup)
     id = _find_id(soup)
@@ -200,7 +239,7 @@ def get_search_result_pages(url: str) -> List[str]:
     Returns:
         List[str]: a list with URLs for all pages of the search result
     """
-    res = []
+    res: List[str] = []
     htm = requests.get(url).text
     soup = BeautifulSoup(htm, 'lxml')
     resDiv = soup.find(class_="t-data-grid-pager")
@@ -269,30 +308,110 @@ def get_shelfmarks_from_urls(urls: List[str]) -> List[str]:
     return list(set(results))
 
 
+def get_person_names() -> Dict[str, str]:
+    res: Dict[str, str] = {}
+    xmls = glob.glob(PREFIX_PERSON_XML_DATA + '*.xml')
+    for xml_path in xmls:
+        try:
+            tree = etree.parse(xml_path)
+            root = tree.getroot()
+            person_tag = root.find('.//person', nsmap)
+            if person_tag is not None:
+                id_ = person_tag.get('{http://www.w3.org/XML/1998/namespace}id')
+                if id_ is not None:
+                    name_tag = person_tag.find('persName', nsmap)
+                    names = name_tag.findall('forename', nsmap) + name_tag.findall('surname', nsmap)
+                    name_dict: Dict[str, str] = {}
+                    for name in names:
+                        if not name.text:
+                            continue
+                        i = name.get('sort') or "1"
+                        n = name.text.strip()
+                        name_dict[i] = n
+                    ii = sorted(name_dict.keys())
+                    nn = [name_dict[i] for i in ii]
+                    full_name = ' '.join(nn)
+                    res[id_] = full_name
+        except Exception as e:
+            log.exception(f"Failed to load file {xml_path}")
+    return res
+
+
+# cache functions
+
+
 def _wipe_cache() -> None:
     """Remove all cached files"""
+    log.info("Wiping cache.")
     xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
     for xml in xmls:
         os.remove(xml)
-    if os.path.exists(CRAWLER_PATH_COLLECTIONS):
-        os.remove(CRAWLER_PATH_COLLECTIONS)
-    if os.path.exists(CRAWLER_PATH_IDS):
-        os.remove(CRAWLER_PATH_IDS)
-    if os.path.exists(CRAWLER_PATH_URLS):
-        os.remove(CRAWLER_PATH_URLS)
-    if os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS):
-        os.remove(CRAWLER_PATH_POTENTIAL_XMLS)
-    if os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
-        os.remove(CRAWLER_PATH_CONTENT_PICKLE)
+    xmls = glob.glob(PREFIX_PERSON_XML_DATA + '*.xml')
+    for xml in xmls:
+        os.remove(xml)
     if os.path.exists(HANDLER_BACKUP_PATH_MSS):
         os.remove(HANDLER_BACKUP_PATH_MSS)
-    if os.path.exists(CRAWLER_PICKLE_PATH):
-        os.remove(CRAWLER_PICKLE_PATH)
-    if os.path.exists(CRAWLER_PATH_404S):
-        os.remove(CRAWLER_PATH_404S)
+    if os.path.exists(HANDLER_PATH_PICKLE):
+        os.remove(HANDLER_PATH_PICKLE)
+    log.info("Cache wiped successfully")
 
 
 def _ensure_directories() -> None:
     """Ensure all caching directories exist"""
     os.makedirs(PREFIX_XML_DATA, exist_ok=True)
     os.makedirs(PREFIX_BACKUPS, exist_ok=True)
+
+
+# person helper methods
+
+def extract_person_info() -> None:
+    personIDs = set()
+    xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
+    for path in xmls:
+        try:
+            xml = etree.parse(path)
+        except Exception as e:
+            with open('person-warnings.log', mode='a') as warn:
+                print(f'Warning in {path}: {e}', file=warn)
+        root = xml.getroot()
+        names = root.findall(".//name", nsmap)
+        for n in names:
+            if n.get('type') == 'person' and n.get('key'):
+                personIDs.add(n.get('key'))
+    # for key in tqdm(personIDs):
+    l = len(personIDs)
+    for i, key in enumerate(personIDs):
+        url = PREFIX_PERSON_XML_URL + key
+        print(f'requesting: {url} --- {i+1}/{l} ({i/l*100}%)')
+        try:
+            with urlopen(url) as f:
+                person_xml = etree.parse(f)
+            person_xml.write(f'{PREFIX_PERSON_XML_DATA}{key}.xml', encoding='utf-8', pretty_print=True, xml_declaration=True)
+            time.sleep(0.5)
+        except Exception as e:
+            with open('person-warnings.log', mode='a') as warn:
+                print(f'{key}: {e} in: {url}', file=warn)
+
+
+def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
+    ms_ids: List[str] = []
+    pers_ids: List[str] = []
+    coords: Set[Tuple[int, int]] = set()
+    for _, row in df.iterrows():
+        ms_id = row['full_id']
+        soup = row['soup']
+        persons = soup.find_all('name', {'type': 'person'})
+        # LATER: note that <handNote scribe="XYZ"/> won't be found like this (see e.g. Steph01-a-da.xml)
+        if persons:
+            ms_index = len(ms_ids)
+            ms_ids.append(ms_id)
+            for person in persons:
+                pers_id = person.get('key')
+                if pers_id:
+                    if pers_id in pers_ids:
+                        pers_index = pers_ids.index(pers_id)
+                    else:
+                        pers_index = len(pers_ids)
+                        pers_ids.append(pers_id)
+                    coords.add((ms_index, pers_index))
+    return ms_ids, pers_ids, list(coords)

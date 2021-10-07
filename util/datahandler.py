@@ -4,15 +4,17 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 import sys
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from bs4 import BeautifulSoup
 import pandas as pd
 import pickle
 import os
 import util.tamer as tamer
 from util import utils, metadata
-from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS, CRAWLER_PICKLE_PATH
+from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS
 from util.utils import Settings
+import numpy as np
+from scipy import sparse
 
 
 log = utils.get_logger(__name__)
@@ -20,26 +22,63 @@ settings = Settings.get_settings()
 
 
 class DataHandler:
+    manuscripts: pd.DataFrame
+    """Manuscripts
+    
+    A dataframe containing all manuscripts
+    """
+    # CHORE: document dataframe structure
+
+    person_names: Dict[str, str]
+    """Name lookup dictionary
+
+    Lookup dictionary mapping person IDs to the full name of the person
+    """
+
+    texts: pd.DataFrame
+    """Text-Manuscript-Matrix
+
+    Sparse matrix with a row per manuscript and a column per text name.
+    True, if the manuscript contains the text.
+    Allows for lookups, which manuscripts a particular text is connected to.
+    """
+
+    person_matrix: pd.DataFrame
+    """Person-Manuscript-Matrix
+
+    Sparse matrix with a row per manuscript and a column per person ID.
+    True, if the manuscript is connected to the person (i.e. the description has the person tagged).
+    Allows for lookups, which manuscripts a particular person is connected to.
+    """
+
+    subcorpora: List[Any]  # TODO: implement
+    # CHORE: document
+
     def __init__(self,
                  manuscripts: pd.DataFrame = None,
                  texts: pd.DataFrame = None,
-                 persons: pd.DataFrame = None,
                  xmls: Optional[pd.DataFrame] = None,
                  contents: Optional[pd.DataFrame] = None):
-        """"""  # CHORE: documentation
+        # CHORE: document
         log.info("Creating new handler")
-        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents)
+        self.person_names = DataHandler._load_persons()
+        log.info("Loaded Person Info")
+        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents, persons=self.person_names)
         log.info("Loaded MS Info")
-        self.texts = texts if texts else DataHandler._load_texts(self.manuscripts)
-        self.persons = persons if persons else pd.DataFrame()  # TODO: implement
+        self.texts = texts if texts else DataHandler._load_text_matrix(self.manuscripts)
+        log.info("Loaded Text Info")
+        self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
+        log.info("Loaded Person-MSS-Matrix Info")
         self.subcorpora: List[Any] = []  # TODO: implement
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
+        log.info("Successfully created a Datahandler instance.")
 
     # Static Methods
     # ==============
 
     @staticmethod
     def _from_pickle() -> Optional[DataHandler]:
+        # CHORE: document
         if os.path.exists(HANDLER_PATH_PICKLE):
             try:
                 prev = sys.getrecursionlimit()
@@ -56,6 +95,8 @@ class DataHandler:
 
     @staticmethod
     def _from_backup() -> Optional[DataHandler]:
+        # QUESTION: does it actually need this? or is one type of backup enough?
+        # CHORE: document
         mss = "data/backups/mss.csv"
         txts = "data/backups/txts.csv"
         ppls = "data/backups/ppls.csv"
@@ -69,26 +110,27 @@ class DataHandler:
             p = pd.read_csv(ppls)
             if p.empty:
                 return None
-            handler = DataHandler(manuscripts=m, texts=t, persons=p)
+            handler = DataHandler(manuscripts=m, texts=t)
             handler._truncate()
             return handler
         return None
 
     @staticmethod
-    def _load_ms_info(df: Optional[pd.DataFrame] = None,
+    def _load_ms_info(persons: Dict[str, str],
+                      df: Optional[pd.DataFrame] = None,
                       contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+        # CHORE: document
         if df is None or contents is None:
             df = tamer.deliver_handler_data()
-        # if len(df.index) > settings.max_res:
-        #     df = df[:settings.max_res]
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
-        msinfo = df['soup'].apply(tamer.get_msinfo)
+        msinfo = df['soup'].apply(lambda x: tamer.get_msinfo(x, persons))
         log.info("Loaded MS Info")
         df = df.join(msinfo)
         return df
 
     @staticmethod
-    def _load_texts(df: pd.DataFrame) -> pd.DataFrame:
+    def _load_text_matrix(df: pd.DataFrame) -> pd.DataFrame:
+        # CHORE: document
         if not 'content' in df.columns:
             df = tamer.deliver_handler_data()
         if not 'soup' in df.columns:
@@ -102,15 +144,35 @@ class DataHandler:
                 if t not in res.columns:
                     res[t] = False
                 res.at[id_, t] = True
-
         return res
 
     @staticmethod
+    def _load_person_matrix(df: pd.DataFrame) -> pd.DataFrame:
+        # CHORE: document
+        mss_ids, pers_ids, coords = tamer.get_person_mss_matrix_coordinatres(df)
+        r, c = map(list, zip(*coords))
+        row = np.array(r)
+        col = np.array(c)
+        data = np.array([True]*len(row))
+        matrix = sparse.coo_matrix((data, (row, col)))
+        df = pd.DataFrame.sparse.from_spmatrix(matrix, index=mss_ids, columns=pers_ids)
+        return df
+
+    @staticmethod
+    def _load_persons() -> Dict[str, str]:
+        # CHORE: document
+        if not tamer.has_person_data_available():
+            tamer.unzip_person_xmls()
+        return tamer.get_person_names()
+
+    @staticmethod
     def is_cached() -> bool:
+        # CHORE: document
         return os.path.exists(HANDLER_PATH_PICKLE)
 
     @staticmethod
     def has_data_available() -> bool:
+        # CHORE: document
         return tamer.has_data_available()
 
     # Class Methods
@@ -141,6 +203,7 @@ class DataHandler:
         res = cls(xmls=xmls, contents=contents)
         res._to_pickle()
         res._backup()
+        log.info("DataHandler ready.")
         return res
 
     # Instance Methods
