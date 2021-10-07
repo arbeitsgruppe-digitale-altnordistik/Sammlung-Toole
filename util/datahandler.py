@@ -28,9 +28,9 @@ class DataHandler:
                  contents: Optional[pd.DataFrame] = None):
         """"""  # CHORE: documentation
         log.info("Creating new handler")
-        self.persons = persons if persons else DataHandler._load_persons()
+        self.person_names = persons if persons else DataHandler._load_persons()
         log.info("Loaded Person Info")
-        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents)
+        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents, persons=self.person_names)
         log.info("Loaded MS Info")
         self.texts = texts if texts else DataHandler._load_texts(self.manuscripts)
         log.info("Loaded Text Info")
@@ -77,14 +77,13 @@ class DataHandler:
         return None
 
     @staticmethod
-    def _load_ms_info(df: Optional[pd.DataFrame] = None,
+    def _load_ms_info(persons: Dict[str, str],
+                      df: Optional[pd.DataFrame] = None,
                       contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
         if df is None or contents is None:
             df = tamer.deliver_handler_data()
-        # if len(df.index) > settings.max_res:
-        #     df = df[:settings.max_res]
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
-        msinfo = df['soup'].apply(tamer.get_msinfo)
+        msinfo = df['soup'].apply(lambda x: tamer.get_msinfo(x, persons))
         log.info("Loaded MS Info")
         df = df.join(msinfo)
         return df
@@ -148,6 +147,7 @@ class DataHandler:
         res = cls(xmls=xmls, contents=contents)
         res._to_pickle()
         res._backup()
+        log.info("DataHandler ready.")
         return res
 
     # Instance Methods

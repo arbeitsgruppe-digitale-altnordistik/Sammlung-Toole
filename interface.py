@@ -196,7 +196,7 @@ def browse_data() -> None:
         st.write(counts)
 
     # Persons
-    pers = handler.persons
+    pers = handler.person_names
     st.header("Persons")
     st.write(f'{len(pers.keys())} people loaded.')
 

@@ -178,15 +178,15 @@ def _find_full_id(soup: BeautifulSoup) -> str:
     return str(id)
 
 
-def get_msinfo(soup: BeautifulSoup) -> pd.Series:
+def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:
     shorttitle = metadata.get_shorttitle(soup)
-    signature, country, settlement, repository = metadata.get_msID(soup)
+    _, country, settlement, repository = metadata.get_msID(soup)
     origin = metadata.get_origin(soup)
     date, tp, ta, meandate, yearrange = metadata.get_date(soup)
     support = metadata.get_support(soup)
     folio = metadata.get_folio(soup)
     height, width = metadata.get_dimensions(soup)
-    creator = metadata.get_creator(soup)
+    creator = metadata.get_creator(soup, persons)
     extent = metadata.get_extent(soup)
     description = metadata.get_description(soup)
     id = _find_id(soup)

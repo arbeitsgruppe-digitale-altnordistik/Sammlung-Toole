@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 import urllib
@@ -8,8 +8,6 @@ import copy
 import re
 import statistics
 from util import utils
-from util.constants import PERSON_CACHE_PATH as people
-import csv
 
 
 log = utils.get_logger(__name__)
@@ -161,36 +159,12 @@ def get_origin(soup: BeautifulSoup) -> str:
     return pretty_origPlace
 
 
-def _get_persName(id: str) -> str:  # LATER: improved person handling anyways
-    """Get person name in nominative case.
-
-    Args:
-        id (str): identifier refering to a person
-
-    Returns:
-        str: person name
-    """
-    cachedFolks = {}
-    with open(people, 'r', encoding='UTF-8') as infile:
-        reader = csv.reader(infile)
-        cachedFolks = {rows[0]: rows[1] for rows in reader}
-    if id in cachedFolks:
-        return cachedFolks[id]
-    else:
-        url = "https://handrit.is/is/biography/xml/" + id
-        stew = get_soup(url)
-        persName = stew.find('persName')
-        pretty_persName = get_cleaned_text(persName)
-        with open(people, 'a', encoding='UTF-8') as outfile:
-            outfile.write(f"\n{id},{pretty_persName}")
-        return pretty_persName
-
-
-def get_creator(soup: BeautifulSoup) -> str:
+def get_creator(soup: BeautifulSoup, persons: Dict[str, str]) -> str:
     """Get creator(s).
 
     Args:
         soup (bs4.BeautifulSoup): BeautifulSoup object
+        persons (Dict[str, str]): look-up table for person names by ID
 
     Returns:
         str: creator name(s)
@@ -202,22 +176,21 @@ def get_creator(soup: BeautifulSoup) -> str:
             creators = hands.find_all('name', {'type': 'person'})
 
             if not creators:
-                # LATER: find out why, if that happens
                 pretty_creators = "Scribe(s) unknown"
             else:
-                pretty_creators = ""
+                names: List[str] = []
                 for creator in creators:
                     key = creator.get('key')
                     if key:
-                        pretty_creator = _get_persName(key)
-                    else:
-                        pretty_creator = get_cleaned_text(creator)
-                    pretty_creators = pretty_creators + "; " + pretty_creator
-                pretty_creators = pretty_creators[2:]
+                        name = persons.get(key)
+                        if name:
+                            names.append(name)
+                pretty_creators = '; '.join(names)
         except:
             # LATER: find out why, if that happens
             pretty_creators = "Scribe(s) unknown"
     else:
+        # LATER: find out why, if that happens
         pretty_creators = "Scribe(s) unknown"
 
     return pretty_creators
