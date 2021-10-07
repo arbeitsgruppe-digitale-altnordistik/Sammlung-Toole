@@ -346,24 +346,11 @@ def _wipe_cache() -> None:
     xmls = glob.glob(PREFIX_PERSON_XML_DATA + '*.xml')
     for xml in xmls:
         os.remove(xml)
-    # if os.path.exists(CRAWLER_PATH_COLLECTIONS):
-    #     os.remove(CRAWLER_PATH_COLLECTIONS)
-    # if os.path.exists(CRAWLER_PATH_IDS):
-    #     os.remove(CRAWLER_PATH_IDS)
-    # if os.path.exists(CRAWLER_PATH_URLS):
-    #     os.remove(CRAWLER_PATH_URLS)
-    # if os.path.exists(CRAWLER_PATH_POTENTIAL_XMLS):
-    #     os.remove(CRAWLER_PATH_POTENTIAL_XMLS)
-    # if os.path.exists(CRAWLER_PATH_CONTENT_PICKLE):
-    #     os.remove(CRAWLER_PATH_CONTENT_PICKLE)
     if os.path.exists(HANDLER_BACKUP_PATH_MSS):
         os.remove(HANDLER_BACKUP_PATH_MSS)
     if os.path.exists(HANDLER_PATH_PICKLE):
         os.remove(HANDLER_PATH_PICKLE)
-    # if os.path.exists(CRAWLER_PICKLE_PATH):
-    #     os.remove(CRAWLER_PICKLE_PATH)
-    # if os.path.exists(CRAWLER_PATH_404S):
-    #     os.remove(CRAWLER_PATH_404S)
+    log.info("Cache wiped successfully")
 
 
 def _ensure_directories() -> None:

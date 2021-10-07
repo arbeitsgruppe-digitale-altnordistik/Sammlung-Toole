@@ -55,8 +55,10 @@ def adv_options() -> None:
 
     if st.button("Wipe cache"):
         tamer._wipe_cache()
+        st.success("Cach is wiped entirely. Please reload the data handler.")
     if st.button("Reload Data Handler"):
-        state.data_handler = DataHandler.get_handler()
+        with st.spinner("This may take a while..."):
+            state.data_handler = DataHandler.get_handler()
         st.experimental_rerun()
 
 
