@@ -268,15 +268,104 @@ class DataHandler:
     # -----------
 
     def get_all_manuscript_data(self) -> pd.DataFrame:
-        # CHORE: documentation
+        """Get the manuscripts dataframe.
+
+        Returns:
+            A dataframe containing all manuscripts with their respective metadata.
+
+            The dataframe will have the followin structure:
+
+            Per row, there will be metadata to one manuscript. The row indices are integers 0..n.
+
+            The dataframe contains the following columns:
+
+            - 'shelfmark'
+            - 'shorttitle'
+            - 'country'
+            - 'settlement'
+            - 'repository'
+            - 'origin'
+            - 'date'
+            - 'Terminus post quem'
+            - 'Terminus ante quem'
+            - 'meandate'
+            - 'yearrange'
+            - 'support'
+            - 'folio'
+            - 'height'
+            - 'width'
+            - 'extent'
+            - 'description'
+            - 'creator'
+            - 'id'
+            - 'full_id'
+            - 'filename'
+        """
         return self.manuscripts
 
-    def get_manuscript_data(self,
-                            ids: Union[List[str], pd.Series, pd.DataFrame] = None,
-                            urls: Union[List[str], pd.Series, pd.DataFrame] = None,
-                            filenames: Union[List[str], pd.Series, pd.DataFrame] = None) -> pd.DataFrame:
-        # CHORE: documentation: one of these arguments must be passed, return df to mss
-        pass  # TODO: implement
+    def search_manuscript_data(self,
+                               full_ids: Union[List[str], pd.Series, pd.DataFrame] = None,
+                               ms_ids: Union[List[str], pd.Series, pd.DataFrame] = None,
+                               filenames: Union[List[str], pd.Series, pd.DataFrame] = None) -> Optional[pd.DataFrame]:
+        """Search manuscript metadata for certain manuscripts.
+
+        Basic search function:
+
+        Searches for manuscripts with a certain IDs, and returns the metadata for the respective manuscripts.
+
+        IDs can either be full_id (i.e. a certain catalogue entry),
+        ms_ids (i.e. a certain manuscript that can have catalogue entries in multiple languages)
+        or filenames (refers to the XML files of the catalogue entry).
+
+        Note: Exactly one of the three optional parameters should be passed.
+
+        Args:
+            full_ids (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of catalogue entry IDs. Defaults to None.
+            ms_ids (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of manuscript IDs. Defaults to None.
+            filenames (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of XML file names. Defaults to None.
+
+        Returns:
+            Optional[pd.DataFrame]: A dataframe containing the metadata for the requested manuscripts. 
+            Returns None if no manuscript was found or if no parameters were passed.
+        """
+        # full id
+        if full_ids is not None:
+            if isinstance(full_ids, list) and full_ids:
+                return self.manuscripts.loc[self.manuscripts['full_id'].isin(full_ids)]
+            elif isinstance(full_ids, pd.DataFrame):
+                if full_ids.empty:
+                    return None
+                return self.manuscripts.loc[self.manuscripts['full_id'].isin(full_ids['full_id'])]
+            elif isinstance(full_ids, pd.Series):
+                if full_ids.empty:
+                    return None
+                return self.manuscripts.loc[self.manuscripts['full_id'].isin(full_ids)]
+        # id
+        elif ms_ids is not None:
+            if isinstance(ms_ids, list) and ms_ids:
+                return self.manuscripts.loc[self.manuscripts['id'].isin(ms_ids)]
+            elif isinstance(ms_ids, pd.DataFrame):
+                if ms_ids.empty:
+                    return None
+                return self.manuscripts.loc[self.manuscripts['id'].isin(ms_ids['id'])]
+            elif isinstance(ms_ids, pd.Series):
+                if ms_ids.empty:
+                    return None
+                return self.manuscripts.loc[self.manuscripts['id'].isin(ms_ids)]
+        # filename
+        elif filenames is not None:
+            if isinstance(filenames, list) and filenames:
+                return self.manuscripts.loc[self.manuscripts['filename'].isin(filenames)]
+            elif isinstance(filenames, pd.DataFrame):
+                if filenames.empty:
+                    return None
+                return self.manuscripts.loc[self.manuscripts['filename'].isin(filenames['filename'])]
+            elif isinstance(filenames, pd.Series):
+                if filenames.empty:
+                    return None
+                return self.manuscripts.loc[self.manuscripts['filename'].isin(filenames)]
+        # no argument passed
+        return None
 
     def get_all_texts(self) -> pd.DataFrame:
         return self.texts
