@@ -195,7 +195,6 @@ def browse_data() -> None:
             by=['count'],
             ascending=False).reset_index().rename(
             columns={"index": "text"})
-        # TODO: the most numerous text is "" (empty), which is not how it should be, I suppose.
         st.write(counts)
 
     # Persons
