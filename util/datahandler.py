@@ -25,9 +25,36 @@ class DataHandler:
     manuscripts: pd.DataFrame
     """Manuscripts
     
-    A dataframe containing all manuscripts
+    A dataframe containing all manuscripts with their respective metadata.
+    
+    The dataframe will have the followin structure:
+    
+    Per row, there will be metadata to one manuscript. The row indices are integers 0..n.
+    
+    The dataframe contains the following columns:
+    
+    - 'shelfmark'
+    - 'shorttitle'
+    - 'country'
+    - 'settlement'
+    - 'repository'
+    - 'origin'
+    - 'date'
+    - 'Terminus post quem'
+    - 'Terminus ante quem'
+    - 'meandate'
+    - 'yearrange'
+    - 'support'
+    - 'folio'
+    - 'height'
+    - 'width'
+    - 'extent'
+    - 'description'
+    - 'creator'
+    - 'id'
+    - 'full_id'
+    - 'filename'
     """
-    # CHORE: document dataframe structure
 
     person_names: Dict[str, str]
     """Name lookup dictionary
@@ -78,7 +105,7 @@ class DataHandler:
 
     @staticmethod
     def _from_pickle() -> Optional[DataHandler]:
-        # CHORE: document
+        """Load datahandler from pickle, if available. Returns None otherwise."""
         if os.path.exists(HANDLER_PATH_PICKLE):
             try:
                 prev = sys.getrecursionlimit()
@@ -217,11 +244,13 @@ class DataHandler:
     def _backup(self) -> None:
         self.manuscripts.to_csv(HANDLER_BACKUP_PATH_MSS, encoding='utf-8', index=False)
         # TODO: implement backing up other props to csv/json
+        # TODO: do we still want/need this
 
     def _truncate(self) -> None:
         if len(self.manuscripts.index) > settings.max_res:
             self.manuscripts = self.manuscripts[:settings.max_res]
         # TODO: truncate other props aswell
+        # TODO: drop max res entirely?
 
     def _ms_complete(self) -> bool:
         return True
