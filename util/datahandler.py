@@ -131,20 +131,14 @@ class DataHandler:
     @staticmethod
     def _load_text_matrix(df: pd.DataFrame) -> pd.DataFrame:
         # CHORE: document
-        if not 'content' in df.columns:
-            df = tamer.deliver_handler_data()
-        if not 'soup' in df.columns:
-            df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
-        res = pd.DataFrame(index=df['full_id'])
-        for _, row in df.iterrows():
-            id_ = row['full_id']
-            title_tuples = metadata._title_from_soup(row['soup'])
-            titles = [t[1] for t in title_tuples]
-            for t in titles:
-                if t not in res.columns:
-                    res[t] = False
-                res.at[id_, t] = True
-        return res
+        mss_ids, text_names, coords = tamer.get_text_mss_matrix_coordinatres(df)
+        r, c = map(list, zip(*coords))
+        row = np.array(r)
+        col = np.array(c)
+        data = np.array([True]*len(row))
+        matrix = sparse.coo_matrix((data, (row, col)))
+        df = pd.DataFrame.sparse.from_spmatrix(matrix, index=mss_ids, columns=text_names)
+        return df
 
     @staticmethod
     def _load_person_matrix(df: pd.DataFrame) -> pd.DataFrame:

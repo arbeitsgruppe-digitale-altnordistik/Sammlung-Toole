@@ -394,6 +394,7 @@ def extract_person_info() -> None:
 
 
 def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
+    # CHORE: document
     ms_ids: List[str] = []
     pers_ids: List[str] = []
     coords: Set[Tuple[int, int]] = set()
@@ -415,3 +416,26 @@ def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], Lis
                         pers_ids.append(pers_id)
                     coords.add((ms_index, pers_index))
     return ms_ids, pers_ids, list(coords)
+
+
+def get_text_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
+    # CHORE: document
+    ms_ids: List[str] = []
+    text_names: List[str] = []
+    coords: Set[Tuple[int, int]] = set()
+    for _, row in df.iterrows():
+        ms_id = row['full_id']
+        soup = row['soup']
+        texts = [t[1] for t in metadata._title_from_soup(soup) if t[1]]
+        if texts:
+            ms_index = len(ms_ids)
+            ms_ids.append(ms_id)
+            for text in texts:
+                if text:
+                    if text in text_names:
+                        text_index = text_names.index(text)
+                    else:
+                        text_index = len(text_names)
+                        text_names.append(text)
+                    coords.add((ms_index, text_index))
+    return ms_ids, text_names, list(coords)
