@@ -12,7 +12,7 @@ import os
 import util.tamer as tamer
 from util import utils, metadata
 from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS
-from util.utils import Settings
+from util.utils import Settings, SearchOptions
 import numpy as np
 from scipy import sparse
 
@@ -62,7 +62,7 @@ class DataHandler:
     Lookup dictionary mapping person IDs to the full name of the person
     """
 
-    texts: pd.DataFrame
+    text_matrix: pd.DataFrame
     """Text-Manuscript-Matrix
 
     Sparse matrix with a row per manuscript and a column per text name.
@@ -92,7 +92,7 @@ class DataHandler:
         log.info("Loaded Person Info")
         self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents, persons=self.person_names)
         log.info("Loaded MS Info")
-        self.texts = texts if texts else DataHandler._load_text_matrix(self.manuscripts)
+        self.text_matrix = texts if texts else DataHandler._load_text_matrix(self.manuscripts)
         log.info("Loaded Text Info")
         self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
         log.info("Loaded Person-MSS-Matrix Info")
@@ -326,8 +326,9 @@ class DataHandler:
 
         Returns:
             Optional[pd.DataFrame]: A dataframe containing the metadata for the requested manuscripts. 
-            Returns None if no manuscript was found or if no parameters were passed.
+                Returns None if no manuscript was found or if no parameters were passed.
         """
+        log.info(f'Searching for manuscripts: {full_ids}/{ms_ids}/{filenames}')
         # full id
         if full_ids is not None:
             if isinstance(full_ids, list) and full_ids:
@@ -368,10 +369,40 @@ class DataHandler:
         return None
 
     def get_all_texts(self) -> pd.DataFrame:
-        return self.texts
+        """return the text-manuscript-matrix"""
+        return self.text_matrix
+
+    def search_manuscripts_containing_texts(self, texts: List[str], searchOption: SearchOptions) -> List[str]:
+        """Search manuscripts containing certain texts
+
+        Args:
+            texts (List[str]): A list of text names
+            searchOption (SearchOption): wether to do an AND or an OR search
+
+        Returns:
+            List[str]: A list of `full_id`s of manuscripts containing either one or all of the passed texts, depending on the chosen searchOption.
+                Returns an empty list, if none were found.
+        """
+        log.info(f'Searching for manuscripts with texts: {texts} ({searchOption})')
+        if searchOption == SearchOptions.CONTAINS_ONE:
+            hits = []
+            for t in texts:
+                df = self.text_matrix[self.text_matrix[t] == True]
+                mss = list(df.index)
+                hits += mss
+            return list(set(hits))
+        else:
+            hits = []
+            for t in texts:
+                df = self.text_matrix[self.text_matrix[t] == True]
+                s = set(df.index)
+                hits.append(s)
+            intersection = set.intersection(*hits)
+            return list(intersection)
 
     def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> Tuple[List[str], pd.DataFrame]:
         # CHORE: documentation
+        # TODO: should probably be moved to tamer, right?
         msss: List[pd.DataFrame] = []
         for url in urls:
             if "/search/results/" in url:
