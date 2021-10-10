@@ -400,6 +400,39 @@ class DataHandler:
             intersection = set.intersection(*hits)
             return list(intersection)
 
+    def search_texts_contained_by_manuscripts(self, mss: List[str], searchOption: SearchOptions) -> List[str]:
+        """Search the texts contained by certain manuscripts.
+
+        Search for all texts contained by a given number of manuscripts.
+
+        Depending on the search option, either the texts appearing in one of the named manuscripts,
+        or the texts appearing in all manuscripts will be returned.
+
+        Args:
+            mss (List[str]): a list of manuscript full_id strings
+            searchOption (SearchOptions):  wether to do an AND or an OR search
+
+        Returns:
+            List[str]: A list of text names.
+        """
+        log.info(f'Searching for texts contained by manuscripts: {mss} ({searchOption})')
+        df = self.text_matrix.transpose()
+        if searchOption == SearchOptions.CONTAINS_ONE:
+            hits = []
+            for ms in mss:
+                d = df[df[ms] == True]
+                mss = list(d.index)
+                hits += mss
+            return list(set(hits))
+        else:
+            sets = []
+            for ms in mss:
+                d = df[df[ms] == True]
+                s = set(d.index)
+                sets.append(s)
+            intersection = set.intersection(*sets)
+            return list(intersection)
+
     def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> Tuple[List[str], pd.DataFrame]:
         # CHORE: documentation
         # TODO: should probably be moved to tamer, right?
