@@ -11,10 +11,11 @@ import pickle
 import os
 import util.tamer as tamer
 from util import utils, metadata
-from util.constants import HANDLER_PATH_PICKLE, HANDLER_BACKUP_PATH_MSS
+from util.constants import *
 from util.utils import Settings, SearchOptions
 import numpy as np
 from scipy import sparse
+import json
 
 
 log = utils.get_logger(__name__)
@@ -218,7 +219,7 @@ class DataHandler:
         """
         log.info("Getting DataHandler")
         res: Optional[DataHandler] = cls._from_pickle()
-        if res and res._ms_complete():
+        if res:
             res._backup()
             return res
         log.info("Could not get DataHandler from pickle")
@@ -249,25 +250,17 @@ class DataHandler:
 
     def _backup(self) -> None:
         self.manuscripts.to_csv(HANDLER_BACKUP_PATH_MSS, encoding='utf-8', index=False)
-        # TODO: implement backing up other props to csv/json
-
-    # def _truncate(self) -> None:
-    #     if len(self.manuscripts.index) > settings.max_res:
-    #         self.manuscripts = self.manuscripts[:settings.max_res]
-    #     # TODO: truncate other props aswell
-    #     # TODO: drop max res entirely?
-
-    def _ms_complete(self) -> bool:
-        return True
-        # TODO: implement more reasonable solution
-        # if self.manuscripts is None or self.manuscripts.empty:
-        #     return False
-        # length = len(self.manuscripts.index)
-        # if length >= settings.max_res:
-        #     return True
-        # if length >= crawler.crawl_collections()['ms_count'].sum():
-        #     return True
-        # return False
+        log.info('Backed up manuscripts')
+        # self.text_matrix.to_parquet(HANDLER_BACKUP_PATH_TXT_MATRIX)
+        # log.info('Backed up text matrix')
+        # self.person_matrix.to_csv(HANDLER_BACKUP_PATH_PERS_MATRIX, encoding='utf-8', index=False)
+        # log.info('Backed up person matrix')
+        with open(HANDLER_BACKUP_PATH_PERS_DICT, encoding='utf-8', mode='w+') as f:
+            json.dump(self.person_names, f, ensure_ascii=False, indent=4)
+            log.info('Backed up person dict')
+        with open(HANDLER_BACKUP_PATH_PERS_DICT_INV, encoding='utf-8', mode='w+') as f:
+            json.dump(self.person_names_inverse, f, ensure_ascii=False, indent=4)
+            log.info('Backed up inverse person dict')
 
     # API Methods
     # -----------
