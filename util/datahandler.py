@@ -62,6 +62,11 @@ class DataHandler:
     Lookup dictionary mapping person IDs to the full name of the person
     """
 
+    person_names_inverse: Dict[str, List[str]]
+    """Inverted name lookup dictionary
+    
+    Dictionary mapping person names to a list of IDs of persons with said name"""
+
     text_matrix: pd.DataFrame
     """Text-Manuscript-Matrix
 
@@ -88,7 +93,7 @@ class DataHandler:
                  contents: Optional[pd.DataFrame] = None):
         # CHORE: document
         log.info("Creating new handler")
-        self.person_names = DataHandler._load_persons()
+        self.person_names, self.person_names_inverse = DataHandler._load_persons()
         log.info("Loaded Person Info")
         self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents, persons=self.person_names)
         log.info("Loaded MS Info")
@@ -114,33 +119,33 @@ class DataHandler:
                     obj = pickle.load(file)
                     sys.setrecursionlimit(prev)
                     if isinstance(obj, DataHandler):
-                        obj._truncate()
+                        # obj._truncate()
                         return obj
             except Exception:
                 log.exception("Cound not load handler from pickle")
         return None
 
-    @staticmethod
-    def _from_backup() -> Optional[DataHandler]:
-        # QUESTION: does it actually need this? or is one type of backup enough?
-        # CHORE: document
-        mss = "data/backups/mss.csv"
-        txts = "data/backups/txts.csv"
-        ppls = "data/backups/ppls.csv"
-        if os.path.exists(mss) and os.path.exists(txts) and os.path.exists(ppls):
-            m = pd.read_csv(mss)
-            if m.empty:
-                return None
-            t = pd.read_csv(txts)
-            if t.empty:
-                return None
-            p = pd.read_csv(ppls)
-            if p.empty:
-                return None
-            handler = DataHandler(manuscripts=m, texts=t)
-            handler._truncate()
-            return handler
-        return None
+    # @staticmethod
+    # def _from_backup() -> Optional[DataHandler]:
+    #     # QUESTION: does it actually need this? or is one type of backup enough?
+    #     # CHORE: document
+    #     mss = "data/backups/mss.csv"
+    #     txts = "data/backups/txts.csv"
+    #     ppls = "data/backups/ppls.csv"
+    #     if os.path.exists(mss) and os.path.exists(txts) and os.path.exists(ppls):
+    #         m = pd.read_csv(mss)
+    #         if m.empty:
+    #             return None
+    #         t = pd.read_csv(txts)
+    #         if t.empty:
+    #             return None
+    #         p = pd.read_csv(ppls)
+    #         if p.empty:
+    #             return None
+    #         handler = DataHandler(manuscripts=m, texts=t)
+    #         handler._truncate()
+    #         return handler
+    #     return None
 
     @staticmethod
     def _load_ms_info(persons: Dict[str, str],
@@ -180,11 +185,12 @@ class DataHandler:
         return df
 
     @staticmethod
-    def _load_persons() -> Dict[str, str]:
+    def _load_persons() -> Tuple[Dict[str, str], Dict[str, List[str]]]:
         # CHORE: document
         if not tamer.has_person_data_available():
             tamer.unzip_person_xmls()
-        return tamer.get_person_names()
+        person_names = tamer.get_person_names()
+        return person_names, tamer.get_person_names_inverse(person_names)
 
     @staticmethod
     def is_cached() -> bool:
@@ -216,11 +222,11 @@ class DataHandler:
             res._backup()
             return res
         log.info("Could not get DataHandler from pickle")
-        res = cls._from_backup()
-        if res:
-            res._to_pickle()
-            return res
-        log.info("Could not get DataHandler from backup")
+        # res = cls._from_backup()
+        # if res:
+        #     res._to_pickle()
+        #     return res
+        # log.info("Could not get DataHandler from backup")
         res = cls(xmls=xmls, contents=contents)
         res._to_pickle()
         res._backup()
@@ -244,13 +250,12 @@ class DataHandler:
     def _backup(self) -> None:
         self.manuscripts.to_csv(HANDLER_BACKUP_PATH_MSS, encoding='utf-8', index=False)
         # TODO: implement backing up other props to csv/json
-        # TODO: do we still want/need this
 
-    def _truncate(self) -> None:
-        if len(self.manuscripts.index) > settings.max_res:
-            self.manuscripts = self.manuscripts[:settings.max_res]
-        # TODO: truncate other props aswell
-        # TODO: drop max res entirely?
+    # def _truncate(self) -> None:
+    #     if len(self.manuscripts.index) > settings.max_res:
+    #         self.manuscripts = self.manuscripts[:settings.max_res]
+    #     # TODO: truncate other props aswell
+    #     # TODO: drop max res entirely?
 
     def _ms_complete(self) -> bool:
         return True
@@ -458,9 +463,14 @@ class DataHandler:
             unique_hits = all_hits.drop_duplicates().reset_index(drop=True)
             return list(unique_hits['shelfmark']), unique_hits
 
+    def get_person_name(self, pers_id: str) -> str:
+        """Get a person's name, identified by the person's ID"""
+        return self.person_names[pers_id]
+
+    def get_person_ids(self, pers_name: str) -> List[str]:
+        """Get IDs of all persons with a certain name"""
+        return self.person_names_inverse[pers_name]
+
     # TASKS: more handler API
-    # - more options how to get ms data
-    # - options to get texts
-    # - options to get persons
     # - options to work with subcorpora?
     # - add rubrics?
