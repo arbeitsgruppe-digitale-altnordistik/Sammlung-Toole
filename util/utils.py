@@ -8,9 +8,17 @@ import sys
 import plotly.express as px
 import pandas as pd
 import os
+from enum import Enum
 
 
 __logs: List[logging.Logger] = []
+
+
+class SearchOptions(Enum):
+    CONTAINS_ALL = 0
+    """AND search: the item must contain all of the requested elements, in order to fit"""
+    CONTAINS_ONE = 1
+    """OR search: the item must contain at least one of the requested elements, in order to fit"""
 
 
 class Settings:
@@ -19,7 +27,7 @@ class Settings:
     def __init__(self) -> None:
         self.__verbose = True
         self.__debug = True
-        self.__max_res = sys.maxsize
+        # self.__max_res = sys.maxsize
         self.cache = True
         self.use_cache = True
         global __last

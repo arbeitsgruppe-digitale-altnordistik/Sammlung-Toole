@@ -337,6 +337,13 @@ def get_person_names() -> Dict[str, str]:
     return res
 
 
+def get_person_names_inverse(person_names: Dict[str, str]) -> Dict[str, List[str]]:
+    res: Dict[str, List[str]] = {}
+    for k, v in person_names.items():
+        res[v] = res.get(v, []) + [k]
+    return res
+
+
 # cache functions
 
 
