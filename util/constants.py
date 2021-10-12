@@ -14,6 +14,10 @@ PREFIX_XML_URL = 'https://handrit.is/en/manuscript/xml/'
 PREFIX_PERSON_XML_URL = 'https://handrit.is/en/biography/xml/'
 
 HANDLER_BACKUP_PATH_MSS = "data/backups/mss.csv"
+HANDLER_BACKUP_PATH_TXT_MATRIX = "data/backups/text-matrix.parquet"
+HANDLER_BACKUP_PATH_PERS_MATRIX = "data/backups/person-matrix.csv"
+HANDLER_BACKUP_PATH_PERS_DICT = "data/backups/person-name-dict.json"
+HANDLER_BACKUP_PATH_PERS_DICT_INV = "data/backups/person-name-inverse-dict.json"
 HANDLER_PATH_PICKLE = "data/handler_cache.pickle"
 
 IMAGE_HOME = 'data/title.png'

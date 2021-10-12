@@ -183,7 +183,7 @@ def browse_data() -> None:
         st.dataframe(mss)
 
     # Texts
-    txt = handler.texts
+    txt = handler.text_matrix
     st.header("Texts")
     st.write(f'Found {len(txt.columns)} texts.')
     # st.dataframe(txt.head())
