@@ -382,21 +382,34 @@ class DataHandler:
                 Returns an empty list, if none were found.
         """
         log.info(f'Searching for manuscripts with texts: {texts} ({searchOption})')
+        if not texts:
+            log.debug('Searched texts are empty list')
+            return []
         if searchOption == SearchOptions.CONTAINS_ONE:
             hits = []
             for t in texts:
                 df = self.text_matrix[self.text_matrix[t] == True]
                 mss = list(df.index)
                 hits += mss
-            return list(set(hits))
+            res = list(set(hits))
+            if not res:
+                log.info('no manuscripts found')
+                return []
+            log.info(f'Search result: {res}')
+            return res
         else:
             hits = []
             for t in texts:
                 df = self.text_matrix[self.text_matrix[t] == True]
                 s = set(df.index)
                 hits.append(s)
+            if not hits:
+                log.info('no manuscripts fond')
+                return []
             intersection = set.intersection(*hits)
-            return list(intersection)
+            res = list(intersection)
+            log.info(f'Search result: {res}')
+            return res
 
     def search_texts_contained_by_manuscripts(self, mss: List[str], searchOption: SearchOptions) -> List[str]:
         """Search the texts contained by certain manuscripts.
@@ -414,6 +427,9 @@ class DataHandler:
             List[str]: A list of text names.
         """
         log.info(f'Searching for texts contained by manuscripts: {mss} ({searchOption})')
+        if not mss:
+            log.debug('Searched for empty list of mss')
+            return []
         df = self.text_matrix.transpose()
         if searchOption == SearchOptions.CONTAINS_ONE:
             hits = []
@@ -421,15 +437,25 @@ class DataHandler:
                 d = df[df[ms] == True]
                 mss = list(d.index)
                 hits += mss
-            return list(set(hits))
+            res = list(set(hits))
+            if not res:
+                log.info('no texts found')
+                return []
+            log.info(f'Search result: {res}')
+            return res
         else:
             sets = []
             for ms in mss:
                 d = df[df[ms] == True]
                 s = set(d.index)
                 sets.append(s)
+            if not sets:
+                log.info('no texts fond')
+                return []
             intersection = set.intersection(*sets)
-            return list(intersection)
+            res = list(intersection)
+            log.info(f'Search result: {res}')
+            return res
 
     def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> Tuple[List[str], pd.DataFrame]:
         # CHORE: documentation
@@ -463,6 +489,70 @@ class DataHandler:
     def get_person_ids(self, pers_name: str) -> List[str]:
         """Get IDs of all persons with a certain name"""
         return self.person_names_inverse[pers_name]
+
+    def search_persons_related_to_manuscripts(self, ms_full_ids: List[str], searchOption: SearchOptions) -> List[str]:
+        log.info(f'Searching for persons related to manuscripts: {ms_full_ids} ({searchOption})')
+        if not ms_full_ids:
+            log.debug('Searched for empty list of mss')
+            return []
+        df = self.person_matrix.transpose()
+        if searchOption == SearchOptions.CONTAINS_ONE:
+            hits = []
+            for ms in ms_full_ids:
+                d = df[df[ms] == True]
+                mss = list(d.index)
+                hits += mss
+            res = list(set(hits))
+            if not res:
+                log.info('no person found')
+                return []
+            log.info(f'Search result: {res}')
+            return res
+        else:
+            sets = []
+            for ms in ms_full_ids:
+                d = df[df[ms] == True]
+                s = set(d.index)
+                sets.append(s)
+            if not sets:
+                log.info('no person fond')
+                return []
+            intersection = set.intersection(*sets)
+            res = list(intersection)
+            log.info(f'Search result: {res}')
+            return res
+
+    def search_manuscripts_related_to_persons(self, person_ids: List[str], searchOption: SearchOptions) -> List[str]:
+        log.info(f'Searching for manuscript related to people: {person_ids} ({searchOption})')
+        if not person_ids:
+            log.debug('Searched for empty list of ppl')
+            return []
+        df = self.person_matrix
+        if searchOption == SearchOptions.CONTAINS_ONE:
+            hits = []
+            for pers in person_ids:
+                d = df[df[pers] == True]
+                mss = list(d.index)
+                hits += mss
+            res = list(set(hits))
+            if not res:
+                log.info('no ms found')
+                return []
+            log.info(f'Search result: {res}')
+            return res
+        else:
+            sets = []
+            for pers in person_ids:
+                d = df[df[pers] == True]
+                s = set(d.index)
+                sets.append(s)
+            if not sets:
+                log.info('no ms fond')
+                return []
+            intersection = set.intersection(*sets)
+            res = list(intersection)
+            log.info(f'Search result: {res}')
+            return res
 
     # TASKS: more handler API
     # - options to work with subcorpora?
