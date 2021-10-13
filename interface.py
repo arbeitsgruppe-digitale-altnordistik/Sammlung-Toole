@@ -69,13 +69,35 @@ def search_page() -> None:
     opts = {
         'How To': explain_search_options,
         'Handrit URLs': handrit_urls,
-        'Person Search': search_mss_by_persons,
+        'Search Manuscripts by related People': search_mss_by_persons,
+        'Search People by related Manuscripts': search_ppl_by_manuscripts,
         'Search Manuscripts by Text': search_mss_by_texts,
         'Search Texts contained by Manuscripts': search_text_by_mss,
     }
     choice = st.radio('What would you like to search?', options=opts.keys())
     fn = opts[choice]
     fn()
+
+
+def search_ppl_by_manuscripts() -> None:
+    mss = list(dataHandler.person_matrix.index)
+    with st.expander('View all manuscripts', False):
+        st.write(mss)
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', modes.keys())
+    mode = modes[mode_selection]
+    log.debug(f'Search Mode: {mode}')
+    msss = st.multiselect('Search Manuscript', mss)
+    log.debug(f'selected people: {msss}')
+    with st.spinner('Searching...'):
+        results = dataHandler.search_persons_related_to_manuscripts(msss, mode)
+    st.write(f'Found {len(results)} people')
+    if results:
+        with st.expander('view results', False):
+            full_names = {k: dataHandler.get_person_name(k) for k in results}
+            st.write(full_names)
+    # TODO: should do something with it here (further search, subcorpora, ...)
 
 
 def search_mss_by_persons() -> None:
@@ -89,18 +111,19 @@ def search_mss_by_persons() -> None:
     log.debug(f'Search Mode: {mode}')
     ppl = st.multiselect('Search Person', persons)
     log.debug(f'selected people: {ppl}')
-    fullnames = {k: dataHandler.get_person_name(k) for k in ppl}
-    st.write(fullnames)
-    # with st.spinner('Searching...'):
-    #     results = dataHandler.
-    # st.write(f'Found {len(results)} manuscripts')
-    # if results:
-    #     with st.expander('view results', False):
-    #         st.write(results)
-    # if st.button('Get metadata for results'):
-    #     with st.spinner('loading metadata...'):
-    #         meta = dataHandler.search_manuscript_data(full_ids=results)
-    #     st.write(meta)
+    with st.expander('Show full names'):
+        fullnames = {k: dataHandler.get_person_name(k) for k in ppl}
+        st.write(fullnames)
+    with st.spinner('Searching...'):
+        results = dataHandler.search_manuscripts_related_to_persons(ppl, mode)
+    st.write(f'Found {len(results)} manuscripts')
+    if results:
+        with st.expander('view results', False):
+            st.write(results)
+    if st.button('Get metadata for results'):
+        with st.spinner('loading metadata...'):
+            meta = dataHandler.search_manuscript_data(full_ids=results)
+        st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
 
 
