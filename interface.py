@@ -69,7 +69,7 @@ def search_page() -> None:
     opts = {
         'How To': explain_search_options,
         'Handrit URLs': handrit_urls,
-        'Person Search': search_persons,
+        'Person Search': search_mss_by_persons,
         'Search Manuscripts by Text': search_mss_by_texts,
         'Search Texts contained by Manuscripts': search_text_by_mss,
     }
@@ -78,8 +78,30 @@ def search_page() -> None:
     fn()
 
 
-def search_persons() -> None:
-    pass
+def search_mss_by_persons() -> None:
+    persons = list(dataHandler.person_matrix.columns)
+    with st.expander('View all People', False):
+        st.write(persons)
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', modes.keys())
+    mode = modes[mode_selection]
+    log.debug(f'Search Mode: {mode}')
+    ppl = st.multiselect('Search Person', persons)
+    log.debug(f'selected people: {ppl}')
+    fullnames = {k: dataHandler.get_person_name(k) for k in ppl}
+    st.write(fullnames)
+    # with st.spinner('Searching...'):
+    #     results = dataHandler.
+    # st.write(f'Found {len(results)} manuscripts')
+    # if results:
+    #     with st.expander('view results', False):
+    #         st.write(results)
+    # if st.button('Get metadata for results'):
+    #     with st.spinner('loading metadata...'):
+    #         meta = dataHandler.search_manuscript_data(full_ids=results)
+    #     st.write(meta)
+    # TODO: should do something with it here (export, subcorpora, ...)
 
 
 def search_text_by_mss() -> None:
