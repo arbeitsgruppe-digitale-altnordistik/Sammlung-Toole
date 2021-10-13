@@ -8,11 +8,13 @@ from util import sessionState, tamer
 from util import utils
 from util.constants import IMAGE_HOME
 from util.stateHandler import StateHandler
-from util.utils import Settings
+from util.utils import SearchOptions, Settings
 from util.datahandler import DataHandler
 from gui.guiUtils import Texts
 
 
+state: StateHandler
+dataHandler: DataHandler
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
 
@@ -63,8 +65,74 @@ def adv_options() -> None:
 
 
 def search_page() -> None:
-    '''Workbench. Proper doc to follow soon.'''
+    st.header('Search Page')
+    opts = {
+        'How To': explain_search_options,
+        'Handrit URLs': handrit_urls,
+        'Person Search': search_persons,
+        'Search Manuscripts by Text': search_mss_by_texts,
+        'Search Texts contained by Manuscripts': search_text_by_mss,
+    }
+    choice = st.radio('What would you like to search?', options=opts.keys())
+    fn = opts[choice]
+    fn()
 
+
+def search_persons() -> None:
+    pass
+
+
+def search_text_by_mss() -> None:
+    mss = list(dataHandler.get_all_texts().index)
+    with st.expander('View all Manuscripts', False):
+        st.write(mss)
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', modes.keys())
+    mode = modes[mode_selection]
+    log.debug(f'Search Mode: {mode}')
+    msss = st.multiselect('Search Manuscripts', mss)
+    log.debug(f'selected manuscripts: {msss}')
+    with st.spinner('Searching...'):
+        results = dataHandler.search_texts_contained_by_manuscripts(msss, mode)
+    st.write(f'Found {len(results)} texts')
+    if results:
+        with st.expander('view results', False):
+            st.write(results)
+    # TODO: do something with it here (further search? subcorpus, ...)
+
+
+def search_mss_by_texts() -> None:
+    texts = list(dataHandler.get_all_texts().columns)
+    with st.expander('View all Texts', False):
+        st.write(texts)
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', modes.keys())
+    mode = modes[mode_selection]
+    log.debug(f'Search Mode: {mode}')
+    txts = st.multiselect('Search Texts', texts)
+    log.debug(f'selected texts: {txts}')
+    with st.spinner('Searching...'):
+        results = dataHandler.search_manuscripts_containing_texts(txts, mode)
+    st.write(f'Found {len(results)} manuscripts')
+    if results:
+        with st.expander('view results', False):
+            st.write(results)
+    if st.button('Get metadata for results'):
+        with st.spinner('loading metadata...'):
+            meta = dataHandler.search_manuscript_data(full_ids=results)
+        st.write(meta)
+    # TODO: should do something with it here (export, subcorpora, ...)
+
+
+def explain_search_options() -> None:
+    st.write('Please choose a search option.')
+    # TODO: more explanation
+
+
+def handrit_urls() -> None:
+    '''Workbench. Proper doc to follow soon.'''
     st.title("Result Workflow Builder")
     if state.CurrentStep == 'Preprocessing':
         st.header("Preprocessing")
@@ -229,19 +297,15 @@ def full_menu() -> None:
     '''This is basically the main() and will load and display the full menu, which in turn calls
     all the other functions containing sub pages.
     '''
-    handler = state.data_handler
-    if handler:
-        MenuOptions = {"Home": mainPage,
-                       "Browse Data": browse_data,
-                       "Search Functions": search_page,
-                       "Reports": static_reports,
-                       "Advanced Settings": adv_options,
-                       "Help": help}
-        selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
-        selected_function = MenuOptions[selection]
-        selected_function()
-    else:
-        get_handler()
+    MenuOptions = {"Home": mainPage,
+                   "Browse Data": browse_data,
+                   "Search Functions": search_page,
+                   "Reports": static_reports,
+                   "Advanced Settings": adv_options,
+                   "Help": help}
+    selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
+    selected_function = MenuOptions[selection]
+    selected_function()
 
 
 # TODO: move logger to session state, so that it doesn't multi-log
@@ -250,5 +314,8 @@ def full_menu() -> None:
 # ----
 if __name__ == '__main__':
     session_state: sessionState.SessionState = sessionState.get(state=StateHandler())  # type: ignore
-    state: StateHandler = session_state.state  # type: ignore
+    state = session_state.state  # type: ignore
+    dataHandler = state.data_handler
+    if not dataHandler:
+        get_handler()
     full_menu()
