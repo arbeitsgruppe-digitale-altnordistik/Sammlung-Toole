@@ -12,5 +12,6 @@
         "--follow-imports=silent",
         "--show-column-numbers",
         "--strict"
-    ]
+    ],
+    "python.formatting.provider": "autopep8"
 }
