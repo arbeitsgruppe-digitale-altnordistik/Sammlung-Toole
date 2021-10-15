@@ -132,7 +132,6 @@ dmypy.json
 .pyre/
 
 # VS Code settings
-.vscode/
 quickTest.py
 *.csv
 *.txt
