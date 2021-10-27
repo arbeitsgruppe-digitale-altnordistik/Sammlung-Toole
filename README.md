@@ -8,8 +8,19 @@ Some useful tools for digital Old Norse studies.
 Follow these steps, in order to be able to use the `Sammlung Toole`.
 
 1. Be sure to have Python installed.
-2. Install all required packages.
-3. Run the script.
+   - to verify your python installation, run `python --version` in the terminal. This should return a version number, not an error message.
+2. Ensure you have `pipenv` installed.
+   - to check if you you have it installed, run `pip list` and see if it's in the list.
+   - if you don't have it installed, run `pip install pipenv`
+3. Let pipenv install everything necessary for you
+   - normally running `pipenv install` in a terminal that's opened in the root folder of this repository, should do.
+   - if you want to develop, you'll also need the dev-dependencies installed, so run `pipenv install --dev` instead.
+4. Run the script.
+   - simply run `pipenv run run` for normal use cases. This will start the tool.
+   - if you need more specific command, run `pipenv run <your-command>`  
+     (e.g. `pipenv run python -m streamlit run interface.py --server.port 80`)
+   - if you want to run multiple commands within the pipenv context, run `pipenv shell`. This will turn your terminal into a pipenv shell until you execute `exit`. (I.e. all commands will behave as if they had the perfix `pipenv run`.)
+
 
 All commands that need running, should be executed from a terminal/command-line-interface that is opened in the root folder of this repo (i.e. the same folder as this file is located).
 
@@ -22,80 +33,42 @@ To open a terminal in this folder, use one of the following options:
 - Open a command prompt and navigate to the desired folder using the command `cd` (google how it works).
 
 
-## Requirements
+## Development
 
-### Install all requirements
+### Dev Setup
 
-To install all required packages, simply run
+It is recommended to use pipenv for virtual environment management.
 
-```
-pip install -r requirements.txt
-```
+As an IDE, Visual Studio Code is recommended.
 
-This will install all packages listed in the file `requirements.txt`.
+To minimize errors, linting with `mypy` is recommended. This will enforce strict typing, which can be a major source of bugs in python code.  
+To minimize formatting differences (and therewith noise in the git diffs), `auopep8` is recommended as a formatter.  
+Both linter and formatter can be activated in VS Code.
 
+### Adding dependencies with pipenv
 
-### Install single package
+To add a new dependency, run
 
-Install single packages using the command
-
-```
-pip install <package-name>
-```
-
-e.g.
-
-```
-pip install lxml
+```shell
+pipenv install <package-name>
 ```
 
-If a package needs to be installed, this most likely means that it's required. If so, please add it to `requirements.txt`.
+To add a dependency that's only needed for development, run
 
-
-## Run the tool
-
-From the directory containing this repository, run `python -m streamlit run interface.py`
-This will start everything neccessary and open the interface in your default browser. It will also
-display how to access the interface (local and remote URL). When running certain parts of the 
-script(s), it will show their CLI output there as well.
-
-
-
-## Getting Data Manually
-
-Use the `crawler.py` to get data.  
-On top of your python file, add `import crawler`, then you can access methids from the crawler with e.g. `crawler.load_xml(url)`.
-
-It's best to cache everything locally, so you get data quickly. See below for more information.
-
-The following functions are meant to be used:
-
-- `load_xml(url)`
-- `load_xml_by_filename(filename)`
-- `load_xmls_by_id(idno)`
-
-More can be added at any point.
-
-
-## Crawling Data
-
-The crawler by default caches data locally, storing information in CSV files and saving all the XML files in a separate folder.
-
-It's best to crawl the intire set of data at the beginning, so afterwards, operations run a lot quicker.  
-Be sure to repeat this step, so that your cached data is up to date.  
-To cache everything, call
-
-```python
-import crawler
-crawler.crawl()
+```shell
+pipenv install --dev <package-name>
 ```
 
-You can do more specific tasks with the following functions:
+### Create the requirements file
 
-- `get_collections()`
-- `get_ids()`
-- `get_xml_urls()`
-- `cache_all_xml_data()`
-- `get_shelfmarks()`
+Whenever dependencies have been added, the requirements files should be updated. Run
 
-For details on usage and parameters, see the docstring. (In VSCode, hover over the function after typing it, and you'll get a popup. Otherwise, look at the comments in the code.)
+```shell
+pipenv lock --requirements > requirements.txt
+```
+
+and
+
+```shell
+pipenv lock --dev-only --requirements > dev-requirements.txt
+```
