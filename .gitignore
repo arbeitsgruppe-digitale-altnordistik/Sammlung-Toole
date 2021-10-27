@@ -132,10 +132,11 @@ dmypy.json
 .pyre/
 
 # VS Code settings
-.vscode/
 quickTest.py
 *.csv
 *.txt
+!requirements.txt
+!dev-requirements.txt
 .backup_data/
 
 # pickled data
