@@ -268,6 +268,8 @@ def get_search_result_pages(url: str) -> List[str]:
     htm = requests.get(url).text
     soup = BeautifulSoup(htm, 'lxml')
     resDiv = soup.find(class_="t-data-grid-pager")
+    if not resDiv:
+        return list(url)
     getNumberRow = resDiv.get_text()
     muchResultsWow = False
     if "..." in getNumberRow:
@@ -290,11 +292,9 @@ def get_search_result_pages(url: str) -> List[str]:
             for u in urls:
                 if u not in res:
                     res.append(u)
-                    print(u)
         if len(res) != totalNo:
             print("Something smells fucky.")
         return res
-
     links = soup.select("div.t-data-grid-pager > a")
     urls = [l['href'] for l in links]
     for u in urls:

@@ -52,12 +52,12 @@ def adv_options() -> None:
     '''Shows the advanced options menu'''
     # LATER: At some point we should consider changing crawling into a background task
     st.title("Advanced Options Menu")
-    st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
+    st.write("Careful! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
 
     if st.button("Wipe cache"):
         tamer._wipe_cache()
-        st.success("Cach is wiped entirely. Please reload the data handler.")
+        st.success("Cache is wiped entirely. Please reload the data handler.")
     if st.button("Reload Data Handler"):
         with st.spinner("This may take a while..."):
             state.data_handler = DataHandler.get_handler()
@@ -182,7 +182,7 @@ def handrit_urls() -> None:
     if state.CurrentStep == 'Preprocessing':
         st.header("Preprocessing")
         st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
-        state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per Line.")
+        state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per line.")
 
         # state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
         # state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
