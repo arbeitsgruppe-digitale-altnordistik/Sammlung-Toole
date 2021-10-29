@@ -6,12 +6,12 @@
 # CRAWLER_PATH_IDS = 'data/ms_ids.csv'
 # CRAWLER_PATH_404S = 'data/404urls.txt'
 
-PREFIX_XML_DATA = 'data/xml/'
-PREFIX_PERSON_XML_DATA = 'data/person-xml/'
+XML_BASE_PATH = 'data/handrit/Manuscripts'
 PREFIX_XML_RAW = 'data/funnel/'
 PREFIX_BACKUPS = 'data/backups/'
 PREFIX_XML_URL = 'https://handrit.is/en/manuscript/xml/'
 PREFIX_PERSON_XML_URL = 'https://handrit.is/en/biography/xml/'
+PERSON_DATA_PATH = 'data/handrit/Authority Files/names.xml'
 
 HANDLER_BACKUP_PATH_MSS = "data/backups/mss.csv"
 HANDLER_BACKUP_PATH_TXT_MATRIX = "data/backups/text-matrix.parquet"

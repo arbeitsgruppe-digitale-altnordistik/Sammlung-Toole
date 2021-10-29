@@ -20,7 +20,7 @@ settings = Settings.get_settings()
 
 
 def get_handler() -> None:
-    if DataHandler.is_cached() or DataHandler.has_data_available():
+    if DataHandler.is_cached():
         with st.spinner('Grabbing data handler...'):
             rebuild_handler()
     else:

@@ -188,8 +188,6 @@ class DataHandler:
     @staticmethod
     def _load_persons() -> Tuple[Dict[str, str], Dict[str, List[str]]]:
         # CHORE: document
-        if not tamer.has_person_data_available():
-            tamer.unzip_person_xmls()
         person_names = tamer.get_person_names()
         return person_names, tamer.get_person_names_inverse(person_names)
 
@@ -198,10 +196,10 @@ class DataHandler:
         # CHORE: document
         return os.path.exists(HANDLER_PATH_PICKLE)
 
-    @staticmethod
-    def has_data_available() -> bool:
-        # CHORE: document
-        return tamer.has_data_available()
+    # @staticmethod TODO: Should no longer be needed. If repo is there, data should be there?
+    # def has_data_available() -> bool:
+    #     # CHORE: document
+    #     return tamer.has_data_available()
 
     # Class Methods
     # =============
