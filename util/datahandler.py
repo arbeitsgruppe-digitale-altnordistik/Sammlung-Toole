@@ -28,7 +28,7 @@ class DataHandler:
     
     A dataframe containing all manuscripts with their respective metadata.
     
-    The dataframe will have the followin structure:
+    The dataframe will have the following structure:
     
     Per row, there will be metadata to one manuscript. The row indices are integers 0..n.
     
@@ -74,7 +74,7 @@ class DataHandler:
     Sparse matrix with a row per manuscript and a column per text name.
     True, if the manuscript contains the text.
     Allows for lookups, which manuscripts a particular text is connected to.
-    """
+    """  # TODO: Document the type of ID used for MSs in index/row label
 
     person_matrix: pd.DataFrame
     """Person-Manuscript-Matrix
@@ -155,7 +155,7 @@ class DataHandler:
         # CHORE: document
         if df is None or contents is None:
             df = tamer.deliver_handler_data()
-        df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
+        df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_msinfo(x, persons))
         log.info("Loaded MS Info")
         df = df.join(msinfo)
@@ -188,8 +188,6 @@ class DataHandler:
     @staticmethod
     def _load_persons() -> Tuple[Dict[str, str], Dict[str, List[str]]]:
         # CHORE: document
-        if not tamer.has_person_data_available():
-            tamer.unzip_person_xmls()
         person_names = tamer.get_person_names()
         return person_names, tamer.get_person_names_inverse(person_names)
 
@@ -198,10 +196,10 @@ class DataHandler:
         # CHORE: document
         return os.path.exists(HANDLER_PATH_PICKLE)
 
-    @staticmethod
-    def has_data_available() -> bool:
-        # CHORE: document
-        return tamer.has_data_available()
+    # @staticmethod TODO: Should no longer be needed. If repo is there, data should be there?
+    # def has_data_available() -> bool:
+    #     # CHORE: document
+    #     return tamer.has_data_available()
 
     # Class Methods
     # =============
@@ -304,6 +302,7 @@ class DataHandler:
     def search_manuscript_data(self,
                                full_ids: Union[List[str], pd.Series, pd.DataFrame] = None,
                                ms_ids: Union[List[str], pd.Series, pd.DataFrame] = None,
+                               shelfmarks: Union[List[str], pd.Series, pd.DataFrame] = None,
                                filenames: Union[List[str], pd.Series, pd.DataFrame] = None) -> Optional[pd.DataFrame]:
         """Search manuscript metadata for certain manuscripts.
 
@@ -313,13 +312,15 @@ class DataHandler:
 
         IDs can either be full_id (i.e. a certain catalogue entry),
         ms_ids (i.e. a certain manuscript that can have catalogue entries in multiple languages)
+        shelfmarks (which will possibly yield multiple results per shelfmark)
         or filenames (refers to the XML files of the catalogue entry).
 
-        Note: Exactly one of the three optional parameters should be passed.
+        Note: Exactly one of the four optional parameters should be passed.
 
         Args:
             full_ids (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of catalogue entry IDs. Defaults to None.
             ms_ids (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of manuscript IDs. Defaults to None.
+            shelfmarks (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of manuscript IDs. Defaults to None.
             filenames (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of XML file names. Defaults to None.
 
         Returns:
@@ -363,6 +364,18 @@ class DataHandler:
                 if filenames.empty:
                     return None
                 return self.manuscripts.loc[self.manuscripts['filename'].isin(filenames)]
+        # shelfmark
+        elif shelfmarks is not None:
+            if isinstance(shelfmarks, list) and shelfmarks:
+                return self.manuscripts.loc[self.manuscripts['shelfmark'].isin(shelfmarks)]
+            elif isinstance(shelfmarks, pd.DataFrame):
+                if shelfmarks.empty:
+                    return None
+                return self.manuscripts.loc[self.manuscripts['shelfmark'].isin(shelfmarks['shelfmark'])]
+            elif isinstance(shelfmarks, pd.Series):
+                if shelfmarks.empty:
+                    return None
+                return self.manuscripts.loc[self.manuscripts['shelfmark'].isin(shelfmarks)]
         # no argument passed
         return None
 
@@ -391,7 +404,9 @@ class DataHandler:
                 df = self.text_matrix[self.text_matrix[t] == True]
                 mss = list(df.index)
                 hits += mss
-            res = list(set(hits))
+            res_ = list(set(hits))
+            _res = self.manuscripts[self.manuscripts['full_id'].isin(res_)]
+            res = list(set(_res['shelfmark'].tolist()))
             if not res:
                 log.info('no manuscripts found')
                 return []
@@ -407,11 +422,13 @@ class DataHandler:
                 log.info('no manuscripts fond')
                 return []
             intersection = set.intersection(*hits)
-            res = list(intersection)
+            res_ = list(intersection)
+            _res = self.manuscripts[self.manuscripts['full_id'].isin(res_)]
+            res = list(set(_res['shelfmark'].tolist()))
             log.info(f'Search result: {res}')
             return res
 
-    def search_texts_contained_by_manuscripts(self, mss: List[str], searchOption: SearchOptions) -> List[str]:
+    def search_texts_contained_by_manuscripts(self, Inmss: List[str], searchOption: SearchOptions) -> List[str]:
         """Search the texts contained by certain manuscripts.
 
         Search for all texts contained by a given number of manuscripts.
@@ -426,10 +443,12 @@ class DataHandler:
         Returns:
             List[str]: A list of text names.
         """
-        log.info(f'Searching for texts contained by manuscripts: {mss} ({searchOption})')
-        if not mss:
+        log.info(f'Searching for texts contained by manuscripts: {Inmss} ({searchOption})')
+        if not Inmss:
             log.debug('Searched for empty list of mss')
             return []
+        mss_ = self.manuscripts[self.manuscripts['shelfmark'].isin(Inmss)]
+        mss = mss_['full_id'].tolist()
         df = self.text_matrix.transpose()
         if searchOption == SearchOptions.CONTAINS_ONE:
             hits = []

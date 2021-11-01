@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Container, Optional
 import numpy as np
 import streamlit as st
 import pandas as pd
@@ -6,6 +6,7 @@ from datetime import datetime
 import markdown
 from util import sessionState, tamer
 from util import utils
+from util import datahandler
 from util.constants import IMAGE_HOME
 from util.stateHandler import StateHandler
 from util.utils import SearchOptions, Settings
@@ -20,7 +21,7 @@ settings = Settings.get_settings()
 
 
 def get_handler() -> None:
-    if DataHandler.is_cached() or DataHandler.has_data_available():
+    if DataHandler.is_cached():
         with st.spinner('Grabbing data handler...'):
             rebuild_handler()
     else:
@@ -80,7 +81,9 @@ def search_page() -> None:
 
 
 def search_ppl_by_manuscripts() -> None:
-    mss = list(dataHandler.person_matrix.index)
+    mss_ = list(dataHandler.person_matrix.index)
+    _mss = dataHandler.manuscripts[dataHandler.manuscripts['full_id'].isin(mss_)]
+    mss = _mss['shelfmark'].tolist()
     with st.expander('View all manuscripts', False):
         st.write(mss)
     modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
@@ -88,8 +91,10 @@ def search_ppl_by_manuscripts() -> None:
     mode_selection = st.radio('Search mode', modes.keys())
     mode = modes[mode_selection]
     log.debug(f'Search Mode: {mode}')
-    msss = st.multiselect('Search Manuscript', mss)
-    log.debug(f'selected people: {msss}')
+    msss_ = st.multiselect('Search Manuscript', mss)
+    _msss = _mss[_mss['shelfmark'].isin(msss_)]
+    msss = list(set(_msss['full_id'].tolist()))
+    log.debug(f'selected manuscript(s): {msss}')
     with st.spinner('Searching...'):
         results = dataHandler.search_persons_related_to_manuscripts(msss, mode)
     st.write(f'Found {len(results)} people')
@@ -122,13 +127,13 @@ def search_mss_by_persons() -> None:
             st.write(results)
     if st.button('Get metadata for results'):
         with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(full_ids=results)
+            meta = dataHandler.search_manuscript_data(full_ids=results).reset_index(drop=True)
         st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
 
 
 def search_text_by_mss() -> None:
-    mss = list(dataHandler.get_all_texts().index)
+    mss = list(set(dataHandler.manuscripts['shelfmark']))
     with st.expander('View all Manuscripts', False):
         st.write(mss)
     modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
@@ -143,7 +148,12 @@ def search_text_by_mss() -> None:
     st.write(f'Found {len(results)} texts')
     if results:
         with st.expander('view results', False):
-            st.write(results)
+            preview = st.container()
+            preview.write("List of texts found:")
+            count = 1
+            for i in results:
+                preview.write(f"{count}: {i}")
+                count += 1
     # TODO: do something with it here (further search? subcorpus, ...)
 
 
@@ -163,10 +173,15 @@ def search_mss_by_texts() -> None:
     st.write(f'Found {len(results)} manuscripts')
     if results:
         with st.expander('view results', False):
-            st.write(results)
+            preview = st.container()
+            preview.write("List of manuscripts found:")
+            count = 1
+            for i in results:
+                preview.write(f"{count}: {i}")
+                count += 1
     if st.button('Get metadata for results'):
         with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(full_ids=results)
+            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)
         st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
 
