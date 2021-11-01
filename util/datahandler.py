@@ -155,7 +155,7 @@ class DataHandler:
         # CHORE: document
         if df is None or contents is None:
             df = tamer.deliver_handler_data()
-        df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml'))
+        df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_msinfo(x, persons))
         log.info("Loaded MS Info")
         df = df.join(msinfo)

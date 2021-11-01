@@ -70,51 +70,27 @@ def deliver_handler_data() -> pd.DataFrame:
 
 def get_person_names() -> Dict[str, str]:
     res: Dict[str, str] = {}
-    with open(PERSON_DATA_PATH, encoding='utf-8', mode='r+') as file:
-        soup = BeautifulSoup(file, 'lxml')
-    ppl = soup.find_all("person")
-    for person in ppl:
-        id_ = person.get("xml:id")
-        names = person.find_all("forename") + person.find_all("surname")
+    tree = etree.parse(PERSON_DATA_PATH)
+    root = tree.getroot()
+    ppl = root.findall(".//person", nsmap)
+    print(len(ppl))
+    for pers in ppl:
+        id_ = pers.get('{http://www.w3.org/XML/1998/namespace}id')
+        print(id_)
+        name_tag = pers.find('persName', nsmap)
+        names = name_tag.findall('forename', nsmap) + name_tag.findall('surname', nsmap)
         name_dict: Dict[str, str] = {}
         for name in names:
+            if not name.text:
+                continue
             i = name.get('sort') or "1"
-            n = name.get_text().strip()
+            n = name.text.strip()
             name_dict[i] = n
         ii = sorted(name_dict.keys())
         nn = [name_dict[i] for i in ii]
         full_name = ' '.join(nn)
         res[id_] = full_name
     return res
-
-
-# def extract_person_info() -> None:  # TODO: Still needed? Where is this used?
-#     personIDs = set()
-#     xmls = glob.glob(PREFIX_XML_DATA + '*.xml')
-#     for path in xmls:
-#         try:
-#             xml = etree.parse(path)
-#         except Exception as e:
-#             with open('person-warnings.log', mode='a') as warn:
-#                 print(f'Warning in {path}: {e}', file=warn)
-#         root = xml.getroot()
-#         names = root.findall(".//name", nsmap)
-#         for n in names:
-#             if n.get('type') == 'person' and n.get('key'):
-#                 personIDs.add(n.get('key'))
-#     # for key in tqdm(personIDs):
-#     l = len(personIDs)
-#     for i, key in enumerate(personIDs):
-#         url = PREFIX_PERSON_XML_URL + key
-#         print(f'requesting: {url} --- {i+1}/{l} ({i/l*100}%)')
-#         try:
-#             with urlopen(url) as f:
-#                 person_xml = etree.parse(f)
-#             person_xml.write(f'{PREFIX_PERSON_XML_DATA}{key}.xml', encoding='utf-8', pretty_print=True, xml_declaration=True)
-#             time.sleep(0.5)
-#         except Exception as e:
-#             with open('person-warnings.log', mode='a') as warn:
-#                 print(f'{key}: {e} in: {url}', file=warn)
 
 
 def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
@@ -196,13 +172,13 @@ def _find_id(soup: BeautifulSoup) -> str:
     return str(id)
 
 
-def _find_full_id(soup: BeautifulSoup, currMS: str = 'none') -> str:
+def _find_full_id(soup: BeautifulSoup) -> str:
     id_raw = soup.find('msDesc')
     try:
         id = id_raw.get('xml:id')
     except:
-        id = 'none'
-        print(currMS)
+        id = 'ID-ERR-01'
+        log.error("Some soups are to salty. An unkown error occured and an unknown MS could not be souped or strained.")
     return str(id)
 
 
@@ -218,8 +194,9 @@ def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:
     extent = metadata.get_extent(soup)
     description = metadata.get_description(soup)
     id = _find_id(soup)
-    full_id = _find_full_id(soup, currMS=id)
+    full_id = _find_full_id(soup)
     filename = _find_filename(soup)
+    log.debug(f"Sucessfully souped and strained {full_id}")
 
     return pd.Series({"shorttitle": shorttitle,
                       "country": country,
@@ -346,10 +323,9 @@ def get_person_names_inverse(person_names: Dict[str, str]) -> Dict[str, List[str
 def _wipe_cache() -> None:
     """Remove all cached files"""
     log.info("Wiping cache.")
-    if os.path.exists(HANDLER_BACKUP_PATH_MSS):
-        os.remove(HANDLER_BACKUP_PATH_MSS)
-    if os.path.exists(HANDLER_PATH_PICKLE):
-        os.remove(HANDLER_PATH_PICKLE)
+    for i in PURGELIST:
+        if os.path.exists(i):
+            os.remove(i)
     log.info("Cache wiped successfully")
 
 

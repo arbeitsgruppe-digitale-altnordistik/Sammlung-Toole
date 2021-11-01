@@ -7,7 +7,6 @@
 # CRAWLER_PATH_404S = 'data/404urls.txt'
 
 XML_BASE_PATH = 'data/handrit/Manuscripts'
-PREFIX_XML_RAW = 'data/funnel/'
 PREFIX_BACKUPS = 'data/backups/'
 PREFIX_XML_URL = 'https://handrit.is/en/manuscript/xml/'
 PREFIX_PERSON_XML_URL = 'https://handrit.is/en/biography/xml/'
@@ -20,8 +19,10 @@ HANDLER_BACKUP_PATH_PERS_DICT = "data/backups/person-name-dict.json"
 HANDLER_BACKUP_PATH_PERS_DICT_INV = "data/backups/person-name-inverse-dict.json"
 HANDLER_PATH_PICKLE = "data/handler_cache.pickle"
 
+# The following list should contain all locations where handler data is cached and/or backed up. Used in tamer.wipe_cache()
+PURGELIST = [HANDLER_BACKUP_PATH_MSS, HANDLER_BACKUP_PATH_TXT_MATRIX, HANDLER_BACKUP_PATH_PERS_MATRIX,
+             HANDLER_BACKUP_PATH_PERS_DICT, HANDLER_BACKUP_PATH_PERS_DICT_INV, HANDLER_PATH_PICKLE]
+
 IMAGE_HOME = 'data/title.png'
 
 DOC_CITAVI = 'docs/CITAVI-README.md'
-
-PERSON_CACHE_PATH = 'data/perscache.csv'
