@@ -25,3 +25,5 @@ python_version = "3.9"
 
 [scripts]
 run = "python -m streamlit run interface.py"
+init = "git submodule update --init --remote --recursive"
+update = "git submodule update --remote --recursive"

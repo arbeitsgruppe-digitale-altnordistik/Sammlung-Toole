@@ -72,3 +72,10 @@ and
 ```shell
 pipenv lock --dev-only --requirements > dev-requirements.txt
 ```
+
+### Updating the data with Git submodules
+
+The data used in this application is pulled from [Handrit.is on GitHub](https://github.com/Handrit/Manuscripts). 
+The Handrit/Manuscript repository is embedded in the present repo as a Git submodule.
+In order to initialize the submodule, you should execute `pipenv run init` before you run the tool for the first time.
+To keep your local data up to date, you can execute `pipenv run update`.
