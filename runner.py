@@ -6,13 +6,38 @@ from util import utils
 log = utils.get_logger(__name__)
 
 
+def initiaize() -> None:
+    args = "git submodule init".split()
+    subprocess.run(args, check=True)
+
+
+def update() -> None:
+    args = "git submodule update --remote".split()
+    subprocess.run(args, check=True)
+    log.info("Updated data from handrit")
+    # TODO: could wipe cache here, so that data gets reloaded.
+    # LATER: could determin which files changed so that only those need to be re-parsed
+
+
+def isUpToDate() -> bool:
+    args = "git -C data/handrit diff HEAD origin/master --shortstat".split()
+    process = subprocess.run(args, capture_output=True, check=True)
+    output = str(process.stdout, 'utf-8').strip()
+    numbers = [int(s) for s in output.split() if s.isdigit()]
+    res = not bool(numbers and numbers[0])
+    log.info(f"Checking if handrit data is up to date evaluated: {res}")
+    log.debug(output)
+    return res
+
+
 def main() -> None:
-    log.info("Runner started.")
-    # load data from handrit
-    log.info("Ensuring that handrit data is available")
+    # update data
     try:
-        subprocess.run("git submodule update --init --remote --recursive".split(), check=True)
-        log.info("Handrit.is data loaded")
+        initiaize()
+        if not isUpToDate():
+            update()
+        if not isUpToDate():
+            log.warning("Data is not upü to date despite trying to update")
     except Exception:
         log.exception("Failed to load Handrit.is data from github")
 
@@ -26,7 +51,7 @@ def main() -> None:
         log.info("App stopped with keyboard interrupt")
         code = 0
     except Exception:
-        log.exception("An unexpected exception occured while running the app.")
+        log.exception("An unexpected error occured while running the app.")
         code = 1
     log.info("Shut down.")
     sys.exit(code)
