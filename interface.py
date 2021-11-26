@@ -384,6 +384,6 @@ if __name__ == '__main__':
     session_state: sessionState.SessionState = sessionState.get(state=StateHandler())  # type: ignore
     state = session_state.state  # type: ignore
     dataHandler = state.data_handler
-    # if not dataHandler:
-    #     get_handler()
+    if not dataHandler:
+        get_handler()
     full_menu()
