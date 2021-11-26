@@ -2,6 +2,7 @@ import subprocess
 import sys
 
 from util import utils
+from util.utils import GitUtil
 
 log = utils.get_logger(__name__)
 
@@ -15,7 +16,7 @@ def update() -> None:
     args = "git submodule update --remote".split()
     subprocess.run(args, check=True)
     log.info("Updated data from handrit")
-    # TODO: could wipe cache here, so that data gets reloaded.
+    GitUtil.update_submodule_state()
     # LATER: could determin which files changed so that only those need to be re-parsed
 
 
@@ -37,7 +38,7 @@ def main() -> None:
         if not isUpToDate():
             update()
         if not isUpToDate():
-            log.warning("Data is not upü to date despite trying to update")
+            log.warning("Data is not up to date despite trying to update")
     except Exception:
         log.exception("Failed to load Handrit.is data from github")
 

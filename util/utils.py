@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from plotly.missing_ipywidgets import FigureWidget
 import requests
 from bs4 import BeautifulSoup
@@ -9,6 +9,10 @@ import plotly.express as px
 import pandas as pd
 import os
 from enum import Enum
+from time import time
+import json
+import subprocess
+from datetime import timedelta
 
 
 __logs: List[logging.Logger] = []
@@ -70,6 +74,89 @@ class Settings:
         else:
             set_log_level(debug=False)
         self.__debug = val
+
+
+class GitUtil:
+    _path = ".handlerstate.json"
+
+    @staticmethod
+    def __read_data() -> Dict[str, Any]:
+        if os.path.exists(GitUtil._path):
+            with open(GitUtil._path, mode='r+', encoding='utf-8') as f:
+                data: Dict[str, Any] = json.load(f)
+            return data
+        return {}
+
+    @staticmethod
+    def __write_data(data: Dict[str, Any]) -> None:
+        if os.path.exists(GitUtil._path):
+            with open(GitUtil._path, mode='w+', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
+
+    @staticmethod
+    def update_handler_state() -> None:
+        submodule_state = GitUtil.__read_data().get("submoduleState") or {}
+        proc = subprocess.run("git -C data/handrit show --quiet --format=format:%h".split(), capture_output=True)
+        com_hash = str(proc.stdout, 'utf-8')
+        obj = {
+            "isUpToDate": (com_hash == submodule_state.get("commitHash")),
+            "handlerState": {
+                "timestamp": int(time()),
+                "commitHash": com_hash
+            },
+            "submoduleState": submodule_state
+        }
+        GitUtil.__write_data(obj)
+
+    @staticmethod
+    def update_submodule_state() -> None:
+        handler_state = GitUtil.__read_data().get("handlerState") or {}
+        proc = subprocess.run("git -C data/handrit show --quiet --format=format:%h".split(), capture_output=True)
+        com_hash = str(proc.stdout, 'utf-8')
+        proc = subprocess.run("git -C data/handrit show --quiet --format=format:%ct".split(), capture_output=True)
+        com_time = str(proc.stdout, 'utf-8')
+        obj = {
+            "isUpToDate": (com_hash == handler_state.get("commitHash")),
+            "handlerState": handler_state,
+            "submoduleState": {
+                "timestamp": int(com_time),
+                "commitHash": com_hash
+            }
+        }
+        GitUtil.__write_data(obj)
+
+    @staticmethod
+    def get_comparison_link() -> Optional[str]:
+        data = GitUtil.__read_data()
+        if data:
+            h = data.get("handlerState")
+            s = data.get("submoduleState")
+            if h and s:
+                com_h = h.get("commitHash")
+                com_s = s.get("commitHash")
+                if com_h and com_s:
+                    return f"https://github.com/Handrit/Manuscripts/compare/{com_s}..{com_h}"
+        return None
+
+    @staticmethod
+    def get_time_difference() -> str:
+        data = GitUtil.__read_data()
+        if data:
+            h = data.get("handlerState")
+            s = data.get("submoduleState")
+            if h and s:
+                t_h = h.get("timestamp")
+                t_s = s.get("timestamp")
+                secs = abs(int(t_h)-int(t_s))
+                d = timedelta(seconds=secs)
+                return str(d)
+        return ""
+
+    @staticmethod
+    def is_up_to_date() -> bool:
+        data = GitUtil.__read_data()
+        u = data.get("isUpToDate")
+        return (u == True)
 
 
 __last: Optional[Settings] = None

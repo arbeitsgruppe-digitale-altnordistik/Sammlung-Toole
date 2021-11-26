@@ -9,7 +9,7 @@ from util import utils
 from util import datahandler
 from util.constants import IMAGE_HOME
 from util.stateHandler import StateHandler
-from util.utils import SearchOptions, Settings
+from util.utils import SearchOptions, Settings, GitUtil
 from util.datahandler import DataHandler
 from gui.guiUtils import Texts
 
@@ -364,6 +364,14 @@ def full_menu() -> None:
                    "Advanced Settings": adv_options,
                    "Help": help}
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
+    if not GitUtil.is_up_to_date():
+        delta_t = GitUtil.get_time_difference()
+        link = GitUtil.get_comparison_link()
+        with st.beta_container():
+            st.info("Warning: Your data may not be up to date.")
+            st.write(f"Time Difference between head and your data: {delta_t}")
+            st.markdown(f"See data changes [here]({link}).")
+
     selected_function = MenuOptions[selection]
     selected_function()
 
@@ -376,6 +384,6 @@ if __name__ == '__main__':
     session_state: sessionState.SessionState = sessionState.get(state=StateHandler())  # type: ignore
     state = session_state.state  # type: ignore
     dataHandler = state.data_handler
-    if not dataHandler:
-        get_handler()
+    # if not dataHandler:
+    #     get_handler()
     full_menu()

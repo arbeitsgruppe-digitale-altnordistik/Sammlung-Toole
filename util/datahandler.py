@@ -12,7 +12,7 @@ import os
 import util.tamer as tamer
 from util import utils, metadata
 from util.constants import *
-from util.utils import Settings, SearchOptions
+from util.utils import Settings, SearchOptions, GitUtil
 import numpy as np
 from scipy import sparse
 import json
@@ -105,6 +105,7 @@ class DataHandler:
         self.subcorpora: List[Any] = []  # TODO: implement
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
+        GitUtil.update_handler_state()
 
     # Static Methods
     # ==============
