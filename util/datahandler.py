@@ -105,6 +105,8 @@ class DataHandler:
         self.subcorpora: List[Any] = []  # TODO: implement
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
+        # FIXME: this indicates that data is up to date, eve if cache was used.
+        # maybe cache should be disabled if there is a difference in the first place?
         GitUtil.update_handler_state()
 
     # Static Methods

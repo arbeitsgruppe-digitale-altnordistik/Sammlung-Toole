@@ -77,6 +77,7 @@ class Settings:
 
 
 class GitUtil:
+    """ Utility class for dealing with the git submodule """
     _path = ".handlerstate.json"
 
     @staticmethod
@@ -95,11 +96,19 @@ class GitUtil:
 
     @staticmethod
     def update_handler_state() -> None:
+        """Updates the hansler state information.
+
+        In `.handlerstate.json`, this stores information of the submodule as the current handler state.  
+        Assumes that the handler is up to date.
+
+        This should be called after reloading the handler (ideally without cache), 
+        as its data would then reflect the current state of the submodule (which we assume to be mostly up to date).
+        """
         submodule_state = GitUtil.__read_data().get("submoduleState") or {}
         proc = subprocess.run("git -C data/handrit show --quiet --format=format:%h".split(), capture_output=True)
         com_hash = str(proc.stdout, 'utf-8')
         obj = {
-            "isUpToDate": (com_hash == submodule_state.get("commitHash")),
+            "isUpToDate": True,
             "handlerState": {
                 "timestamp": int(time()),
                 "commitHash": com_hash
@@ -110,6 +119,14 @@ class GitUtil:
 
     @staticmethod
     def update_submodule_state() -> None:
+        """Updates the submodule state.
+
+        In `.handlerstate.json`, this stores the current submodule state.
+        Assumes that the handler is out of date.
+
+        Should be called after updating the actual submodule content, if it changed at all.
+        Indicates that the handler should be rebuilt as the data has changed. 
+        """
         handler_state = GitUtil.__read_data().get("handlerState") or {}
         proc = subprocess.run("git -C data/handrit show --quiet --format=format:%h".split(), capture_output=True)
         com_hash = str(proc.stdout, 'utf-8')
@@ -127,6 +144,15 @@ class GitUtil:
 
     @staticmethod
     def get_comparison_link() -> Optional[str]:
+        """Provides a comparison link between the handler and the submodule state.
+
+        If possible, returns a link to github,
+        where the are compared between the thate currently reflected by the git submodule,
+        and the state of the submodule at the time the handler was loaded.
+
+        Returns:
+            Optional[str]: Link to github commit comparison, if applicable.
+        """
         data = GitUtil.__read_data()
         if data:
             h = data.get("handlerState")
@@ -140,6 +166,14 @@ class GitUtil:
 
     @staticmethod
     def get_time_difference() -> str:
+        """
+        Provides a human readable string of how much time passed between the commit of the current state of the submodule,
+        and the commit of the submodule at the time the handler was built.
+        Empty string, if no time difference can be determined.
+
+        Returns:
+            str: human readable string indication the time span
+        """
         data = GitUtil.__read_data()
         if data:
             h = data.get("handlerState")
@@ -154,6 +188,7 @@ class GitUtil:
 
     @staticmethod
     def is_up_to_date() -> bool:
+        """True, if the submodule points to the same commit as it did at the time the handler was built. False otherwise."""
         data = GitUtil.__read_data()
         u = data.get("isUpToDate")
         return (u == True)
