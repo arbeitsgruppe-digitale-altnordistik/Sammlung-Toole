@@ -369,6 +369,7 @@ def full_menu() -> None:
 
 
 # TODO: move logger to session state, so that it doesn't multi-log
+# I'm guessing the logger should not be per session, but be stored similarly to the database connection.
 
 # Run
 # ----
