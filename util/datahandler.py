@@ -16,6 +16,7 @@ from util.utils import Settings, SearchOptions
 import numpy as np
 from scipy import sparse
 import json
+from util.groups import Group, GroupType
 
 
 log = utils.get_logger(__name__)
@@ -84,7 +85,7 @@ class DataHandler:
     Allows for lookups, which manuscripts a particular person is connected to.
     """
 
-    subcorpora: List[Any]  # TODO: implement
+    groups: List[Group]
     # CHORE: document
 
     def __init__(self,
@@ -102,7 +103,7 @@ class DataHandler:
         log.info("Loaded Text Info")
         self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
         log.info("Loaded Person-MSS-Matrix Info")
-        self.subcorpora: List[Any] = []  # TODO: implement
+        self.groups = []
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
 

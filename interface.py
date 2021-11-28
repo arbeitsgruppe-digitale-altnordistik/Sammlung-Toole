@@ -334,11 +334,15 @@ def browse_data() -> None:
     pers_matrix = handler.person_matrix
     st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
 
-    # Subcorpora
-    subs = handler.subcorpora
-    st.header("Sub-Corpora")
+
+def browse_groups() -> None:
+    handler: DataHandler = state.data_handler
+    groups = handler.groups
+    st.title("Groups")
+
+    st.header("Groups")
     st.write("Not yet implemented")
-    st.write(subs)
+    st.write(groups)
 
 
 def help() -> None:
@@ -359,6 +363,7 @@ def full_menu() -> None:
     '''
     MenuOptions = {"Home": mainPage,
                    "Browse Data": browse_data,
+                   "Groups": browse_groups,
                    "Search Functions": search_page,
                    "Reports": static_reports,
                    "Advanced Settings": adv_options,
