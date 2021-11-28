@@ -1,8 +1,20 @@
 from typing import Any, List, Optional
 import pandas as pd
 from util.datahandler import DataHandler
+from enum import Enum, auto
 
 # LATER: this could be divided with nested classes for more order
+
+
+class Step:
+    class Handrit_URL(Enum):
+        Preprocessing = auto()
+        Processing = auto()
+        Postprocessing = auto()
+
+    class MS_by_Pers(Enum):
+        Search_person = 1
+        blah = 2
 
 
 class StateHandler:
@@ -19,7 +31,10 @@ class StateHandler:
         self.joinMode = 'All'
         self.didRun = 'dnr'
         self.CitaviSelect: Any = []
-        self.CurrentStep = 'Preprocessing'
+        self.handrit_step: Step.Handrit_URL = Step.Handrit_URL.Preprocessing
+        self.ms_by_pers_step: Step.MS_by_Pers = Step.MS_by_Pers.Search_person
         self.postStep = ''
         self.currentCitaviData = pd.DataFrame()
         self.data_handler: DataHandler = None  # type: ignore
+        self.search_ms_by_person_result_mss: List[str] = []
+        self.search_ms_by_person_result_ppl: List[str] = []

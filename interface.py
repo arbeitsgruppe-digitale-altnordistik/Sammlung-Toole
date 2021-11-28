@@ -6,9 +6,9 @@ from datetime import datetime
 import markdown
 from util import sessionState, tamer
 from util import utils
-from util import datahandler
 from util.constants import IMAGE_HOME
-from util.stateHandler import StateHandler
+from util.groups import Group, GroupType
+from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions, Settings
 from util.datahandler import DataHandler
 from gui.guiUtils import Texts
@@ -75,7 +75,7 @@ def search_page() -> None:
         'Search Manuscripts by Text': search_mss_by_texts,
         'Search Texts contained by Manuscripts': search_text_by_mss,
     }
-    choice = st.radio('What would you like to search?', options=opts.keys())
+    choice = st.sidebar.radio('What would you like to search?', options=opts.keys())
     fn = opts[choice]
     fn()
 
@@ -106,29 +106,57 @@ def search_ppl_by_manuscripts() -> None:
 
 
 def search_mss_by_persons() -> None:
-    persons = list(dataHandler.person_matrix.columns)
-    with st.expander('View all People', False):
-        st.write(persons)
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', modes.keys())
-    mode = modes[mode_selection]
-    log.debug(f'Search Mode: {mode}')
-    ppl = st.multiselect('Search Person', persons)
-    log.debug(f'selected people: {ppl}')
-    with st.expander('Show full names'):
-        fullnames = {k: dataHandler.get_person_name(k) for k in ppl}
-        st.write(fullnames)
-    with st.spinner('Searching...'):
-        results = dataHandler.search_manuscripts_related_to_persons(ppl, mode)
-    st.write(f'Found {len(results)} manuscripts')
-    if results:
-        with st.expander('view results', False):
+    if state.ms_by_pers_step == Step.MS_by_Pers.Search_person:
+        st.subheader("Select Person(s)")
+        persons = list(dataHandler.person_matrix.columns)
+        with st.expander('View all People', False):
+            st.write(persons)
+        modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+                 'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+        mode_selection = st.radio('Search mode', modes.keys())
+        mode = modes[mode_selection]
+        log.debug(f'Search Mode: {mode}')
+        ppl = st.multiselect('Search Person', persons)
+        log.debug(f'selected people: {ppl}')
+        with st.expander('Show full names'):
+            fullnames = {k: dataHandler.get_person_name(k) for k in ppl}
+            st.write(fullnames)
+        with st.spinner('Searching...'):
+            res = dataHandler.search_manuscripts_related_to_persons(ppl, mode)
+            state.search_ms_by_person_result_mss = res
+            state.search_ms_by_person_result_ppl = ppl
+        st.write(f'Found {len(res)} manuscripts')
+        if res and st.button("OK"):
+            state.ms_by_pers_step = Step.MS_by_Pers.blah
+            st.experimental_rerun()
+    else:
+        st.subheader("Person(s) selected")
+        if st.button("Back"):
+            state.ms_by_pers_step = Step.MS_by_Pers.Search_person
+            st.experimental_rerun()
+        results = state.search_ms_by_person_result_mss
+        ppl = state.search_ms_by_person_result_ppl
+        if not results:
+            state.ms_by_pers_step = Step.MS_by_Pers.Search_person
+            return
+        with st.expander('view results as list', False):
             st.write(results)
-    if st.button('Get metadata for results'):
-        with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(full_ids=results).reset_index(drop=True)
-        st.write(meta)
+        with st.expander("Save results as group", False):
+            with st.form("save_group"):
+                name = st.text_input('Group Name', f'Search results for person search {ppl}')
+                if st.form_submit_button("Save"):
+                    gr = Group(GroupType.PersonGroup, name, set(results))
+                    dataHandler.groups.append(gr)
+        with st.expander("Add results to existing group", False):
+            with st.form("add_to_group"):
+                gr = st.radio("Select a group", ['...', 'xxx'])
+                copy = st.checkbox("Save as new copy (if not, the group will be overwritten)")
+                if st.form_submit_button("Save"):
+                    pass
+        if st.button('Show metadata for results'):
+            with st.spinner('loading metadata...'):
+                meta = dataHandler.search_manuscript_data(full_ids=results).reset_index(drop=True)  # type:ignore
+            st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
 
 
@@ -181,7 +209,7 @@ def search_mss_by_texts() -> None:
                 count += 1
     if st.button('Get metadata for results'):
         with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)
+            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)  # type:ignore
         st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
 
@@ -194,7 +222,7 @@ def explain_search_options() -> None:
 def handrit_urls() -> None:
     '''Workbench. Proper doc to follow soon.'''
     st.title("Result Workflow Builder")
-    if state.CurrentStep == 'Preprocessing':
+    if state.handrit_step == Step.Handrit_URL.Preprocessing:
         st.header("Preprocessing")
         st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
         state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per line.")
@@ -203,7 +231,7 @@ def handrit_urls() -> None:
         # state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
             state.didRun = 'Started, dnf.'
-            state.CurrentStep = 'Processing'
+            state.handrit_step = Step.Handrit_URL.Processing
             # This block handles data delivery
 
             if state.currentURLs_str:
@@ -223,13 +251,13 @@ def handrit_urls() -> None:
             st.write(state.currentData)
     if state.didRun == 'OK':
         if st.button("Go to postprocessing"):
-            state.CurrentStep = 'Postprocessing'
+            state.handrit_step = Step.Handrit_URL.Postprocessing
             state.didRun = None  # type: ignore  # LATER: find solution for this type error
             st.experimental_rerun()
-    if state.CurrentStep == 'Postprocessing':
+    if state.handrit_step == Step.Handrit_URL.Postprocessing:
         postprocessing()
         if st.button("Go back to preprocessing"):
-            state.CurrentStep = 'Preprocessing'
+            state.handrit_step = Step.Handrit_URL.Preprocessing
             state.currentData = None
             st.experimental_rerun()
 
