@@ -9,7 +9,7 @@ from util import utils
 from util import datahandler
 from util.constants import IMAGE_HOME
 from util.stateHandler import StateHandler
-from util.utils import SearchOptions, Settings
+from util.utils import SearchOptions, Settings, GitUtil
 from util.datahandler import DataHandler
 from gui.guiUtils import Texts
 
@@ -369,13 +369,25 @@ def full_menu() -> None:
 
 
 # TODO: move logger to session state, so that it doesn't multi-log
+# I'm guessing the logger should not be per session, but be stored similarly to the database connection.
+=======
+def warn_if_handler_not_up_to_date() -> None:
+    """ Show a warning, if handler is not up to date with regard to the handrit git submodule """
+    if not GitUtil.is_up_to_date():
+        delta_t = GitUtil.get_time_difference()
+        link = GitUtil.get_comparison_link()
+        st.info("Warning: Your data may not be up to date.")
+        st.write(f"Time Difference between head and your data: {delta_t}")
+        st.markdown(f"See data changes [here]({link}).")
+        st.write("Please consider wiping the cache and rebuilding the handler.")
+        st.markdown("-----")
 
-# Run
-# ----
+
 if __name__ == '__main__':
     session_state: sessionState.SessionState = sessionState.get(state=StateHandler())  # type: ignore
     state = session_state.state  # type: ignore
     dataHandler = state.data_handler
+    warn_if_handler_not_up_to_date()
     if not dataHandler:
         get_handler()
     full_menu()
