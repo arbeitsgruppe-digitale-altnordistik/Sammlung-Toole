@@ -16,7 +16,8 @@ Follow these steps, in order to be able to use the `Sammlung Toole`.
    - normally running `pipenv install` in a terminal that's opened in the root folder of this repository, should do.
    - if you want to develop, you'll also need the dev-dependencies installed, so run `pipenv install --dev` instead.
 4. Run the script.
-   - simply run `pipenv run run` for normal use cases. This will start the tool.
+   - simply run `pipenv run run` for normal use cases. This will first update the data according to the latest stage of the handrit.is github repository, and then start the tool.
+   - if you are sure that your local data is up to date, you can also run `pipenv run quick` which will skip synchronizing the data.
    - if you need more specific command, run `pipenv run <your-command>`  
      (e.g. `pipenv run python -m streamlit run interface.py --server.port 80`)
    - if you want to run multiple commands within the pipenv context, run `pipenv shell`. This will turn your terminal into a pipenv shell until you execute `exit`. (I.e. all commands will behave as if they had the perfix `pipenv run`.)
@@ -73,7 +74,7 @@ and
 pipenv lock --dev-only --requirements > dev-requirements.txt
 ```
 
-### Updating the data with Git submodules
+### Manually updating the data with Git submodules
 
 The data used in this application is pulled from [Handrit.is on GitHub](https://github.com/Handrit/Manuscripts). 
 The Handrit/Manuscript repository is embedded in the present repo as a Git submodule.
