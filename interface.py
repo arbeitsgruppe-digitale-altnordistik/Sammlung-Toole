@@ -368,6 +368,9 @@ def full_menu() -> None:
     selected_function()
 
 
+# TODO: move logger to session state, so that it doesn't multi-log
+# I'm guessing the logger should not be per session, but be stored similarly to the database connection.
+=======
 def warn_if_handler_not_up_to_date() -> None:
     """ Show a warning, if handler is not up to date with regard to the handrit git submodule """
     if not GitUtil.is_up_to_date():
@@ -380,9 +383,6 @@ def warn_if_handler_not_up_to_date() -> None:
         st.markdown("-----")
 
 
-# TODO: move logger to session state, so that it doesn't multi-log
-# Run
-# ----
 if __name__ == '__main__':
     session_state: sessionState.SessionState = sessionState.get(state=StateHandler())  # type: ignore
     state = session_state.state  # type: ignore
