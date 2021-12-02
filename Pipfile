@@ -17,6 +17,7 @@ Markdown = "*"
 [dev-packages]
 mypy = "*"
 autopep8 = "*"
+types-markdown = "*"
 
 [requires]
 python_version = "3.9"

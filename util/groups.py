@@ -57,3 +57,33 @@ class Groups:
                 self.text_groups.pop(g.group_id)
             if g.group_type == GroupType.PersonGroup:
                 self.person_groups.pop(g.group_id)
+
+    def get_names(self, type: Optional[GroupType]) -> List[str]:
+        if type == GroupType.ManuscriptGroup:
+            return [g.name for _, g in self.manuscript_groups.items()]
+        if type == GroupType.TextGroup:
+            return [g.name for _, g in self.text_groups.items()]
+        if type == GroupType.PersonGroup:
+            return [g.name for _, g in self.person_groups.items()]
+        return self.get_names(GroupType.ManuscriptGroup) + self.get_names(GroupType.PersonGroup) + self.get_names(GroupType.TextGroup)
+
+    def get_group_by_name(self, name: str, type: Optional[GroupType]) -> Optional[Group]:
+        if type == GroupType.ManuscriptGroup:
+            for v in self.manuscript_groups.values():
+                if v.name == name:
+                    return v
+            return None
+        if type == GroupType.TextGroup:
+            for v in self.text_groups.values():
+                if v.name == name:
+                    return v
+            return None
+        if type == GroupType.PersonGroup:
+            for v in self.person_groups.values():
+                if v.name == name:
+                    return v
+            return None
+        return self.get_group_by_name(
+            name, GroupType.ManuscriptGroup) or self.get_group_by_name(
+            name, GroupType.TextGroup) or self.get_group_by_name(
+            name, GroupType.PersonGroup)

@@ -1,4 +1,4 @@
-from typing import Container, Optional
+from typing import Optional
 import numpy as np
 import streamlit as st
 import pandas as pd
@@ -12,6 +12,7 @@ from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions, Settings, GitUtil
 from util.datahandler import DataHandler
 from gui.guiUtils import Texts
+from copy import deepcopy
 
 
 state: StateHandler
@@ -25,7 +26,7 @@ def get_handler() -> None:
         with st.spinner('Grabbing data handler...'):
             rebuild_handler()
     else:
-        st.sidebar.text("No data at hand. Needs loading first.")
+        st.sidebar.text("No data at hand. Needs loading first.")  # type: ignore[no-untyped-call]
         adv_options()
 
 
@@ -145,17 +146,22 @@ def search_mss_by_persons() -> None:
             with st.form("save_group"):
                 name = st.text_input('Group Name', f'Search results for person search {ppl}')
                 if st.form_submit_button("Save"):
-                    gr = Group(GroupType.PersonGroup, name, set(results))
-                    dataHandler.groups.append(gr)
+                    grp = Group(GroupType.ManuscriptGroup, name, set(results))
+                    dataHandler.groups.set(grp)
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
-                gr = st.radio("Select a group", ['...', 'xxx'])
+                gr = st.radio("Select a group", dataHandler.groups.get_names(GroupType.ManuscriptGroup))
                 copy = st.checkbox("Save as new copy (if not, the group will be overwritten)")
                 if st.form_submit_button("Save"):
-                    pass
+                    grp_add = dataHandler.groups.get_group_by_name(gr, GroupType.ManuscriptGroup)
+                    if grp_add:
+                        if copy:
+                            grp_add = Group(grp_add.group_type, grp_add.name + " (Copy)", deepcopy(grp_add.items))
+                        grp_add.items.update(results)
+                        dataHandler.groups.set(grp_add)
         if st.button('Show metadata for results'):
             with st.spinner('loading metadata...'):
-                meta = dataHandler.search_manuscript_data(full_ids=results).reset_index(drop=True)  # type:ignore
+                meta = dataHandler.search_manuscript_data(full_ids=results).reset_index(drop=True)
             st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
 
@@ -209,7 +215,7 @@ def search_mss_by_texts() -> None:
                 count += 1
     if st.button('Get metadata for results'):
         with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)  # type:ignore
+            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)
         st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
 
@@ -237,7 +243,7 @@ def handrit_urls() -> None:
             if state.currentURLs_str:
                 s_urls = [url.strip() for url in state.currentURLs_str.split(',')]
                 url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(
-                    urls=s_urls, sharedMode=(state.joinMode == False))  # type: ignore  # LATER: find solution for this type error
+                    urls=s_urls, sharedMode=(state.joinMode == False))
                 st.write("Processed Manuscript URLs:")
                 st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
                 state.currentURL_list += url_list
@@ -252,7 +258,7 @@ def handrit_urls() -> None:
     if state.didRun == 'OK':
         if st.button("Go to postprocessing"):
             state.handrit_step = Step.Handrit_URL.Postprocessing
-            state.didRun = None  # type: ignore  # LATER: find solution for this type error
+            state.didRun = None
             st.experimental_rerun()
     if state.handrit_step == Step.Handrit_URL.Postprocessing:
         postprocessing()
