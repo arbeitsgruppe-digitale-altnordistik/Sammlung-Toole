@@ -3,21 +3,23 @@ This module handles data and provides convenient and efficient access to it.
 """
 
 from __future__ import annotations
+
+import json
+import os
+import pickle
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
-from bs4 import BeautifulSoup
-import pandas as pd
-import pickle
-import os
-import util.tamer as tamer
-from util import utils, metadata
-from util.constants import *
-from util.utils import Settings, SearchOptions, GitUtil
-import numpy as np
-from scipy import sparse
-import json
-from util.groups import Group, GroupType
 
+import numpy as np
+import pandas as pd
+from bs4 import BeautifulSoup
+from scipy import sparse
+
+import util.tamer as tamer
+from util import metadata, utils
+from util.constants import *
+from util.groups import Group, Groups, GroupType
+from util.utils import GitUtil, SearchOptions, Settings
 
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
@@ -85,7 +87,7 @@ class DataHandler:
     Allows for lookups, which manuscripts a particular person is connected to.
     """
 
-    groups: List[Group]
+    groups: Groups
     # CHORE: document
 
     def __init__(self,
@@ -103,10 +105,10 @@ class DataHandler:
         log.info("Loaded Text Info")
         self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
         log.info("Loaded Person-MSS-Matrix Info")
-        self.groups = []
+        self.groups = Groups.from_cache() or Groups()
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
-        # FIXME: this indicates that data is up to date, eve if cache was used.
+        # FIXME: this indicates that data is up to date, even if cache was used.
         # maybe cache should be disabled if there is a difference in the first place?
         GitUtil.update_handler_state()
 
