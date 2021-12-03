@@ -1,12 +1,15 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Union
 import uuid
 import os
 import pickle
 from enum import Enum
+from util import utils
 from util.constants import GROUPS_PATH_PICKLE
+
+log = utils.get_logger(__name__)
 
 
 class GroupType(Enum):
@@ -26,9 +29,9 @@ class Group:
 
 @dataclass
 class Groups:
-    manuscript_groups: Dict[uuid.UUID, Group] = {}
-    text_groups: Dict[uuid.UUID, Group] = {}
-    person_groups: Dict[uuid.UUID, Group] = {}
+    manuscript_groups: Dict[uuid.UUID, Group] = field(default_factory=dict)
+    text_groups: Dict[uuid.UUID, Group] = field(default_factory=dict)
+    person_groups: Dict[uuid.UUID, Group] = field(default_factory=dict)
 
     @staticmethod
     def from_cache() -> Optional[Groups]:
@@ -41,12 +44,14 @@ class Groups:
             return None
 
     def set(self, group: Group) -> None:
+        log.info(f"Set Group: {group.group_id} - {group.name}")
         if group.group_type == GroupType.ManuscriptGroup:
             self.manuscript_groups[group.group_id] = group
         if group.group_type == GroupType.TextGroup:
             self.text_groups[group.group_id] = group
         if group.group_type == GroupType.PersonGroup:
             self.person_groups[group.group_id] = group
+        log.debug(f"Group contains new: ms={len(self.manuscript_groups)} txt={len(self.text_groups)} ppl={len(self.person_groups)}")
 
     def remove(self, group: Union[Group, List[Group]]) -> None:
         gg = group if isinstance(group, list) else [group]

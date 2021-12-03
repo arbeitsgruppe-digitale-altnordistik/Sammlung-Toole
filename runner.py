@@ -7,7 +7,7 @@ from util.utils import GitUtil
 log = utils.get_logger(__name__)
 
 
-def initiaize() -> None:
+def initialize() -> None:
     args = "git submodule init".split()
     subprocess.run(args, check=True)
 
@@ -35,7 +35,7 @@ def isUpToDate() -> bool:
 def main() -> None:
     # update submodule data
     try:
-        initiaize()
+        initialize()
         if not isUpToDate():
             update()
         if not isUpToDate():

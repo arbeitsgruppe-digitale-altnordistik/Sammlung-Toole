@@ -509,7 +509,7 @@ class DataHandler:
 
     def get_person_name(self, pers_id: str) -> str:
         """Get a person's name, identified by the person's ID"""
-        return self.person_names[pers_id]
+        return self.person_names.get(pers_id)
 
     def get_person_ids(self, pers_name: str) -> List[str]:
         """Get IDs of all persons with a certain name"""

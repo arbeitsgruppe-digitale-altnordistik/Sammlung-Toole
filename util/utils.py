@@ -19,9 +19,9 @@ __logs: List[logging.Logger] = []
 
 
 class SearchOptions(Enum):
-    CONTAINS_ALL = 0
+    CONTAINS_ALL = "AND"
     """AND search: the item must contain all of the requested elements, in order to fit"""
-    CONTAINS_ONE = 1
+    CONTAINS_ONE = "OR"
     """OR search: the item must contain at least one of the requested elements, in order to fit"""
 
 
@@ -90,9 +90,9 @@ class GitUtil:
 
     @staticmethod
     def __write_data(data: Dict[str, Any]) -> None:
-        if os.path.exists(GitUtil._path):
-            with open(GitUtil._path, mode='w+', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
+        # if os.path.exists(GitUtil._path):
+        with open(GitUtil._path, mode='w+', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
 
     @staticmethod
     def update_handler_state() -> None:

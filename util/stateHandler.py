@@ -3,6 +3,8 @@ import pandas as pd
 from util.datahandler import DataHandler
 from enum import Enum, auto
 
+from util.utils import SearchOptions
+
 # LATER: this could be divided with nested classes for more order
 
 
@@ -14,7 +16,7 @@ class Step:
 
     class MS_by_Pers(Enum):
         Search_person = 1
-        blah = 2
+        Store_Results = 2
 
 
 class StateHandler:
@@ -38,3 +40,4 @@ class StateHandler:
         self.data_handler: DataHandler = None  # type: ignore
         self.search_ms_by_person_result_mss: List[str] = []
         self.search_ms_by_person_result_ppl: List[str] = []
+        self.search_ms_by_person_result_mode: SearchOptions = SearchOptions.CONTAINS_ALL
