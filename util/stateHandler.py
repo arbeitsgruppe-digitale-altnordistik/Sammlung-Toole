@@ -2,6 +2,7 @@ from typing import Any, List, Optional
 import pandas as pd
 from util.datahandler import DataHandler
 from enum import Enum, auto
+from dataclasses import dataclass, field
 
 from util.utils import SearchOptions
 
@@ -17,6 +18,14 @@ class Step:
     class MS_by_Pers(Enum):
         Search_person = 1
         Store_Results = 2
+
+
+class SearchState:
+    @dataclass
+    class MS_by_Pers:
+        mss: List[str]
+        ppl: List[str]
+        mode: SearchOptions
 
 
 class StateHandler:

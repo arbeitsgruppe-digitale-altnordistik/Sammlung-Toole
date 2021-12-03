@@ -23,7 +23,7 @@ class Group:
     group_type: GroupType
     name: str
     items: Set[str]
-    date: datetime = datetime.now()
+    date: datetime = field(default_factory=datetime.now)
     group_id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
@@ -52,7 +52,11 @@ class Groups:
         elif group.group_type == GroupType.PersonGroup:
             self.person_groups[group.group_id] = group
         else:
-            log.warn("Something went wrong while saving group")
+            log.warn(f"Something went wrong while saving group: {group.name}")
+            log.debug(f"Group Details: {group}")
+            log.debug(f"Currently Stored - MSS: {self.manuscript_groups}")
+            log.debug(f"Currently Stored - PPL: {self.person_groups}")
+            log.debug(f"Currently Stored - TXT: {self.manuscript_groups}")
         log.debug(f"Group contains new: ms={len(self.manuscript_groups)} txt={len(self.text_groups)} ppl={len(self.person_groups)}")
 
     def remove(self, group: Union[Group, List[Group]]) -> None:
