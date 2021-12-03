@@ -24,7 +24,7 @@ class Group:
     name: str
     items: Set[str]
     date: datetime = datetime.now()
-    group_id: uuid.UUID = uuid.uuid4()
+    group_id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
 @dataclass
@@ -44,13 +44,15 @@ class Groups:
             return None
 
     def set(self, group: Group) -> None:
-        log.info(f"Set Group: {group.group_id} - {group.name}")
+        log.info(f"Set Group: {group.group_id} - {group.name} ({group.group_type})")
         if group.group_type == GroupType.ManuscriptGroup:
             self.manuscript_groups[group.group_id] = group
-        if group.group_type == GroupType.TextGroup:
+        elif group.group_type == GroupType.TextGroup:
             self.text_groups[group.group_id] = group
-        if group.group_type == GroupType.PersonGroup:
+        elif group.group_type == GroupType.PersonGroup:
             self.person_groups[group.group_id] = group
+        else:
+            log.warn("Something went wrong while saving group")
         log.debug(f"Group contains new: ms={len(self.manuscript_groups)} txt={len(self.text_groups)} ppl={len(self.person_groups)}")
 
     def remove(self, group: Union[Group, List[Group]]) -> None:
