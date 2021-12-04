@@ -126,7 +126,7 @@ class DataHandler:
                     obj = pickle.load(file)
                     sys.setrecursionlimit(prev)
                     if isinstance(obj, DataHandler):
-                        # obj._truncate()
+                        obj.groups = Groups.from_cache() or Groups()
                         return obj
             except Exception:
                 log.exception("Cound not load handler from pickle")

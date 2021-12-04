@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 import numpy as np
 import streamlit as st
 import pandas as pd
@@ -12,7 +12,7 @@ from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions, Settings, GitUtil
 from util.datahandler import DataHandler
 from gui.guiUtils import Texts
-from gui.pages import search
+from gui import pages
 
 
 state: StateHandler
@@ -42,15 +42,14 @@ def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.D
 # --------------------------------------
 
 
-def mainPage() -> None:
+def mainPage(a: Any) -> None:
     '''Landing page'''
-
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
     st.image(IMAGE_HOME)
 
 
-def adv_options() -> None:
+def adv_options(a: Any) -> None:
     '''Shows the advanced options menu'''
     # LATER: At some point we should consider changing crawling into a background task
     st.title("Advanced Options Menu")
@@ -66,12 +65,12 @@ def adv_options() -> None:
         st.experimental_rerun()
 
 
-def search_page() -> None:
+def search_page(a: Any) -> None:
     st.header('Search Page')
     opts = {
         'How To': explain_search_options,
         'Handrit URLs': handrit_urls,
-        'Search Manuscripts by related People': search.manuscripts_by_persons,
+        'Search Manuscripts by related People': pages.search.manuscripts_by_persons,
         'Search People by related Manuscripts': search_ppl_by_manuscripts,
         'Search Manuscripts by Text': search_mss_by_texts,
         'Search Texts contained by Manuscripts': search_text_by_mss,
@@ -259,7 +258,7 @@ def dataCleaner() -> None:  # TODO: Should not be neccessary. Should be done on 
         state.currentData = newDF
 
 
-def static_reports() -> None:
+def static_reports(a: Any) -> None:
     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
     st.text("Currently not available")
     # reports = {"Dating of all MSs": "all_MS_datings"}  # QUESTION: function not defined
@@ -268,7 +267,7 @@ def static_reports() -> None:
     # eval(selected + "()")
 
 
-def browse_data() -> None:
+def browse_data(a: Any) -> None:
     handler: DataHandler = state.data_handler
     st.title("Currently Loaded Dataset")
 
@@ -309,23 +308,7 @@ def browse_data() -> None:
     st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
 
 
-def browse_groups() -> None:
-    handler: DataHandler = state.data_handler
-    groups = handler.groups
-    st.title("Groups")
-
-    st.header("Manuscript Groups")
-    mss = [(b.name, f"{len(b.items)} Manuscripts") for a, b in groups.manuscript_groups.items()]
-    st.table(mss)
-
-    st.header("Text Groups")
-    st.table(groups.text_groups)
-
-    st.header("People Groups")
-    st.table(groups.person_groups)
-
-
-def help() -> None:
+def help(a: Any) -> None:
     st.markdown(Texts.HowToPage.info)
     if st.button("Show detailed help on Citavi import/export"):
         with open('docs/CITAVI-README.md', 'r') as citread:
@@ -343,18 +326,14 @@ def full_menu() -> None:
     '''
     MenuOptions = {"Home": mainPage,
                    "Browse Data": browse_data,
-                   "Groups": browse_groups,
+                   "Groups": pages.groups.browse_groups,
                    "Search Functions": search_page,
                    "Reports": static_reports,
                    "Advanced Settings": adv_options,
                    "Help": help}
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
     selected_function = MenuOptions[selection]
-    selected_function()
-
-
-# TODO: move logger to session state, so that it doesn't multi-log
-# I'm guessing the logger should not be per session, but be stored similarly to the database connection.
+    selected_function(state)
 
 
 def warn_if_handler_not_up_to_date() -> None:

@@ -6,7 +6,6 @@ from util.datahandler import DataHandler
 from util.groups import Group, GroupType
 from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions
-from copy import deepcopy
 
 
 @st.experimental_singleton
@@ -73,8 +72,10 @@ def __search_mss_by_person_step_save_results(state: StateHandler, handler: DataH
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
                 previous_name = st.radio("Select a group", handler.groups.get_names(GroupType.ManuscriptGroup))
-                modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                         'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+                modes = {
+                    'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
+                    'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+                }
                 mode_selection = st.radio('Search mode', modes.keys())
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for person search <{ppl} AND/OR ([PREVIOUS_QUERY])>')

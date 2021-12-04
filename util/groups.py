@@ -43,8 +43,11 @@ class Groups:
                 return g
             return None
 
+    def cache(self) -> None:
+        with open(GROUPS_PATH_PICKLE, 'wb') as f:
+            pickle.dump(self, f)
+
     def set(self, group: Group) -> None:
-        # TODO: store as pickle
         log.info(f"Set Group: {group.group_id} - {group.name} ({group.group_type})")
         if group.group_type == GroupType.ManuscriptGroup:
             self.manuscript_groups[group.group_id] = group
@@ -59,6 +62,7 @@ class Groups:
             log.debug(f"Currently Stored - PPL: {self.person_groups}")
             log.debug(f"Currently Stored - TXT: {self.manuscript_groups}")
         log.debug(f"Group contains new: ms={len(self.manuscript_groups)} txt={len(self.text_groups)} ppl={len(self.person_groups)}")
+        self.cache()
 
     def remove(self, group: Union[Group, List[Group]]) -> None:
         gg = group if isinstance(group, list) else [group]
