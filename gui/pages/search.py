@@ -83,9 +83,11 @@ def __search_mss_by_person_step_save_results(state: StateHandler, handler: DataH
                     if previous_group:
                         previous_query = previous_name.removeprefix("Search results for person search <").removesuffix(">")
                         new_name = f'Search results for person search <{ppl} {mode.value} ({previous_query})>'
-                        # TODO: new items depending on mode!
-                        new_group = Group(previous_group.group_type,  new_name, deepcopy(previous_group.items))
-                        new_group.items.update(results)
+                        if mode == SearchOptions.CONTAINS_ALL:
+                            new_items = previous_group.items.intersection(set(results))
+                        else:
+                            new_items = previous_group.items.union(set(results))
+                        new_group = Group(previous_group.group_type,  new_name, new_items)
                         handler.groups.set(new_group)
                         state.ms_by_pers_step = Step.MS_by_Pers.Search_person
                         st.experimental_rerun()
