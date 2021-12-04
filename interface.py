@@ -26,7 +26,7 @@ def get_handler() -> None:
         with st.spinner('Grabbing data handler...'):
             rebuild_handler()
     else:
-        st.sidebar.text("No data at hand. Needs loading first.")  # type: ignore[no-untyped-call]
+        st.sidebar.text("No data at hand. Needs loading first.")
         adv_options()
 
 

@@ -44,6 +44,7 @@ class Groups:
             return None
 
     def set(self, group: Group) -> None:
+        # TODO: store as pickle
         log.info(f"Set Group: {group.group_id} - {group.name} ({group.group_type})")
         if group.group_type == GroupType.ManuscriptGroup:
             self.manuscript_groups[group.group_id] = group
