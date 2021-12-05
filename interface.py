@@ -27,7 +27,7 @@ def get_handler() -> None:
             rebuild_handler()
     else:
         st.sidebar.text("No data at hand. Needs loading first.")
-        adv_options()
+        adv_options(None)
 
 
 def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
@@ -75,12 +75,13 @@ def search_page(a: Any) -> None:
         'Search Manuscripts by Text': search_mss_by_texts,
         'Search Texts contained by Manuscripts': search_text_by_mss,
     }
+    st.sidebar.write("---")
     choice = st.sidebar.radio('What would you like to search?', options=opts.keys())
     fn = opts[choice]
-    fn(state, dataHandler)
+    fn(state)
 
 
-def search_ppl_by_manuscripts(a, b) -> None:
+def search_ppl_by_manuscripts(_: Any) -> None:
     mss_ = list(dataHandler.person_matrix.index)
     _mss = dataHandler.manuscripts[dataHandler.manuscripts['full_id'].isin(mss_)]
     mss = _mss['shelfmark'].tolist()
@@ -105,7 +106,7 @@ def search_ppl_by_manuscripts(a, b) -> None:
     # TODO: should do something with it here (further search, subcorpora, ...)
 
 
-def search_text_by_mss(a, b) -> None:
+def search_text_by_mss(_: Any) -> None:
     mss = list(set(dataHandler.manuscripts['shelfmark']))
     with st.expander('View all Manuscripts', False):
         st.write(mss)
@@ -130,7 +131,7 @@ def search_text_by_mss(a, b) -> None:
     # TODO: do something with it here (further search? subcorpus, ...)
 
 
-def search_mss_by_texts(a, b) -> None:
+def search_mss_by_texts(_: Any) -> None:
     texts = list(dataHandler.get_all_texts().columns)
     with st.expander('View all Texts', False):
         st.write(texts)
@@ -159,12 +160,12 @@ def search_mss_by_texts(a, b) -> None:
     # TODO: should do something with it here (export, subcorpora, ...)
 
 
-def explain_search_options(a, b) -> None:
+def explain_search_options(_: Any) -> None:
     st.write('Please choose a search option.')
     # TODO: more explanation
 
 
-def handrit_urls(a, b) -> None:
+def handrit_urls(_: Any) -> None:
     '''Workbench. Proper doc to follow soon.'''
     st.title("Result Workflow Builder")
     if state.handrit_step == Step.Handrit_URL.Preprocessing:
@@ -331,7 +332,7 @@ def full_menu() -> None:
                    "Reports": static_reports,
                    "Advanced Settings": adv_options,
                    "Help": help}
-    selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
+    selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()), on_change=state.steps.reset)
     selected_function = MenuOptions[selection]
     selected_function(state)
 

@@ -106,6 +106,7 @@ class DataHandler:
         self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
         log.info("Loaded Person-MSS-Matrix Info")
         self.groups = Groups.from_cache() or Groups()
+        log.debug(f"Groups loaded: {self.groups}")
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
         # FIXME: this indicates that data is up to date, even if cache was used.
@@ -127,6 +128,7 @@ class DataHandler:
                     sys.setrecursionlimit(prev)
                     if isinstance(obj, DataHandler):
                         obj.groups = Groups.from_cache() or Groups()
+                        log.debug(f"Groups loaded: {obj.groups}")
                         return obj
             except Exception:
                 log.exception("Cound not load handler from pickle")

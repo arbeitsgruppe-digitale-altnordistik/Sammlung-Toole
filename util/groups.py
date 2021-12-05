@@ -37,15 +37,23 @@ class Groups:
     def from_cache() -> Optional[Groups]:
         if not os.path.exists(GROUPS_PATH_PICKLE):
             return None
-        with open(GROUPS_PATH_PICKLE, 'rb') as f:
-            g = pickle.load(f)
-            if isinstance(g, Groups):
-                return g
+        try:
+            with open(GROUPS_PATH_PICKLE, 'rb') as f:
+                g = pickle.load(f)
+                if isinstance(g, Groups):
+                    return g
+                return None
+        except:
+            log.exception("Error while loading groups from pickle")
             return None
 
     def cache(self) -> None:
-        with open(GROUPS_PATH_PICKLE, 'wb') as f:
-            pickle.dump(self, f)
+        try:
+            with open(GROUPS_PATH_PICKLE, 'wb') as f:
+                pickle.dump(self, f)
+        except:
+            log.exception("Failed to cache groups.")
+            log.debug(f"Current Group state: {self}")
 
     def set(self, group: Group) -> None:
         log.info(f"Set Group: {group.group_id} - {group.name} ({group.group_type})")

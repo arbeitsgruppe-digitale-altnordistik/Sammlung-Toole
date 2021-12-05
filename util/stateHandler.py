@@ -19,6 +19,17 @@ class Step:
         Search_person = 1
         Store_Results = 2
 
+    class Browse_Groups(Enum):
+        Browse = "browse"
+        Combine_MSS = "combine_manuscripts"
+
+    def reset(self) -> None:
+        self.browseGroups = Step.Browse_Groups.Browse
+        self.search_mss_by_persons = Step.MS_by_Pers.Search_person
+
+    browseGroups: Browse_Groups = Browse_Groups.Browse
+    search_mss_by_persons: MS_by_Pers = MS_by_Pers.Search_person
+
 
 class SearchState:
     @dataclass
@@ -43,10 +54,11 @@ class StateHandler:
         self.didRun = 'dnr'
         self.CitaviSelect: Any = []
         self.handrit_step: Step.Handrit_URL = Step.Handrit_URL.Preprocessing
-        self.ms_by_pers_step: Step.MS_by_Pers = Step.MS_by_Pers.Search_person
+        # self.ms_by_pers_step: Step.MS_by_Pers = Step.MS_by_Pers.Search_person
         self.postStep = ''
         self.currentCitaviData = pd.DataFrame()
         self.data_handler: DataHandler = None  # type: ignore
         self.search_ms_by_person_result_mss: List[str] = []
         self.search_ms_by_person_result_ppl: List[str] = []
         self.search_ms_by_person_result_mode: SearchOptions = SearchOptions.CONTAINS_ALL
+        self.steps: Step = Step()

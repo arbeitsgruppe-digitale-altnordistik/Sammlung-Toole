@@ -16,14 +16,15 @@ def get_log() -> Logger:
 log: Logger = get_log()
 
 
-def manuscripts_by_persons(state: StateHandler, handler: DataHandler) -> None:
-    if state.ms_by_pers_step == Step.MS_by_Pers.Search_person:
-        __search_mss_by_person_step_search(state, handler)
+def manuscripts_by_persons(state: StateHandler) -> None:
+    if state.steps.search_mss_by_persons == Step.MS_by_Pers.Search_person:
+        __search_mss_by_person_step_search(state)
     else:
-        __search_mss_by_person_step_save_results(state, handler)
+        __search_mss_by_person_step_save_results(state)
 
 
-def __search_mss_by_person_step_search(state: StateHandler, handler: DataHandler) -> None:
+def __search_mss_by_person_step_search(state: StateHandler) -> None:
+    handler = state.data_handler
     with st.form("search_ms_by_person"):
         st.subheader("Select Person(s)")
         persons = list(handler.person_matrix.columns)
@@ -40,22 +41,23 @@ def __search_mss_by_person_step_search(state: StateHandler, handler: DataHandler
                 state.search_ms_by_person_result_mss = res
                 state.search_ms_by_person_result_ppl = ppl
                 state.search_ms_by_person_result_mode = mode
-            state.ms_by_pers_step = Step.MS_by_Pers.Store_Results
+            state.steps.search_mss_by_persons = Step.MS_by_Pers.Store_Results
             st.experimental_rerun()
 
 
-def __search_mss_by_person_step_save_results(state: StateHandler, handler: DataHandler) -> None:
+def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
+    handler = state.data_handler
     results = state.search_ms_by_person_result_mss
     if not results:
-        state.ms_by_pers_step = Step.MS_by_Pers.Search_person
+        state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
         st.experimental_rerun()
     ppl = state.search_ms_by_person_result_ppl
     mode = state.search_ms_by_person_result_mode
     st.subheader("Person(s) selected")
-    query = f' {mode} '.join([f"{handler.get_person_name(x)} ({x})" for x in ppl])
+    query = f' {mode.value} '.join([f"{handler.get_person_name(x)} ({x})" for x in ppl])
     st.write(f"Searched for '{query}', found {len(results)} manuscripts")
     if st.button("Back"):
-        state.ms_by_pers_step = Step.MS_by_Pers.Search_person
+        state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
         st.experimental_rerun()
     with st.expander('view results as list', False):
         st.write(results)
@@ -66,7 +68,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler, handler: DataH
                 grp = Group(GroupType.ManuscriptGroup, name, set(results))
                 log.debug(f"Should be saving group: {grp}")
                 handler.groups.set(grp)
-                state.ms_by_pers_step = Step.MS_by_Pers.Search_person
+                state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                 st.experimental_rerun()
     if handler.groups.manuscript_groups:
         with st.expander("Add results to existing group", False):
@@ -90,7 +92,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler, handler: DataH
                             new_items = previous_group.items.union(set(results))
                         new_group = Group(previous_group.group_type,  new_name, new_items)
                         handler.groups.set(new_group)
-                        state.ms_by_pers_step = Step.MS_by_Pers.Search_person
+                        state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                         st.experimental_rerun()
     if st.button('Show metadata for results'):
         with st.spinner('loading metadata...'):
