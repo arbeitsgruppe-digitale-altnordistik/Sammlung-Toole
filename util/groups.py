@@ -68,7 +68,7 @@ class Groups:
             log.debug(f"Group Details: {group}")
             log.debug(f"Currently Stored - MSS: {self.manuscript_groups}")
             log.debug(f"Currently Stored - PPL: {self.person_groups}")
-            log.debug(f"Currently Stored - TXT: {self.manuscript_groups}")
+            log.debug(f"Currently Stored - TXT: {self.text_groups}")
         log.debug(f"Group contains new: ms={len(self.manuscript_groups)} txt={len(self.text_groups)} ppl={len(self.person_groups)}")
         self.cache()
 

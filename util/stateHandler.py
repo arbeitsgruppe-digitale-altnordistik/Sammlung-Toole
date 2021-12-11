@@ -19,6 +19,10 @@ class Step:
         Search_person = 1
         Store_Results = 2
 
+    class Pers_by_Ms(Enum):
+        Search_Ms = 1
+        Store_Results = 2
+
     class Browse_Groups(Enum):
         Browse = "browse"
         Combine_MSS = "combine_manuscripts"
@@ -26,9 +30,11 @@ class Step:
     def reset(self) -> None:
         self.browseGroups = Step.Browse_Groups.Browse
         self.search_mss_by_persons = Step.MS_by_Pers.Search_person
+        self.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
 
     browseGroups: Browse_Groups = Browse_Groups.Browse
     search_mss_by_persons: MS_by_Pers = MS_by_Pers.Search_person
+    search_ppl_by_mss: Pers_by_Ms = Pers_by_Ms.Search_Ms
 
 
 class SearchState:
@@ -61,4 +67,7 @@ class StateHandler:
         self.search_ms_by_person_result_mss: List[str] = []
         self.search_ms_by_person_result_ppl: List[str] = []
         self.search_ms_by_person_result_mode: SearchOptions = SearchOptions.CONTAINS_ALL
+        self.search_person_by_ms_result_mss: List[str] = []
+        self.search_person_by_ms_result_ppl: List[str] = []
+        self.search_person_by_ms_result_mode: SearchOptions = SearchOptions.CONTAINS_ALL
         self.steps: Step = Step()

@@ -5,7 +5,7 @@ from util.datahandler import DataHandler
 from util.stateHandler import StateHandler, Step
 
 
-@st.experimental_singleton
+@st.experimental_singleton  # type: ignore
 def get_log() -> Logger:
     return utils.get_logger(__name__)
 
@@ -20,15 +20,17 @@ def browse_groups(state: StateHandler) -> None:
     st.title("Groups")
     if state.steps.browseGroups == Step.Browse_Groups.Browse:
         st.header("Manuscript Groups")
-        mss = [(b.name, f"{len(b.items)} Manuscripts") for a, b in groups.manuscript_groups.items()]
+        mss = [(b.name, f"{len(b.items)} Manuscripts", b.date.strftime('%c')) for a, b in groups.manuscript_groups.items()]
         st.table(mss)
         if st.button("Combine existing groups to a new group"):
             state.steps.browseGroups = Step.Browse_Groups.Combine_MSS
             st.experimental_rerun()
         st.header("Text Groups")
-        st.table(groups.text_groups)
+        txt = [(b.name, f"{len(b.items)} Texts", b.date.strftime('%c')) for a, b in groups.text_groups.items()]
+        st.table(txt)
         st.header("People Groups")
-        st.table(groups.person_groups)
+        ppl = [(b.name, f"{len(b.items)} People", b.date.strftime('%c')) for a, b in groups.person_groups.items()]
+        st.table(ppl)
     elif state.steps.browseGroups == Step.Browse_Groups.Combine_MSS:
         st.header("Combine Manuscript Groups")
         if st.button("Back"):

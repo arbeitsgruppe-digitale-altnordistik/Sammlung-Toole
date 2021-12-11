@@ -71,7 +71,7 @@ def search_page(a: Any) -> None:
         'How To': pages.search.how_to,
         'Handrit URLs': handrit_urls,
         'Search Manuscripts by related People': pages.search.manuscripts_by_persons,
-        'Search People by related Manuscripts': search_ppl_by_manuscripts,
+        'Search People by related Manuscripts': pages.search.persons_by_manuscripts,
         'Search Manuscripts by Text': search_mss_by_texts,
         'Search Texts contained by Manuscripts': search_text_by_mss,
     }
@@ -79,31 +79,6 @@ def search_page(a: Any) -> None:
     choice = st.sidebar.radio('What would you like to search?', options=opts.keys())
     fn = opts[choice]
     fn(state)
-
-
-def search_ppl_by_manuscripts(_: Any) -> None:
-    mss_ = list(dataHandler.person_matrix.index)
-    _mss = dataHandler.manuscripts[dataHandler.manuscripts['full_id'].isin(mss_)]
-    mss = _mss['shelfmark'].tolist()
-    with st.expander('View all manuscripts', False):
-        st.write(mss)
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', modes.keys())
-    mode = modes[mode_selection]
-    log.debug(f'Search Mode: {mode}')
-    msss_ = st.multiselect('Search Manuscript', mss)
-    _msss = _mss[_mss['shelfmark'].isin(msss_)]
-    msss = list(set(_msss['full_id'].tolist()))
-    log.debug(f'selected manuscript(s): {msss}')
-    with st.spinner('Searching...'):
-        results = dataHandler.search_persons_related_to_manuscripts(msss, mode)
-    st.write(f'Found {len(results)} people')
-    if results:
-        with st.expander('view results', False):
-            full_names = {k: dataHandler.get_person_name(k) for k in results}
-            st.write(full_names)
-    # TODO: should do something with it here (further search, subcorpora, ...)
 
 
 def search_text_by_mss(_: Any) -> None:
@@ -155,7 +130,7 @@ def search_mss_by_texts(_: Any) -> None:
                 count += 1
     if st.button('Get metadata for results'):
         with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)
+            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)  # type: ignore
         st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
 
