@@ -16,6 +16,50 @@ def get_log() -> Logger:
 log: Logger = get_log()
 
 
+# How To Search
+# =============
+# region
+
+def how_to(_: StateHandler) -> None:
+    st.markdown("""
+                ### How To Search
+                
+                Please select one of the search options on the left in the navigation bar.
+                
+                The following search options are available:
+                
+                - Handrit URLs:  
+                  Use one/multiple search- or browse result URL from Handrit.is.  
+                  The tool will find the manuscripts as retuirned by Handrit.is, and show the according metadata.
+                
+                
+                - Manuscript by Person:  
+                  Select one/multiple persons form the Handrit.is authority file.  
+                  The tool will find all manuscripts related to one/all of the selected people.
+                
+                
+                - Person by Manuscript:  
+                  Select one/multiple manuscripts form the Handrit.is collection.  
+                  The tool will find all people related to one/all of the selected manuscripts.
+                
+                
+                - Manuscript by Text:  
+                  Select one/multiple texts mentioned in the Handrit.is collections.  
+                  The tool will find all manuscripts related to one/all of the selected texts.
+                
+                
+                - Text by Manuscript:  
+                  Select one/multiple manuscripts form the Handrit.is collection.  
+                  The tool will find all texts occuring in one/all of the selected manuscripts.
+                """)
+
+# endregion
+
+
+# Search for manuscripts by person
+# ================================
+# region
+
 def manuscripts_by_persons(state: StateHandler) -> None:
     if state.steps.search_mss_by_persons == Step.MS_by_Pers.Search_person:
         __search_mss_by_person_step_search(state)
@@ -94,7 +138,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                         st.experimental_rerun()
-    if st.button('Show metadata for results'):
-        with st.spinner('loading metadata...'):
-            meta = handler.search_manuscript_data(full_ids=results).reset_index(drop=True)
-        st.write(meta)
+    meta = handler.search_manuscript_data(full_ids=results).reset_index(drop=True)
+    st.dataframe(meta)
+
+# endregion

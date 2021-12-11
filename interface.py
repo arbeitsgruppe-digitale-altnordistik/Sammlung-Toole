@@ -68,7 +68,7 @@ def adv_options(a: Any) -> None:
 def search_page(a: Any) -> None:
     st.header('Search Page')
     opts = {
-        'How To': explain_search_options,
+        'How To': pages.search.how_to,
         'Handrit URLs': handrit_urls,
         'Search Manuscripts by related People': pages.search.manuscripts_by_persons,
         'Search People by related Manuscripts': search_ppl_by_manuscripts,
@@ -158,11 +158,6 @@ def search_mss_by_texts(_: Any) -> None:
             meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)
         st.write(meta)
     # TODO: should do something with it here (export, subcorpora, ...)
-
-
-def explain_search_options(_: Any) -> None:
-    st.write('Please choose a search option.')
-    # TODO: more explanation
 
 
 def handrit_urls(_: Any) -> None:
