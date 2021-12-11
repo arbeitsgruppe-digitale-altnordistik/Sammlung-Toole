@@ -13,6 +13,7 @@ log = utils.get_logger(__name__)
 
 
 class GroupType(Enum):
+    """Enum defining the type of a group"""
     ManuscriptGroup = "msgroup"
     TextGroup = "txtgroup"
     PersonGroup = "persgroup"
@@ -20,6 +21,16 @@ class GroupType(Enum):
 
 @dataclass
 class Group:
+    """Group dataclass
+
+    Represents a group of search results of a certain type.
+
+    Args:
+        group_type (GroupType): the type of object grouped in this group.
+        name (str): the human readable name of the group.
+        date (datetime, optional): creation date of the group. Optional. If not provided, the current instant will be used.
+        group_id (UUID, optional): unique ID of the groupe. Optional. If not provbided, a new random UUID will be generated.
+    """
     group_type: GroupType
     name: str
     items: Set[str]
@@ -29,12 +40,23 @@ class Group:
 
 @dataclass
 class Groups:
+    """Collects groups.
+
+    This class holds multiple groups. A dictionary per type of GroupType maps UUIDs to Group objects.
+
+    The class provides methods for accessing groups as well as for caching the entire Groups object.
+    """
     manuscript_groups: Dict[uuid.UUID, Group] = field(default_factory=dict)
     text_groups: Dict[uuid.UUID, Group] = field(default_factory=dict)
     person_groups: Dict[uuid.UUID, Group] = field(default_factory=dict)
 
     @staticmethod
     def from_cache() -> Optional[Groups]:
+        """Load a previousely pickled Groups object from cache.
+
+        Returns:
+            Optional[Groups]: Returns the Groups object from cache, if available. None otherwise.
+        """
         if not os.path.exists(GROUPS_PATH_PICKLE):
             return None
         try:
@@ -48,6 +70,7 @@ class Groups:
             return None
 
     def cache(self) -> None:
+        """Cache the Groups object as a picle file."""
         try:
             with open(GROUPS_PATH_PICKLE, 'wb') as f:
                 pickle.dump(self, f)
@@ -56,6 +79,15 @@ class Groups:
             log.debug(f"Current Group state: {self}")
 
     def set(self, group: Group) -> None:
+        """Set a Group value
+
+        Add the Group object to the respective dictionary, depending on the GroupType.
+
+        Will overwrite a existing group, if a Group with the same UUID already exists.
+
+        Args:
+            group (Group): The Group to be set (added/updated).
+        """
         log.info(f"Set Group: {group.group_id} - {group.name} ({group.group_type})")
         if group.group_type == GroupType.ManuscriptGroup:
             self.manuscript_groups[group.group_id] = group
@@ -73,6 +105,11 @@ class Groups:
         self.cache()
 
     def remove(self, group: Union[Group, List[Group]]) -> None:
+        """Remove one or multiple Group objectss from the Groups instance.
+
+        Args:
+            group (Union[Group, List[Group]]): A Group or a List of Group objects to be removed.
+        """
         gg = group if isinstance(group, list) else [group]
         for g in gg:
             if g.group_type == GroupType.ManuscriptGroup:
@@ -83,6 +120,14 @@ class Groups:
                 self.person_groups.pop(g.group_id)
 
     def get_names(self, type: Optional[GroupType]) -> List[str]:
+        """Gets the Group names for all the Groups stored in the instance, optionally only for one GroupType.
+
+        Args:
+            type (Optional[GroupType]): The GroupType to limit the search to. Optional. If none provided, all types will be considered.
+
+        Returns:
+            List[str]: A list of group names, possibly empty.
+        """
         if type == GroupType.ManuscriptGroup:
             return [g.name for _, g in self.manuscript_groups.items()]
         if type == GroupType.TextGroup:
@@ -92,6 +137,15 @@ class Groups:
         return self.get_names(GroupType.ManuscriptGroup) + self.get_names(GroupType.PersonGroup) + self.get_names(GroupType.TextGroup)
 
     def get_group_by_name(self, name: str, type: Optional[GroupType]) -> Optional[Group]:
+        """Get a group by its name.
+
+        Args:
+            name (str): the group name to search for.
+            type (Optional[GroupType]): limit the search to a specific GroupType. Optional. If none provided, all types will be considered.
+
+        Returns:
+            Optional[Group]: A group fitting the name. None, if no Group with the specified name was found. If multiple groups share the same name, the first encounter will be returned.
+        """
         if type == GroupType.ManuscriptGroup:
             for v in self.manuscript_groups.values():
                 if v.name == name:

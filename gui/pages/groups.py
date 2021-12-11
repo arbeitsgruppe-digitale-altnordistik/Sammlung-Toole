@@ -14,6 +14,13 @@ log: Logger = get_log()
 
 
 def browse_groups(state: StateHandler) -> None:
+    """Page: Browse Groups
+
+    This page of the streamlit app allows browsing the different groups stored in the data handler.
+
+    Args:
+        state (StateHandler): The StateHandler object orchestrating the current session state.
+    """
     handler: DataHandler = state.data_handler
     groups = handler.groups
     log.debug(f"Browsing Groups: {groups}")

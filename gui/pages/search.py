@@ -21,6 +21,7 @@ log: Logger = get_log()
 # region
 
 def how_to(_: StateHandler) -> None:
+    """How-To page of the search page"""
     st.markdown("""
                 ### How To Search
                 
@@ -61,6 +62,11 @@ def how_to(_: StateHandler) -> None:
 # region
 
 def manuscripts_by_persons(state: StateHandler) -> None:
+    """Search Page: Search for manuscripts by persons related to the manuscripts.
+
+    Args:
+        state (StateHandler): The current session state.
+    """
     if state.steps.search_mss_by_persons == Step.MS_by_Pers.Search_person:
         __search_mss_by_person_step_search(state)
     else:
@@ -68,6 +74,9 @@ def manuscripts_by_persons(state: StateHandler) -> None:
 
 
 def __search_mss_by_person_step_search(state: StateHandler) -> None:
+    """
+    Step 1 of this search: Select person(s).
+    """
     handler = state.data_handler
     with st.form("search_ms_by_person"):
         st.subheader("Select Person(s)")
@@ -76,7 +85,7 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
         mode_selection = st.radio('Search mode', modes.keys())
         mode = modes[mode_selection]
-        ppl = st.multiselect('Search Person', persons, format_func=lambda x: f"{handler.get_person_name(x)} ({x})")
+        ppl = st.multiselect('Select Person', persons, format_func=lambda x: f"{handler.get_person_name(x)} ({x})")
         if st.form_submit_button("Search Manuscripts"):
             log.debug(f'Search Mode: {mode}')
             log.debug(f'selected people: {ppl}')
@@ -90,6 +99,9 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
 
 
 def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
+    """
+    Step 2 of this search: Do something with the result.
+    """
     handler = state.data_handler
     results = state.search_ms_by_person_result_mss
     if not results:
@@ -140,6 +152,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
                         st.experimental_rerun()
     meta = handler.search_manuscript_data(full_ids=results).reset_index(drop=True)  # type: ignore
     st.dataframe(meta)
+    # TODO: visualization/citavi-export of result
 
 # endregion
 
@@ -149,6 +162,11 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
 # region
 
 def persons_by_manuscripts(state: StateHandler) -> None:
+    """Search Page: Search for persons by manuscripts related to the person.
+
+    Args:
+        state (StateHandler): The current session state.
+    """
     if state.steps.search_ppl_by_mss == Step.Pers_by_Ms.Search_Ms:
         __search_person_by_mss_step_search(state)
     else:
@@ -156,6 +174,9 @@ def persons_by_manuscripts(state: StateHandler) -> None:
 
 
 def __search_person_by_mss_step_search(state: StateHandler) -> None:
+    """
+    Step 1 of this search: Select manuscript(s).
+    """
     handler = state.data_handler
     with st.form("search_person_by_ms"):
         st.subheader("Select Manuscript(s)")
@@ -179,6 +200,9 @@ def __search_person_by_mss_step_search(state: StateHandler) -> None:
 
 
 def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
+    """
+    Step 2 of this search: Do something with the result.
+    """
     handler = state.data_handler
     results = state.search_person_by_ms_result_ppl
     if not results:
@@ -228,5 +252,6 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
                         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
                         st.experimental_rerun()
     st.table([(x, handler.get_person_name(x)) for x in results])
+    # TODO: visualization/citavi-export of result
 
 # endregion
