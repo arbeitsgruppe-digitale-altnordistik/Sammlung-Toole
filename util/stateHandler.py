@@ -1,9 +1,10 @@
-from typing import Any, List, Optional
-import pandas as pd
-from util.datahandler import DataHandler
-from enum import Enum, auto
 from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import Any, List
 
+import pandas as pd
+
+from util.datahandler import DataHandler
 from util.utils import SearchOptions
 
 # LATER: this could be divided with nested classes for more order
@@ -40,34 +41,32 @@ class Step:
 class SearchState:
     @dataclass
     class MS_by_Pers:
-        mss: List[str]
-        ppl: List[str]
-        mode: SearchOptions
+        mss: List[str] = field(default_factory=list)
+        ppl: List[str] = field(default_factory=list)
+        mode: SearchOptions = SearchOptions.CONTAINS_ALL
+
+    @dataclass
+    class Pers_by_MS:
+        mss: List[str] = field(default_factory=list)
+        ppl: List[str] = field(default_factory=list)
+        mode: SearchOptions = SearchOptions.CONTAINS_ALL
+
+    ms_by_pers = MS_by_Pers()
+    pers_by_ms = Pers_by_MS()
 
 
 class StateHandler:
+    data_handler: DataHandler
+
     def __init__(self) -> None:
         self.currentData = pd.DataFrame()
-        self.resultMode = ''
         self.currentURLs_str: str = ''
         self.currentURL_list: List[str] = []
-        self.currentSURL: str = ''
-        self.currentBURL = ''  # TODO: check what's still used
-        self.URLType = ''
-        # self.multiSearch = 'False'
-        self.multiBrowse = 'False'
         self.joinMode = 'All'
         self.didRun = 'dnr'
         self.CitaviSelect: Any = []
         self.handrit_step: Step.Handrit_URL = Step.Handrit_URL.Preprocessing
-        # self.ms_by_pers_step: Step.MS_by_Pers = Step.MS_by_Pers.Search_person
         self.postStep = ''
         self.currentCitaviData = pd.DataFrame()
-        self.data_handler: DataHandler = None  # type: ignore
-        self.search_ms_by_person_result_mss: List[str] = []
-        self.search_ms_by_person_result_ppl: List[str] = []
-        self.search_ms_by_person_result_mode: SearchOptions = SearchOptions.CONTAINS_ALL
-        self.search_person_by_ms_result_mss: List[str] = []
-        self.search_person_by_ms_result_ppl: List[str] = []
-        self.search_person_by_ms_result_mode: SearchOptions = SearchOptions.CONTAINS_ALL
+        self.searchState = SearchState()
         self.steps: Step = Step()

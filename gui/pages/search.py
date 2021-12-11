@@ -91,9 +91,9 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
             log.debug(f'selected people: {ppl}')
             with st.spinner('Searching...'):
                 res = handler.search_manuscripts_related_to_persons(ppl, mode)
-                state.search_ms_by_person_result_mss = res
-                state.search_ms_by_person_result_ppl = ppl
-                state.search_ms_by_person_result_mode = mode
+                state.searchState.ms_by_pers.mss = res
+                state.searchState.ms_by_pers.ppl = ppl
+                state.searchState.ms_by_pers.mode = mode
             state.steps.search_mss_by_persons = Step.MS_by_Pers.Store_Results
             st.experimental_rerun()
 
@@ -103,12 +103,12 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
     Step 2 of this search: Do something with the result.
     """
     handler = state.data_handler
-    results = state.search_ms_by_person_result_mss
+    results = state.searchState.ms_by_pers.mss
     if not results:
         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
         st.experimental_rerun()
-    ppl = state.search_ms_by_person_result_ppl
-    mode = state.search_ms_by_person_result_mode
+    ppl = state.searchState.ms_by_pers.ppl
+    mode = state.searchState.ms_by_pers.mode
     st.subheader("Person(s) selected")
     query = f' {mode.value} '.join([f"{handler.get_person_name(x)} ({x})" for x in ppl])
     st.write(f"Searched for '{query}', found {len(results)} manuscripts")
@@ -192,9 +192,9 @@ def __search_person_by_mss_step_search(state: StateHandler) -> None:
             log.debug(f'selected people: {mss}')
             with st.spinner('Searching...'):
                 res = handler.search_persons_related_to_manuscripts(mss, mode)
-                state.search_person_by_ms_result_ppl = res
-                state.search_person_by_ms_result_mss = mss
-                state.search_person_by_ms_result_mode = mode
+                state.searchState.pers_by_ms.ppl = res
+                state.searchState.pers_by_ms.mss = mss
+                state.searchState.pers_by_ms.mode = mode
             state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Store_Results
             st.experimental_rerun()
 
@@ -204,12 +204,12 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
     Step 2 of this search: Do something with the result.
     """
     handler = state.data_handler
-    results = state.search_person_by_ms_result_ppl
+    results = state.searchState.pers_by_ms.ppl
     if not results:
         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
         st.experimental_rerun()
-    mss = state.search_person_by_ms_result_mss
-    mode = state.search_person_by_ms_result_mode
+    mss = state.searchState.pers_by_ms.mss
+    mode = state.searchState.pers_by_ms.mode
     st.subheader("Manuscript(s) selected")
     query = f' {mode.value} '.join([f"({x})" for x in mss])
     st.write(f"Searched for '{query}', found {len(results)} {'person' if len(results) == 1 else 'people'}")
