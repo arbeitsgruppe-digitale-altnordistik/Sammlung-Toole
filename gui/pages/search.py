@@ -119,7 +119,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
         st.write(results)
     with st.expander("Save results as group", False):
         with st.form("save_group"):
-            name = st.text_input('Group Name', f'Search results for person search <{ppl}>')
+            name = st.text_input('Group Name', f'Search results for <{ppl}>')
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.ManuscriptGroup, name, set(results))
                 log.debug(f"Should be saving group: {grp}")
@@ -136,12 +136,12 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
                 }
                 mode_selection = st.radio('Search mode', modes.keys())
                 mode = modes[mode_selection]
-                name = st.text_input('Group Name', f'Search results for person search <{ppl} AND/OR ([PREVIOUS_QUERY])>')
+                name = st.text_input('Group Name', f'Search results for <{ppl} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
                     previous_group = handler.groups.get_group_by_name(previous_name, GroupType.ManuscriptGroup)
                     if previous_group:
-                        previous_query = previous_name.removeprefix("Search results for person search <").removesuffix(">")
-                        new_name = f'Search results for person search <{ppl} {mode.value} ({previous_query})>'
+                        previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
+                        new_name = f'Search results for <{ppl} {mode.value} ({previous_query})>'
                         if mode == SearchOptions.CONTAINS_ALL:
                             new_items = previous_group.items.intersection(set(results))
                         else:
@@ -189,7 +189,7 @@ def __search_person_by_mss_step_search(state: StateHandler) -> None:
         mss = st.multiselect('Select Manuscript', manuscripts)
         if st.form_submit_button("Search People"):
             log.debug(f'Search Mode: {mode}')
-            log.debug(f'selected people: {mss}')
+            log.debug(f'selected manuscripts: {mss}')
             with st.spinner('Searching...'):
                 res = handler.search_persons_related_to_manuscripts(mss, mode)
                 state.searchState.pers_by_ms.ppl = res
@@ -220,7 +220,7 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
         st.write(results)
     with st.expander("Save results as group", False):
         with st.form("save_group"):
-            name = st.text_input('Group Name', f'Search results for manuscript search <{mss}>')
+            name = st.text_input('Group Name', f'Search results for <{mss}>')
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.PersonGroup, name, set(results))
                 log.debug(f"Should be saving group: {grp}")
@@ -237,12 +237,12 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
                 }
                 mode_selection = st.radio('Search mode', modes.keys())
                 mode = modes[mode_selection]
-                name = st.text_input('Group Name', f'Search results for person search <{mss} AND/OR ([PREVIOUS_QUERY])>')
+                name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
                     previous_group = handler.groups.get_group_by_name(previous_name, GroupType.PersonGroup)
                     if previous_group:
-                        previous_query = previous_name.removeprefix("Search results for person search <").removesuffix(">")
-                        new_name = f'Search results for person search <{mss} {mode.value} ({previous_query})>'
+                        previous_query = previous_name.removeprefix("Search results for<").removesuffix(">")
+                        new_name = f'Search results for <{mss} {mode.value} ({previous_query})>'
                         if mode == SearchOptions.CONTAINS_ALL:
                             new_items = previous_group.items.intersection(set(results))
                         else:
@@ -252,6 +252,207 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
                         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
                         st.experimental_rerun()
     st.table([(x, handler.get_person_name(x)) for x in results])
+    # TODO: visualization/citavi-export of result
+
+# endregion
+
+
+# Search for manuscripts by text
+# ==============================
+# region
+
+def manuscripts_by_texts(state: StateHandler) -> None:
+    """Search Page: Search for manuscripts by texts within the manuscripts.
+
+    Args:
+        state (StateHandler): The current session state.
+    """
+    if state.steps.search_mss_by_txt == Step.MS_by_Txt.Search_Txt:
+        __search_mss_by_text_step_search(state)
+    else:
+        __search_mss_by_text_step_save_results(state)
+
+
+def __search_mss_by_text_step_search(state: StateHandler) -> None:
+    """
+    Step 1 of this search: Select text(s).
+    """
+    handler = state.data_handler
+    with st.form("search_ms_by_text"):
+        st.subheader("Select Text(s)")
+        texts = list(handler.text_matrix.columns)
+        modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+                 'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+        mode_selection = st.radio('Search mode', modes.keys())
+        mode = modes[mode_selection]
+        txt = st.multiselect('Select Person', texts)
+        # LATER: find format function to make it pretty
+        if st.form_submit_button("Search Manuscripts"):
+            log.debug(f'Search Mode: {mode}')
+            log.debug(f'selected people: {txt}')
+            with st.spinner('Searching...'):
+                res = handler.search_manuscripts_containing_texts(txt, mode)
+                state.searchState.ms_by_txt.mss = res
+                state.searchState.ms_by_txt.txt = txt
+                state.searchState.ms_by_txt.mode = mode
+            state.steps.search_mss_by_txt = Step.MS_by_Txt.Store_Results
+            st.experimental_rerun()
+
+
+def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
+    """
+    Step 2 of this search: Do something with the result.
+    """
+    handler = state.data_handler
+    results = state.searchState.ms_by_pers.mss
+    if not results:
+        state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
+        st.experimental_rerun()
+    txt = state.searchState.ms_by_txt.txt
+    mode = state.searchState.ms_by_txt.mode
+    st.subheader("Text(s) selected")
+    query = f' {mode.value} '.join(txt)
+    st.write(f"Searched for '{query}', found {len(results)} manuscripts")
+    if st.button("Back"):
+        state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
+        st.experimental_rerun()
+    with st.expander('view results as list', False):
+        st.write(results)
+    with st.expander("Save results as group", False):
+        with st.form("save_group"):
+            name = st.text_input('Group Name', f'Search results for <{txt}>')
+            if st.form_submit_button("Save"):
+                grp = Group(GroupType.ManuscriptGroup, name, set(results))
+                log.debug(f"Should be saving group: {grp}")
+                handler.groups.set(grp)
+                state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
+                st.experimental_rerun()
+    if handler.groups.manuscript_groups:
+        with st.expander("Add results to existing group", False):
+            with st.form("add_to_group"):
+                previous_name = st.radio("Select a group", handler.groups.get_names(GroupType.ManuscriptGroup))
+                modes = {
+                    'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
+                    'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+                }
+                mode_selection = st.radio('Search mode', modes.keys())
+                mode = modes[mode_selection]
+                name = st.text_input('Group Name', f'Search results for <{txt} AND/OR ([PREVIOUS_QUERY])>')
+                if st.form_submit_button("Save"):
+                    previous_group = handler.groups.get_group_by_name(previous_name, GroupType.ManuscriptGroup)
+                    if previous_group:
+                        previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
+                        new_name = f'Search results for <{txt} {mode.value} ({previous_query})>'
+                        if mode == SearchOptions.CONTAINS_ALL:
+                            new_items = previous_group.items.intersection(set(results))
+                        else:
+                            new_items = previous_group.items.union(set(results))
+                        new_group = Group(previous_group.group_type,  new_name, new_items)
+                        handler.groups.set(new_group)
+                        state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
+                        st.experimental_rerun()
+    meta = handler.search_manuscript_data(full_ids=results).reset_index(drop=True)  # type: ignore
+    st.dataframe(meta)
+    # TODO: visualization/citavi-export of result
+
+# endregion
+
+
+# Search for texts by manuscript
+# ==============================
+# region
+
+def text_by_manuscripts(state: StateHandler) -> None:
+    """Search Page: Search for texts by manuscripts containing the text.
+
+    Args:
+        state (StateHandler): The current session state.
+    """
+    if state.steps.search_ppl_by_mss == Step.Pers_by_Ms.Search_Ms:
+        __search_text_by_mss_step_search(state)
+    else:
+        __search_text_by_mss_step_save_results(state)
+
+
+def __search_text_by_mss_step_search(state: StateHandler) -> None:
+    """
+    Step 1 of this search: Select manuscript(s).
+    """
+    handler = state.data_handler
+    with st.form("search_text_by_ms"):
+        st.subheader("Select Manuscript(s)")
+        manuscripts = list(handler.text_matrix.index)
+        modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+                 'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+        mode_selection = st.radio('Search mode', modes.keys())
+        mode = modes[mode_selection]
+        # LATER: come up with a nice format function here (ideally including ms nicknames, sothat one could find "Flateyjarbók" etc.)
+        mss = st.multiselect('Select Manuscript', manuscripts)
+        if st.form_submit_button("Search Texts"):
+            log.debug(f'Search Mode: {mode}')
+            log.debug(f'selected manuscripts: {mss}')
+            with st.spinner('Searching...'):
+                res = handler.search_texts_contained_by_manuscripts(mss, mode)
+                state.searchState.txt_by_ms.txt = res
+                state.searchState.txt_by_ms.mss = mss
+                state.searchState.txt_by_ms.mode = mode
+            state.steps.search_ppl_by_mss = Step.Txt_by_Ms.Store_Results
+            st.experimental_rerun()
+
+
+def __search_text_by_mss_step_save_results(state: StateHandler) -> None:
+    """
+    Step 2 of this search: Do something with the result.
+    """
+    handler = state.data_handler
+    results = state.searchState.txt_by_ms.txt
+    if not results:
+        state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
+        st.experimental_rerun()
+    mss = state.searchState.txt_by_ms.mss
+    mode = state.searchState.txt_by_ms.mode
+    st.subheader("Manuscript(s) selected")
+    query = f' {mode.value} '.join([f"({x})" for x in mss])
+    st.write(f"Searched for '{query}', found {len(results)} {'text' if len(results) == 1 else 'texts'}")
+    if st.button("Back"):
+        state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
+        st.experimental_rerun()
+    with st.expander('view results as list', False):
+        st.write(results)
+    with st.expander("Save results as group", False):
+        with st.form("save_group"):
+            name = st.text_input('Group Name', f'Search results for manuscript search <{mss}>')
+            if st.form_submit_button("Save"):
+                grp = Group(GroupType.TextGroup, name, set(results))
+                log.debug(f"Should be saving group: {grp}")
+                handler.groups.set(grp)
+                state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
+                st.experimental_rerun()
+    if handler.groups.text_groups:
+        with st.expander("Add results to existing group", False):
+            with st.form("add_to_group"):
+                previous_name = st.radio("Select a group", handler.groups.get_names(GroupType.TextGroup))
+                modes = {
+                    'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
+                    'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+                }
+                mode_selection = st.radio('Search mode', modes.keys())
+                mode = modes[mode_selection]
+                name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
+                if st.form_submit_button("Save"):
+                    previous_group = handler.groups.get_group_by_name(previous_name, GroupType.PersonGroup)
+                    if previous_group:
+                        previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
+                        new_name = f'Search results for <{mss} {mode.value} ({previous_query})>'
+                        if mode == SearchOptions.CONTAINS_ALL:
+                            new_items = previous_group.items.intersection(set(results))
+                        else:
+                            new_items = previous_group.items.union(set(results))
+                        new_group = Group(previous_group.group_type,  new_name, new_items)
+                        handler.groups.set(new_group)
+                        state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
+                        st.experimental_rerun()
+    st.table(results)
     # TODO: visualization/citavi-export of result
 
 # endregion

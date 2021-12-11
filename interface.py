@@ -72,67 +72,13 @@ def search_page(a: Any) -> None:
         'Handrit URLs': handrit_urls,
         'Search Manuscripts by related People': pages.search.manuscripts_by_persons,
         'Search People by related Manuscripts': pages.search.persons_by_manuscripts,
-        'Search Manuscripts by Text': search_mss_by_texts,
-        'Search Texts contained by Manuscripts': search_text_by_mss,
+        'Search Manuscripts by Text': pages.search.manuscripts_by_texts,
+        'Search Texts contained by Manuscripts': pages.search.text_by_manuscripts,
     }
     st.sidebar.write("---")
     choice = st.sidebar.radio('What would you like to search?', options=opts.keys())
     fn = opts[choice]
     fn(state)
-
-
-def search_text_by_mss(_: Any) -> None:
-    mss = list(set(dataHandler.manuscripts['shelfmark']))
-    with st.expander('View all Manuscripts', False):
-        st.write(mss)
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', modes.keys())
-    mode = modes[mode_selection]
-    log.debug(f'Search Mode: {mode}')
-    msss = st.multiselect('Search Manuscripts', mss)
-    log.debug(f'selected manuscripts: {msss}')
-    with st.spinner('Searching...'):
-        results = dataHandler.search_texts_contained_by_manuscripts(msss, mode)
-    st.write(f'Found {len(results)} texts')
-    if results:
-        with st.expander('view results', False):
-            preview = st.container()
-            preview.write("List of texts found:")
-            count = 1
-            for i in results:
-                preview.write(f"{count}: {i}")
-                count += 1
-    # TODO: do something with it here (further search? subcorpus, ...)
-
-
-def search_mss_by_texts(_: Any) -> None:
-    texts = list(dataHandler.get_all_texts().columns)
-    with st.expander('View all Texts', False):
-        st.write(texts)
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', modes.keys())
-    mode = modes[mode_selection]
-    log.debug(f'Search Mode: {mode}')
-    txts = st.multiselect('Search Texts', texts)
-    log.debug(f'selected texts: {txts}')
-    with st.spinner('Searching...'):
-        results = dataHandler.search_manuscripts_containing_texts(txts, mode)
-    st.write(f'Found {len(results)} manuscripts')
-    if results:
-        with st.expander('view results', False):
-            preview = st.container()
-            preview.write("List of manuscripts found:")
-            count = 1
-            for i in results:
-                preview.write(f"{count}: {i}")
-                count += 1
-    if st.button('Get metadata for results'):
-        with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)  # type: ignore
-        st.write(meta)
-    # TODO: should do something with it here (export, subcorpora, ...)
 
 
 def handrit_urls(_: Any) -> None:
