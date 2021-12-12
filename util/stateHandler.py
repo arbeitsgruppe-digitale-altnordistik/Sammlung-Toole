@@ -7,8 +7,6 @@ import pandas as pd
 from util.datahandler import DataHandler
 from util.utils import SearchOptions
 
-# LATER: this could be divided with nested classes for more order
-
 
 class Step:
     class Handrit_URL(Enum):
@@ -33,8 +31,10 @@ class Step:
         Store_Results = 2
 
     class Browse_Groups(Enum):
-        Browse = "browse"
-        Combine_MSS = "combine_manuscripts"
+        Browse = 1
+        Combine_MSS = 2
+        Combine_TXT = 3
+        Combine_PPL = 4
 
     def reset(self) -> None:
         self.browseGroups = Step.Browse_Groups.Browse
