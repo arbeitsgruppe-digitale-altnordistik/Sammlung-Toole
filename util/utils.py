@@ -1,19 +1,21 @@
 from __future__ import annotations
+
+import json
 import logging
+import os
+import subprocess
+import sys
+from datetime import timedelta
+from enum import Enum
+from logging.handlers import RotatingFileHandler
+from time import time
 from typing import Any, Dict, List, Optional
-from plotly.missing_ipywidgets import FigureWidget
+
+import pandas as pd
+import plotly.express as px
 import requests
 from bs4 import BeautifulSoup
-import sys
-import plotly.express as px
-import pandas as pd
-import os
-from enum import Enum
-from time import time
-import json
-import subprocess
-from datetime import timedelta
-
+from plotly.missing_ipywidgets import FigureWidget
 
 __logs: List[logging.Logger] = []
 
@@ -233,12 +235,12 @@ def get_logger(name: str) -> logging.Logger:
     if not os.path.exists('logs'):
         os.mkdir('logs')
 
-    f_handler = logging.FileHandler('logs/warnings.log', mode='a', encoding='utf-8')
+    f_handler = RotatingFileHandler('logs/warnings.log', mode='a', maxBytes=1000000, backupCount=10, encoding='utf-8')
     f_handler.setLevel(logging.WARNING)
     f_handler.setFormatter(format)
     log.addHandler(f_handler)
 
-    f_handler2 = logging.FileHandler('logs/log.log', mode='a', encoding='utf-8')
+    f_handler2 = RotatingFileHandler('logs/log.log', mode='a', maxBytes=100000, backupCount=20, encoding='utf-8')
     f_handler2.setLevel(logging.DEBUG)
     f_handler2.setFormatter(format)
     log.addHandler(f_handler2)
