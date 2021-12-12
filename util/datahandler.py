@@ -455,7 +455,7 @@ class DataHandler:
         if not Inmss:
             log.debug('Searched for empty list of mss')
             return []
-        mss_ = self.manuscripts[self.manuscripts['full_id'].isin(Inmss)]  # TODO: check if all still works! changed from shelfmark to full_id, which might break other code
+        mss_ = self.manuscripts[self.manuscripts['full_id'].isin(Inmss)]
         mss = mss_['full_id'].tolist()
         df = self.text_matrix.transpose()
         if searchOption == SearchOptions.CONTAINS_ONE:
@@ -511,7 +511,7 @@ class DataHandler:
 
     def get_person_name(self, pers_id: str) -> str:
         """Get a person's name, identified by the person's ID"""
-        return self.person_names.get(pers_id)
+        return self.person_names.get(pers_id) or ""
 
     def get_person_ids(self, pers_name: str) -> List[str]:
         """Get IDs of all persons with a certain name"""
