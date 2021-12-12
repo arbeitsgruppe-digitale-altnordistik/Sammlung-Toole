@@ -1,140 +1,47 @@
-from typing import Optional
+from typing import Container, Optional
+import numpy as np
 import streamlit as st
 import pandas as pd
-import crawler
-from handrit_tamer import get_data_from_search_url as hSr
-from handrit_tamer import get_data_from_browse_url as hBr
-import base64
-from contextlib import contextmanager
-from io import StringIO
-from streamlit.report_thread import REPORT_CONTEXT_ATTR_NAME
-from threading import current_thread
-import sys
-from handrit_tamer import get_from_search_list as multiSearch
 from datetime import datetime
-import metadata
-from util import sessionState
+import markdown
+from util import sessionState, tamer
+from util import utils
+from util import datahandler
 from util.constants import IMAGE_HOME
-from datahandler import DataHandler
-
-# unused?
-import matplotlib
-import plotly.figure_factory as ff
-import plotly.express as px
-import streamlit.components.v1 as comps
+from util.stateHandler import StateHandler
+from util.utils import SearchOptions, Settings, GitUtil
+from util.datahandler import DataHandler
+from gui.guiUtils import Texts
 
 
-# System
-# ------
-
-# These three functions can be used as wrapper functions to redirect prints from terminal to the
-# web interface. This will not work directly with cached functions.
-
-
-@contextmanager
-def st_redirect(src, dst):
-    placeholder = st.empty()
-    output_func = getattr(placeholder, dst)
-
-    with StringIO() as buffer:
-        old_write = src.write
-
-        def new_write(b):
-            if getattr(current_thread(), REPORT_CONTEXT_ATTR_NAME, None):
-                buffer.write(b)
-                output_func(b)
-            else:
-                old_write(b)
-
-        try:
-            src.write = new_write
-            yield
-        finally:
-            src.write = old_write
+state: StateHandler
+dataHandler: DataHandler
+log = utils.get_logger(__name__)
+settings = Settings.get_settings()
 
 
-@contextmanager
-def st_stdout(dst):
-    with st_redirect(sys.stdout, dst):
-        yield
-
-
-@contextmanager
-def st_stderr(dst):
-    with st_redirect(sys.stderr, dst):
-        yield
-
-
-# Utility Functions
-# -----------------
-
-
-def get_handler():
-    st.spinner('Grabbing data handler...')
-    if DataHandler.is_cached() or DataHandler.has_data_available():
-        rebuild_handler()
+def get_handler() -> None:
+    if DataHandler.is_cached():
+        with st.spinner('Grabbing data handler...'):
+            rebuild_handler()
     else:
         st.sidebar.text("No data at hand. Needs loading first.")
         adv_options()
 
 
-def rebuild_all_button():
-    ''' This will run the crawl() function from the crawler, which will download everything
-    from handrit
-    '''
-    if st.sidebar.button("Download everything"):
-        st.write(f'Start: {datetime.now()}')
-        container = st.beta_container()
-        xmls, contents = crawler.crawl(use_cache=False, prog=container)
-        st.write(f'Finished: {datetime.now()}')
-        rebuild_handler(xmls, contents)
-
-
-def reload_with_cache():
+def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
     st.write(f'Start: {datetime.now()}')
-    container = st.beta_container()
-    crawler.crawl(use_cache=True, prog=container)
+    state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents)
     st.write(f'Finished: {datetime.now()}')
-
-
-def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None):
-    st.write(f'Start: {datetime.now()}')
-    container = st.beta_container()
-    state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents, prog=container)
-    st.write(f'Finished: {datetime.now()}')
-    full_menu()
-
-
-# def redo_xmls_wrap():  # QUESTION: is this even used?
-#     ''' Wrapper for XML redo function to redirect output to web interface.
-#     '''
-#     with st_stdout('code'):
-#         noMSs = crawler.cache_all_xml_data(use_cache=False)
-#     return noMSs
-
-
-# def msNumber_button():  # QUESTION: obsolete with browse data function?
-#     ''' Displays the button that shows the number of MS IDs cached. Not strictly necessary.
-#     '''
-#     if st.sidebar.button("Show number of MS IDs cached"):
-#         with open(_id_path) as m:
-#             MScount = sum(1 for row in m)
-#         st.write(f"There are currently {MScount:,d} manuscript IDs in cache!")
-
-
-# def collections_button():  # QUESTION: obsolete with browse data function?
-#     '''Self explanatory
-#     '''
-#     if st.sidebar.button("Show all collections"):
-#         cols = crawler.get_collections()
-#         st.write(cols)
+    st.experimental_rerun()
+    # full_menu()
 
 
 # Functions which create sub pages
 # --------------------------------------
 
 
-def mainPage():
+def mainPage() -> None:
     '''Landing page'''
 
     st.title("Welcome to Sammlung Toole")
@@ -142,71 +49,173 @@ def mainPage():
     st.image(IMAGE_HOME)
 
 
-def adv_options():
+def adv_options() -> None:
     '''Shows the advanced options menu'''
-
+    # LATER: At some point we should consider changing crawling into a background task
     st.title("Advanced Options Menu")
-    st.write("Carefull! Some of these options can take a long time to complete! Like, a loooong time!")
+    st.write("Careful! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
-    rebuild_all_button()
-    if st.sidebar.button("Reload Missing Data"):
-        reload_with_cache()
-    if st.sidebar.button("Rebuild Data Handler"):
-        rebuild_handler()
 
-    # generate_reports()
-    # LATER: here we should be able to wipe the pickle and backups, and re-create the handler (ideally with an optional maximum?)
+    if st.button("Wipe cache"):
+        tamer._wipe_cache()
+        st.success("Cache is wiped entirely. Please reload the data handler.")
+    if st.button("Reload Data Handler"):
+        with st.spinner("This may take a while..."):
+            state.data_handler = DataHandler.get_handler()
+        st.experimental_rerun()
 
 
-def search_page():
+def search_page() -> None:
+    st.header('Search Page')
+    opts = {
+        'How To': explain_search_options,
+        'Handrit URLs': handrit_urls,
+        'Search Manuscripts by related People': search_mss_by_persons,
+        'Search People by related Manuscripts': search_ppl_by_manuscripts,
+        'Search Manuscripts by Text': search_mss_by_texts,
+        'Search Texts contained by Manuscripts': search_text_by_mss,
+    }
+    choice = st.radio('What would you like to search?', options=opts.keys())
+    fn = opts[choice]
+    fn()
+
+
+def search_ppl_by_manuscripts() -> None:
+    mss_ = list(dataHandler.person_matrix.index)
+    _mss = dataHandler.manuscripts[dataHandler.manuscripts['full_id'].isin(mss_)]
+    mss = _mss['shelfmark'].tolist()
+    with st.expander('View all manuscripts', False):
+        st.write(mss)
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', modes.keys())
+    mode = modes[mode_selection]
+    log.debug(f'Search Mode: {mode}')
+    msss_ = st.multiselect('Search Manuscript', mss)
+    _msss = _mss[_mss['shelfmark'].isin(msss_)]
+    msss = list(set(_msss['full_id'].tolist()))
+    log.debug(f'selected manuscript(s): {msss}')
+    with st.spinner('Searching...'):
+        results = dataHandler.search_persons_related_to_manuscripts(msss, mode)
+    st.write(f'Found {len(results)} people')
+    if results:
+        with st.expander('view results', False):
+            full_names = {k: dataHandler.get_person_name(k) for k in results}
+            st.write(full_names)
+    # TODO: should do something with it here (further search, subcorpora, ...)
+
+
+def search_mss_by_persons() -> None:
+    persons = list(dataHandler.person_matrix.columns)
+    with st.expander('View all People', False):
+        st.write(persons)
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', modes.keys())
+    mode = modes[mode_selection]
+    log.debug(f'Search Mode: {mode}')
+    ppl = st.multiselect('Search Person', persons)
+    log.debug(f'selected people: {ppl}')
+    with st.expander('Show full names'):
+        fullnames = {k: dataHandler.get_person_name(k) for k in ppl}
+        st.write(fullnames)
+    with st.spinner('Searching...'):
+        results = dataHandler.search_manuscripts_related_to_persons(ppl, mode)
+    st.write(f'Found {len(results)} manuscripts')
+    if results:
+        with st.expander('view results', False):
+            st.write(results)
+    if st.button('Get metadata for results'):
+        with st.spinner('loading metadata...'):
+            meta = dataHandler.search_manuscript_data(full_ids=results).reset_index(drop=True)
+        st.write(meta)
+    # TODO: should do something with it here (export, subcorpora, ...)
+
+
+def search_text_by_mss() -> None:
+    mss = list(set(dataHandler.manuscripts['shelfmark']))
+    with st.expander('View all Manuscripts', False):
+        st.write(mss)
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', modes.keys())
+    mode = modes[mode_selection]
+    log.debug(f'Search Mode: {mode}')
+    msss = st.multiselect('Search Manuscripts', mss)
+    log.debug(f'selected manuscripts: {msss}')
+    with st.spinner('Searching...'):
+        results = dataHandler.search_texts_contained_by_manuscripts(msss, mode)
+    st.write(f'Found {len(results)} texts')
+    if results:
+        with st.expander('view results', False):
+            preview = st.container()
+            preview.write("List of texts found:")
+            count = 1
+            for i in results:
+                preview.write(f"{count}: {i}")
+                count += 1
+    # TODO: do something with it here (further search? subcorpus, ...)
+
+
+def search_mss_by_texts() -> None:
+    texts = list(dataHandler.get_all_texts().columns)
+    with st.expander('View all Texts', False):
+        st.write(texts)
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', modes.keys())
+    mode = modes[mode_selection]
+    log.debug(f'Search Mode: {mode}')
+    txts = st.multiselect('Search Texts', texts)
+    log.debug(f'selected texts: {txts}')
+    with st.spinner('Searching...'):
+        results = dataHandler.search_manuscripts_containing_texts(txts, mode)
+    st.write(f'Found {len(results)} manuscripts')
+    if results:
+        with st.expander('view results', False):
+            preview = st.container()
+            preview.write("List of manuscripts found:")
+            count = 1
+            for i in results:
+                preview.write(f"{count}: {i}")
+                count += 1
+    if st.button('Get metadata for results'):
+        with st.spinner('loading metadata...'):
+            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)
+        st.write(meta)
+    # TODO: should do something with it here (export, subcorpora, ...)
+
+
+def explain_search_options() -> None:
+    st.write('Please choose a search option.')
+    # TODO: more explanation
+
+
+def handrit_urls() -> None:
     '''Workbench. Proper doc to follow soon.'''
-
     st.title("Result Workflow Builder")
     if state.CurrentStep == 'Preprocessing':
         st.header("Preprocessing")
-        st.write("Construct your workflow with the options below. Instructions: For now, there are two input boxes: 1. For URLs pointing to a handrit search result page 2. For URLs pointing to a handrit browse result page.")
-        state.currentSURL = st.text_input("Input handrit search URL here")
-        state.multiSearch = st.checkbox("Do you want to process multiple URLs?", value=False,
-                                        help="Please make sure to check this box if you want to process more than one URL at once", key="0.asdf")
-        state.currentBURL = st.text_input("Input handrit browse URL here")
-        state.multiBrowse = st.checkbox("Do you want to process multiple URLs?", value=False,
-                                        help="Please make sure to check this box if you want to process more than one URL at once", key='1.asdf')
-        state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata', 'Maditadata'], index=0)
-        state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
+        st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
+        state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per line.")
+
+        # state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+        # state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
             state.didRun = 'Started, dnf.'
             state.CurrentStep = 'Processing'
             # This block handles data delivery
-            if state.currentSURL and state.multiSearch == False:
-                dataS = search_results(state.currentSURL, state.resultMode)
-            if state.currentSURL and state.multiSearch == True:
-                baseList = [x.strip() for x in state.currentSURL.split(',')]
-                dataS = multiSearch(baseList, DataType=state.resultMode, joinMode=state.joinMode)
-            if state.currentBURL and state.multiBrowse == False:
-                dataB = browse_results(inURL=state.currentBURL, DataType=state.resultMode)
 
-            # This block will check the data the got delivered and display it
-            if state.resultMode == 'Contents':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=1)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
-            if state.resultMode == 'Maditadata':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=0).drop_duplicates().reset_index(drop=True)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
-            if state.resultMode == 'Metadata':
-                if state.currentSURL and state.currentBURL:
-                    state.currentData = pd.concat([dataS, dataB], axis=1)
-                if state.currentSURL and not state.currentBURL:
-                    state.currentData = dataS
-                if state.currentBURL and not state.currentSURL:
-                    state.currentData = dataB
+            if state.currentURLs_str:
+                s_urls = [url.strip() for url in state.currentURLs_str.split(',')]
+                url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(
+                    urls=s_urls, sharedMode=(state.joinMode == False))  # type: ignore  # LATER: find solution for this type error
+                st.write("Processed Manuscript URLs:")
+                st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
+                state.currentURL_list += url_list
+                st.write("Overall MS URLs:")
+                st.write(state.currentURL_list)  # TODO: Required?
+
             if not state.currentData.empty:
                 state.didRun = 'OK'
         if state.didRun == 'OK':
@@ -215,27 +224,17 @@ def search_page():
     if state.didRun == 'OK':
         if st.button("Go to postprocessing"):
             state.CurrentStep = 'Postprocessing'
+            state.didRun = None  # type: ignore  # LATER: find solution for this type error
+            st.experimental_rerun()
     if state.CurrentStep == 'Postprocessing':
         postprocessing()
         if st.button("Go back to preprocessing"):
             state.CurrentStep = 'Preprocessing'
+            state.currentData = None
+            st.experimental_rerun()
 
 
-def citaviExporter():
-    foundListList = list(state.currentData.columns)
-    foundList = [i for x in foundListList for i in x]
-    state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
-                                        help="This will export your selected references as a CSV file for Citavi.")
-    if st.button('Export'):
-        state.currentCitaviData, _ = metadata.get_citavified_data(inData=state.CitaviSelect, DataType='ids')
-        st.write(state.currentCitaviData)
-        csv = state.currentCitaviData.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode("UTF-8")).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
-        st.markdown(href, unsafe_allow_html=True)
-
-
-def postprocessing():
+def postprocessing() -> None:
     st.header("Postprocessing menu")
     st.header("Current result data set")
     st.write(state.currentData)
@@ -243,9 +242,7 @@ def postprocessing():
         state.postStep = 'CSV'
     if state.postStep == 'CSV':
         csv = state.currentData.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-        href = f'<a href="data:file/csv;base64,{b64}">Download CSV File</a> (This is a raw file. You need to give it the ending .csv, the easiest way is to right-click the link and then click Save as or Save link as, depending on your browser.)'
-        st.markdown(href, unsafe_allow_html=True)
+        st.download_button(label="Download", data=csv, file_name="citavi-export.csv")
     if st.button("Export references to Citavi"):
         state.postStep = 'Citavi'
     if state.postStep == 'Citavi':
@@ -254,87 +251,41 @@ def postprocessing():
         state.postStep = 'Cleaning'
     if state.postStep == 'Cleaning':
         dataCleaner()
+    if st.button('Plot dating'):
+        state.postStep = 'Plotting'
+    if state.postStep == 'Plotting':
+        fig = utils.date_plotting(state.currentData)
+        st.plotly_chart(fig, use_container_width=True)
 
 
-# def dataInspector():
+def citaviExporter() -> None:
+    foundList = state.currentData['shelfmark'].to_list()
+    state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
+                                        help="This will export your selected references as a CSV file for Citavi.")
+    if st.button('Export'):
+        state.currentCitaviData = state.currentData.loc(axis=0)[state.currentData['shelfmark'].isin(state.CitaviSelect)]
+        state.currentCitaviData = state.currentCitaviData[["id", "creator", "shorttitle", "description", "date", "origin",  "settlement", "repository", "shelfmark"]]
+        st.write(state.currentCitaviData)
+        csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
+        st.download_button(label="Download Citavi file", data=csv, file_name="citavi-export.csv", help="There no longer is a bug. It is now safe to just click Download.")
 
 
-def dataCleaner():
-    if state.resultMode == 'Maditadata':
-        index = state.currentData.index
-        itemsPrev = len(index)
-        newDF = state.currentData.dropna()
-        index1 = newDF.index
-        itemsAfter = len(index1)
-        diff = itemsPrev - itemsAfter
-        st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values.")
-    else:
-        itemsPrev = len(state.currentData.columns)
-        # newDF =
-        newDF = pd.DataFrame()  # QUESTION: newDF not defined? (added this to get rid of warning)
-        itemsAfter = len(newDF.columns)
-        newDF = newDF.loc[:, ~newDF.columns.duplicated()]
-        itemsAfter1 = len(newDF.columns)
-        diff0 = itemsPrev - itemsAfter
-        diff1 = itemsAfter - itemsAfter1
-        st.write(f"Started out with {itemsPrev} results, dropped {diff0} NaN values, dropped {diff1} duplicates. Remaining unique results: {itemsAfter1}")
+def dataCleaner() -> None:  # TODO: Should not be neccessary. Should be done on handler construction.
+    state.currentData = state.currentData.replace('None', np.nan)
+    itemsPrev = len(state.currentData.index)
+    newDF = state.currentData.dropna(axis=0, how='all')
+    itemsAfter = len(newDF.index)
+    diff = itemsPrev - itemsAfter
+    newDF = newDF.drop_duplicates(subset='shelfmark').reset_index(drop=True)
+    itemsAfter = len(newDF.index)
+    diff1 = itemsPrev - itemsAfter
+    st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values. Found and removed {diff1} duplicates.")
     st.write(newDF)
     if st.button("Keep cleaned data"):
         state.currentData = newDF
 
 
-def search_results(inURL: str, DataType: str):
-    ''' Actual call to handrit tamer to get the desired results from the search URL.
-
-    The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-
-    Args:
-        inURL(str, required): A URL pointing to a handrit search result page.
-        DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-
-    Returns:
-        pd.DataFrame: DataFrame containing MS contents or meta data.
-    '''
-    data = hSr(inURL, DataType)
-    return data
-
-
-def browse_results(inURL: str, DataType: str):
-    ''' Actual call to handrit tamer to get the desired results from the browse URL.
-
-    The data frame to be returned depends on the DataType variable (cf. below).
-    If DataType = Contents:
-        Data frame columns will be the shelfmarks/IDs of the MSs, each column containing the text
-        witnesses listed in the MS description/XML.
-
-    If DataType = Metadata:
-        Data frame contains the following columns:
-        ['Handrit ID', 'Signature', 'Country',
-                               'Settlement', 'Repository', 'Original Date', 'Mean Date', 'Range']
-
-    Args:
-        inURL(str, required): A URL pointing to a handrit search result page.
-        DataType(str, required): Whether you want to extract the contents of MSs from the XMLs or metadata
-        such as datings and repository etc. (cf. above). Can be 'Contents' or 'Metadata'
-
-    Returns:
-        pd.DataFrame: DataFrame containing MS contents or meta data.
-    '''
-
-    data = hBr(inURL, DataType)
-    return data
-
-
-def static_reports():
+def static_reports() -> None:
     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
     st.text("Currently not available")
     # reports = {"Dating of all MSs": "all_MS_datings"}  # QUESTION: function not defined
@@ -343,7 +294,7 @@ def static_reports():
     # eval(selected + "()")
 
 
-def browse_data():
+def browse_data() -> None:
     handler: DataHandler = state.data_handler
     st.title("Currently Loaded Dataset")
 
@@ -353,21 +304,35 @@ def browse_data():
     st.write(f"Currently loaded data: Dataframe with {len(mss.index)} entries, {len(mss.columns)} columns each.")
     st.write("Each manuscript can have entries in multiple languages (English, Icelandic, Danish)")
     st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts, \
-             stored in {mss['collection'].unique().size} collections.")
+             stored in {mss['repository'].unique().size} collections.")
     st.write("Head and tail of the dataset:")
     st.dataframe(mss.head().append(mss.tail()))
+    if st.button("Show all manuscripts"):
+        st.dataframe(mss)
 
     # Texts
-    txt = handler.texts
+    txt = handler.text_matrix
     st.header("Texts")
-    st.write("Not yet implemented")
-    st.dataframe(txt.head())
+    st.write(f'Found {len(txt.columns)} texts.')
+    # st.dataframe(txt.head())
+    if st.button("List all texts"):
+        st.write(txt.columns)
+    if st.button("Show text counts"):
+        counts = txt.apply(
+            lambda x: pd.Series({"count": x[x == True].count()})).transpose().sort_values(
+            by=['count'],
+            ascending=False).reset_index().rename(
+            columns={"index": "text"})
+        st.write(counts)
 
     # Persons
-    pers = handler.persons
+    pers = handler.person_names
     st.header("Persons")
-    st.write("Not yet implemented")
-    st.dataframe(pers.head())
+    st.write(f'{len(pers.keys())} people loaded.')
+    if st.button("show all"):
+        st.write(list(pers.values()))
+    pers_matrix = handler.person_matrix
+    st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
 
     # Subcorpora
     subs = handler.subcorpora
@@ -376,45 +341,53 @@ def browse_data():
     st.write(subs)
 
 
+def help() -> None:
+    st.markdown(Texts.HowToPage.info)
+    if st.button("Show detailed help on Citavi import/export"):
+        with open('docs/CITAVI-README.md', 'r') as citread:
+            helpme = markdown.markdown(citread.read())
+        st.markdown(helpme, unsafe_allow_html=True)
+
+
 # Menu Functions
 # --------------
 
 
-def full_menu():
+def full_menu() -> None:
     '''This is basically the main() and will load and display the full menu, which in turn calls
     all the other functions containing sub pages.
     '''
-    handler = state.data_handler
-    if handler:
-        MenuOptions = {"Home": mainPage,
-                       "Browse Data": browse_data,
-                       "Search Functions": search_page,
-                       "Reports": static_reports,
-                       "Advanced Settings": adv_options,
-                       }
-        selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
-        selected_function = MenuOptions[selection]
-        selected_function()
-    else:
-        get_handler()
+    MenuOptions = {"Home": mainPage,
+                   "Browse Data": browse_data,
+                   "Search Functions": search_page,
+                   "Reports": static_reports,
+                   "Advanced Settings": adv_options,
+                   "Help": help}
+    selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
+    selected_function = MenuOptions[selection]
+    selected_function()
 
 
-# Run
-# ----
+# TODO: move logger to session state, so that it doesn't multi-log
+# I'm guessing the logger should not be per session, but be stored similarly to the database connection.
+=======
+def warn_if_handler_not_up_to_date() -> None:
+    """ Show a warning, if handler is not up to date with regard to the handrit git submodule """
+    if not GitUtil.is_up_to_date():
+        delta_t = GitUtil.get_time_difference()
+        link = GitUtil.get_comparison_link()
+        st.info("Warning: Your data may not be up to date.")
+        st.write(f"Time Difference between head and your data: {delta_t}")
+        st.markdown(f"See data changes [here]({link}).")
+        st.write("Please consider wiping the cache and rebuilding the handler.")
+        st.markdown("-----")
+
+
 if __name__ == '__main__':
-    state = sessionState.get(currentData=pd.DataFrame(),
-                             resultMode='',
-                             currentSURL='',
-                             currentBURL='',
-                             URLType='',
-                             multiSearch='False',
-                             multiBrowse='False',
-                             joinMode='All',
-                             didRun='dnr',
-                             CitaviSelect=[],
-                             CurrentStep='Preprocessing',
-                             postStep='',
-                             currentCitaviData=pd.DataFrame(),
-                             #  data_handler=get_handler()
-                             data_handler=None)
+    session_state: sessionState.SessionState = sessionState.get(state=StateHandler())  # type: ignore
+    state = session_state.state  # type: ignore
+    dataHandler = state.data_handler
+    warn_if_handler_not_up_to_date()
+    if not dataHandler:
+        get_handler()
     full_menu()
