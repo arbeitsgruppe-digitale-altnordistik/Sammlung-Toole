@@ -1,3 +1,6 @@
+# Maddy
+maddy-erinner-mich.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,3 +130,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# VS Code settings
+.vscode/
+quickTest.py
+*.csv
+.backup_data/
+
+# pickled data
+*.pickle
