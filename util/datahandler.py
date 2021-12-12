@@ -455,7 +455,7 @@ class DataHandler:
         if not Inmss:
             log.debug('Searched for empty list of mss')
             return []
-        mss_ = self.manuscripts[self.manuscripts['shelfmark'].isin(Inmss)]
+        mss_ = self.manuscripts[self.manuscripts['full_id'].isin(Inmss)]  # TODO: check if all still works! changed from shelfmark to full_id, which might break other code
         mss = mss_['full_id'].tolist()
         df = self.text_matrix.transpose()
         if searchOption == SearchOptions.CONTAINS_ONE:
@@ -477,7 +477,7 @@ class DataHandler:
                 s = set(d.index)
                 sets.append(s)
             if not sets:
-                log.info('no texts fond')
+                log.info('no texts found')
                 return []
             intersection = set.intersection(*sets)
             res = list(intersection)

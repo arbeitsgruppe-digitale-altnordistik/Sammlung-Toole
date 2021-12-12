@@ -285,7 +285,7 @@ def __search_mss_by_text_step_search(state: StateHandler) -> None:
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
         mode_selection = st.radio('Search mode', modes.keys())
         mode = modes[mode_selection]
-        txt = st.multiselect('Select Person', texts)
+        txt = st.multiselect('Select Text', texts)
         # LATER: find format function to make it pretty
         if st.form_submit_button("Search Manuscripts"):
             log.debug(f'Search Mode: {mode}')
@@ -304,8 +304,9 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
     Step 2 of this search: Do something with the result.
     """
     handler = state.data_handler
-    results = state.searchState.ms_by_pers.mss
+    results = state.searchState.ms_by_txt.mss
     if not results:
+        log.warn("No results, going back to search")
         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
         st.experimental_rerun()
     txt = state.searchState.ms_by_txt.txt
@@ -351,7 +352,7 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                         st.experimental_rerun()
-    meta = handler.search_manuscript_data(full_ids=results).reset_index(drop=True)  # type: ignore
+    meta = handler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)  # type: ignore
     st.dataframe(meta)
     # TODO: visualization/citavi-export of result
 
@@ -368,7 +369,7 @@ def text_by_manuscripts(state: StateHandler) -> None:
     Args:
         state (StateHandler): The current session state.
     """
-    if state.steps.search_ppl_by_mss == Step.Pers_by_Ms.Search_Ms:
+    if state.steps.search_txt_by_mss == Step.Txt_by_Ms.Search_Ms:
         __search_text_by_mss_step_search(state)
     else:
         __search_text_by_mss_step_save_results(state)
@@ -396,7 +397,7 @@ def __search_text_by_mss_step_search(state: StateHandler) -> None:
                 state.searchState.txt_by_ms.txt = res
                 state.searchState.txt_by_ms.mss = mss
                 state.searchState.txt_by_ms.mode = mode
-            state.steps.search_ppl_by_mss = Step.Txt_by_Ms.Store_Results
+            state.steps.search_txt_by_mss = Step.Txt_by_Ms.Store_Results
             st.experimental_rerun()
 
 

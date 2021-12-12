@@ -81,7 +81,6 @@ class SearchState:
 
 
 class StateHandler:
-    data_handler: DataHandler
 
     def __init__(self) -> None:
         self.currentData = pd.DataFrame()
@@ -95,3 +94,4 @@ class StateHandler:
         self.currentCitaviData = pd.DataFrame()
         self.searchState = SearchState()
         self.steps: Step = Step()
+        self.data_handler: DataHandler = None  # type: ignore
