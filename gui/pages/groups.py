@@ -60,6 +60,7 @@ def browse_groups(state: StateHandler) -> None:
 
 
 def __combine_mss_groups(state: StateHandler) -> None:
+    """Page for combining Manuscript groups"""
     groups = state.data_handler.groups.manuscript_groups
     st.header("Combine Manuscript Groups")
     if st.button("Back to Overview"):
@@ -102,6 +103,7 @@ def __combine_mss_groups(state: StateHandler) -> None:
 
 
 def __combine_txt_groups(state: StateHandler) -> None:
+    """Page for combining Text groups"""
     groups = state.data_handler.groups.text_groups
     st.header("Combine Text Groups")
     if st.button("Back to Overview"):
@@ -144,6 +146,7 @@ def __combine_txt_groups(state: StateHandler) -> None:
 
 
 def __combine_ppl_groups(state: StateHandler) -> None:
+    """Page for combining Person groups"""
     groups = state.data_handler.groups.person_groups
     st.header("Combine Person Groups")
     if st.button("Back to Overview"):
