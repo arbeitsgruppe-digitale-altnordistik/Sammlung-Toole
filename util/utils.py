@@ -208,6 +208,7 @@ def get_soup(url: str, parser: str = 'xml') -> BeautifulSoup:
         BeautifulSoup: BeautifulSoup object representation of the HTML/XML page.
     """
     __log.debug(f'Requesting ({parser}): {url}')
+
     htm = requests.get(url).text
     soup = BeautifulSoup(htm, parser)
     return soup

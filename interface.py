@@ -1,3 +1,4 @@
+
 from typing import Container, Optional
 import numpy as np
 import streamlit as st
@@ -370,7 +371,6 @@ def full_menu() -> None:
 
 # TODO: move logger to session state, so that it doesn't multi-log
 # I'm guessing the logger should not be per session, but be stored similarly to the database connection.
-=======
 def warn_if_handler_not_up_to_date() -> None:
     """ Show a warning, if handler is not up to date with regard to the handrit git submodule """
     if not GitUtil.is_up_to_date():
