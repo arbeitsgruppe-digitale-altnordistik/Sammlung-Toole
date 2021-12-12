@@ -30,9 +30,9 @@ def get_handler() -> None:
         adv_options(None)
 
 
-def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
+def rebuild_handler() -> None:
     st.write(f'Start: {datetime.now()}')
-    state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents)
+    state.data_handler = DataHandler.get_handler()
     st.write(f'Finished: {datetime.now()}')
     st.experimental_rerun()
     # full_menu()

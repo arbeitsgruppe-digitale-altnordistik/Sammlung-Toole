@@ -4,11 +4,10 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 
-import json
 import os
 import pickle
 import sys
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -16,9 +15,9 @@ from bs4 import BeautifulSoup
 from scipy import sparse
 
 import util.tamer as tamer
-from util import metadata, utils
+from util import utils
 from util.constants import *
-from util.groups import Group, Groups, GroupType
+from util.groups import Groups
 from util.utils import GitUtil, SearchOptions, Settings
 
 log = utils.get_logger(__name__)
@@ -90,18 +89,19 @@ class DataHandler:
     groups: Groups
     # CHORE: document
 
-    def __init__(self,
-                 manuscripts: pd.DataFrame = None,
-                 texts: pd.DataFrame = None,
-                 xmls: Optional[pd.DataFrame] = None,
-                 contents: Optional[pd.DataFrame] = None):
-        # CHORE: document
+    def __init__(self) -> None:
+        """DataHandler constructor.
+
+        Returns a new instance of a DataHandler.
+
+        Should not be called directly, but rather through the factory method `DataHandler.get_handler()`.
+        """
         log.info("Creating new handler")
         self.person_names, self.person_names_inverse = DataHandler._load_persons()
         log.info("Loaded Person Info")
-        self.manuscripts = manuscripts if manuscripts else DataHandler._load_ms_info(df=xmls, contents=contents, persons=self.person_names)
+        self.manuscripts = DataHandler._load_ms_info(persons=self.person_names)
         log.info("Loaded MS Info")
-        self.text_matrix = texts if texts else DataHandler._load_text_matrix(self.manuscripts)
+        self.text_matrix = DataHandler._load_text_matrix(self.manuscripts)
         log.info("Loaded Text Info")
         self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
         log.info("Loaded Person-MSS-Matrix Info")
@@ -109,8 +109,6 @@ class DataHandler:
         log.debug(f"Groups loaded: {self.groups}")
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
-        # FIXME: this indicates that data is up to date, even if cache was used.
-        # maybe cache should be disabled if there is a difference in the first place?
         GitUtil.update_handler_state()
 
     # Static Methods
@@ -134,35 +132,10 @@ class DataHandler:
                 log.exception("Cound not load handler from pickle")
         return None
 
-    # @staticmethod
-    # def _from_backup() -> Optional[DataHandler]:
-    #     # QUESTION: does it actually need this? or is one type of backup enough?
-    #     # CHORE: document
-    #     mss = "data/backups/mss.csv"
-    #     txts = "data/backups/txts.csv"
-    #     ppls = "data/backups/ppls.csv"
-    #     if os.path.exists(mss) and os.path.exists(txts) and os.path.exists(ppls):
-    #         m = pd.read_csv(mss)
-    #         if m.empty:
-    #             return None
-    #         t = pd.read_csv(txts)
-    #         if t.empty:
-    #             return None
-    #         p = pd.read_csv(ppls)
-    #         if p.empty:
-    #             return None
-    #         handler = DataHandler(manuscripts=m, texts=t)
-    #         handler._truncate()
-    #         return handler
-    #     return None
-
     @staticmethod
-    def _load_ms_info(persons: Dict[str, str],
-                      df: Optional[pd.DataFrame] = None,
-                      contents: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-        # CHORE: document
-        if df is None or contents is None:
-            df = tamer.deliver_handler_data()
+    def _load_ms_info(persons: Dict[str, str]) -> pd.DataFrame:
+        """Load manuscript metadata"""
+        df = tamer.deliver_handler_data()
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_msinfo(x, persons))
         log.info("Loaded MS Info")
@@ -171,7 +144,7 @@ class DataHandler:
 
     @staticmethod
     def _load_text_matrix(df: pd.DataFrame) -> pd.DataFrame:
-        # CHORE: document
+        """Load the text-manuscript-matrix"""
         mss_ids, text_names, coords = tamer.get_text_mss_matrix_coordinatres(df)
         r, c = map(list, zip(*coords))
         row = np.array(r)
@@ -183,7 +156,7 @@ class DataHandler:
 
     @staticmethod
     def _load_person_matrix(df: pd.DataFrame) -> pd.DataFrame:
-        # CHORE: document
+        """Load the person-manuscript-matrix"""
         mss_ids, pers_ids, coords = tamer.get_person_mss_matrix_coordinatres(df)
         r, c = map(list, zip(*coords))
         row = np.array(r)
@@ -195,30 +168,23 @@ class DataHandler:
 
     @staticmethod
     def _load_persons() -> Tuple[Dict[str, str], Dict[str, List[str]]]:
-        # CHORE: document
+        """Load person data"""
         person_names = tamer.get_person_names()
         return person_names, tamer.get_person_names_inverse(person_names)
 
     @staticmethod
     def is_cached() -> bool:
-        # CHORE: document
+        """Check if the data handler should be available from cache."""
         return os.path.exists(HANDLER_PATH_PICKLE)
-
-    # @staticmethod TODO: Should no longer be needed. If repo is there, data should be there?
-    # def has_data_available() -> bool:
-    #     # CHORE: document
-    #     return tamer.has_data_available()
 
     # Class Methods
     # =============
 
     @classmethod
-    def get_handler(cls, xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None,) -> DataHandler:
+    def get_handler(cls) -> DataHandler:
         """Get a DataHandler
 
         Factory method to get a DataHandler object.
-
-        Args:
 
         Returns:
             DataHandler: A DataHandler, either loaded from cache or created anew.
@@ -226,17 +192,10 @@ class DataHandler:
         log.info("Getting DataHandler")
         res: Optional[DataHandler] = cls._from_pickle()
         if res:
-            res._backup()
             return res
         log.info("Could not get DataHandler from pickle")
-        # res = cls._from_backup()
-        # if res:
-        #     res._to_pickle()
-        #     return res
-        # log.info("Could not get DataHandler from backup")
-        res = cls(xmls=xmls, contents=contents)
+        res = cls()
         res._to_pickle()
-        res._backup()
         log.info("DataHandler ready.")
         return res
 
@@ -244,6 +203,7 @@ class DataHandler:
     # ================
 
     def _to_pickle(self) -> None:
+        """Save the present DataHandler instance as pickle."""
         log.info("Saving handler to pickle")
         prev = sys.getrecursionlimit()
         with open(HANDLER_PATH_PICKLE, mode='wb') as file:
@@ -253,20 +213,6 @@ class DataHandler:
                 sys.setrecursionlimit(prev)
             except Exception:
                 log.exception("Failed to pickle the data handler.")
-
-    def _backup(self) -> None:
-        self.manuscripts.to_csv(HANDLER_BACKUP_PATH_MSS, encoding='utf-8', index=False)
-        log.info('Backed up manuscripts')
-        # self.text_matrix.to_parquet(HANDLER_BACKUP_PATH_TXT_MATRIX)
-        # log.info('Backed up text matrix')
-        # self.person_matrix.to_csv(HANDLER_BACKUP_PATH_PERS_MATRIX, encoding='utf-8', index=False)
-        # log.info('Backed up person matrix')
-        with open(HANDLER_BACKUP_PATH_PERS_DICT, encoding='utf-8', mode='w+') as f:
-            json.dump(self.person_names, f, ensure_ascii=False, indent=4)
-            log.info('Backed up person dict')
-        with open(HANDLER_BACKUP_PATH_PERS_DICT_INV, encoding='utf-8', mode='w+') as f:
-            json.dump(self.person_names_inverse, f, ensure_ascii=False, indent=4)
-            log.info('Backed up inverse person dict')
 
     # API Methods
     # -----------
@@ -550,6 +496,7 @@ class DataHandler:
             return res
 
     def search_manuscripts_related_to_persons(self, person_ids: List[str], searchOption: SearchOptions) -> List[str]:
+        # CHORE: Document
         log.info(f'Searching for manuscript related to people: {person_ids} ({searchOption})')
         if not person_ids:
             log.debug('Searched for empty list of ppl')
@@ -580,7 +527,3 @@ class DataHandler:
             res = list(intersection)
             log.info(f'Search result: {res}')
             return res
-
-    # TASKS: more handler API
-    # - options to work with subcorpora?
-    # - add rubrics?
