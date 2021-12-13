@@ -1,4 +1,4 @@
-from typing import Container, Optional
+from typing import Any, Optional
 import numpy as np
 import streamlit as st
 import pandas as pd
@@ -6,12 +6,13 @@ from datetime import datetime
 import markdown
 from util import sessionState, tamer
 from util import utils
-from util import datahandler
 from util.constants import IMAGE_HOME
-from util.stateHandler import StateHandler
+from util.groups import Group, GroupType
+from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions, Settings, GitUtil
 from util.datahandler import DataHandler
 from gui.guiUtils import Texts
+from gui import pages
 
 
 state: StateHandler
@@ -26,12 +27,12 @@ def get_handler() -> None:
             rebuild_handler()
     else:
         st.sidebar.text("No data at hand. Needs loading first.")
-        adv_options()
+        adv_options(None)
 
 
-def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.DataFrame] = None) -> None:
+def rebuild_handler() -> None:
     st.write(f'Start: {datetime.now()}')
-    state.data_handler = DataHandler.get_handler(xmls=xmls, contents=contents)
+    state.data_handler = DataHandler.get_handler()
     st.write(f'Finished: {datetime.now()}')
     st.experimental_rerun()
     # full_menu()
@@ -41,15 +42,14 @@ def rebuild_handler(xmls: Optional[pd.DataFrame] = None, contents: Optional[pd.D
 # --------------------------------------
 
 
-def mainPage() -> None:
+def mainPage(a: Any) -> None:
     '''Landing page'''
-
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
     st.image(IMAGE_HOME)
 
 
-def adv_options() -> None:
+def adv_options(a: Any) -> None:
     '''Shows the advanced options menu'''
     # LATER: At some point we should consider changing crawling into a background task
     st.title("Advanced Options Menu")
@@ -65,136 +65,26 @@ def adv_options() -> None:
         st.experimental_rerun()
 
 
-def search_page() -> None:
+def search_page(a: Any) -> None:
     st.header('Search Page')
     opts = {
-        'How To': explain_search_options,
+        'How To': pages.search.how_to,
         'Handrit URLs': handrit_urls,
-        'Search Manuscripts by related People': search_mss_by_persons,
-        'Search People by related Manuscripts': search_ppl_by_manuscripts,
-        'Search Manuscripts by Text': search_mss_by_texts,
-        'Search Texts contained by Manuscripts': search_text_by_mss,
+        'Search Manuscripts by related People': pages.search.manuscripts_by_persons,
+        'Search People by related Manuscripts': pages.search.persons_by_manuscripts,
+        'Search Manuscripts by Text': pages.search.manuscripts_by_texts,
+        'Search Texts contained by Manuscripts': pages.search.text_by_manuscripts,
     }
-    choice = st.radio('What would you like to search?', options=opts.keys())
+    st.sidebar.write("---")
+    choice = st.sidebar.radio('What would you like to search?', options=opts.keys())
     fn = opts[choice]
-    fn()
+    fn(state)
 
 
-def search_ppl_by_manuscripts() -> None:
-    mss_ = list(dataHandler.person_matrix.index)
-    _mss = dataHandler.manuscripts[dataHandler.manuscripts['full_id'].isin(mss_)]
-    mss = _mss['shelfmark'].tolist()
-    with st.expander('View all manuscripts', False):
-        st.write(mss)
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', modes.keys())
-    mode = modes[mode_selection]
-    log.debug(f'Search Mode: {mode}')
-    msss_ = st.multiselect('Search Manuscript', mss)
-    _msss = _mss[_mss['shelfmark'].isin(msss_)]
-    msss = list(set(_msss['full_id'].tolist()))
-    log.debug(f'selected manuscript(s): {msss}')
-    with st.spinner('Searching...'):
-        results = dataHandler.search_persons_related_to_manuscripts(msss, mode)
-    st.write(f'Found {len(results)} people')
-    if results:
-        with st.expander('view results', False):
-            full_names = {k: dataHandler.get_person_name(k) for k in results}
-            st.write(full_names)
-    # TODO: should do something with it here (further search, subcorpora, ...)
-
-
-def search_mss_by_persons() -> None:
-    persons = list(dataHandler.person_matrix.columns)
-    with st.expander('View all People', False):
-        st.write(persons)
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', modes.keys())
-    mode = modes[mode_selection]
-    log.debug(f'Search Mode: {mode}')
-    ppl = st.multiselect('Search Person', persons)
-    log.debug(f'selected people: {ppl}')
-    with st.expander('Show full names'):
-        fullnames = {k: dataHandler.get_person_name(k) for k in ppl}
-        st.write(fullnames)
-    with st.spinner('Searching...'):
-        results = dataHandler.search_manuscripts_related_to_persons(ppl, mode)
-    st.write(f'Found {len(results)} manuscripts')
-    if results:
-        with st.expander('view results', False):
-            st.write(results)
-    if st.button('Get metadata for results'):
-        with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(full_ids=results).reset_index(drop=True)
-        st.write(meta)
-    # TODO: should do something with it here (export, subcorpora, ...)
-
-
-def search_text_by_mss() -> None:
-    mss = list(set(dataHandler.manuscripts['shelfmark']))
-    with st.expander('View all Manuscripts', False):
-        st.write(mss)
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', modes.keys())
-    mode = modes[mode_selection]
-    log.debug(f'Search Mode: {mode}')
-    msss = st.multiselect('Search Manuscripts', mss)
-    log.debug(f'selected manuscripts: {msss}')
-    with st.spinner('Searching...'):
-        results = dataHandler.search_texts_contained_by_manuscripts(msss, mode)
-    st.write(f'Found {len(results)} texts')
-    if results:
-        with st.expander('view results', False):
-            preview = st.container()
-            preview.write("List of texts found:")
-            count = 1
-            for i in results:
-                preview.write(f"{count}: {i}")
-                count += 1
-    # TODO: do something with it here (further search? subcorpus, ...)
-
-
-def search_mss_by_texts() -> None:
-    texts = list(dataHandler.get_all_texts().columns)
-    with st.expander('View all Texts', False):
-        st.write(texts)
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', modes.keys())
-    mode = modes[mode_selection]
-    log.debug(f'Search Mode: {mode}')
-    txts = st.multiselect('Search Texts', texts)
-    log.debug(f'selected texts: {txts}')
-    with st.spinner('Searching...'):
-        results = dataHandler.search_manuscripts_containing_texts(txts, mode)
-    st.write(f'Found {len(results)} manuscripts')
-    if results:
-        with st.expander('view results', False):
-            preview = st.container()
-            preview.write("List of manuscripts found:")
-            count = 1
-            for i in results:
-                preview.write(f"{count}: {i}")
-                count += 1
-    if st.button('Get metadata for results'):
-        with st.spinner('loading metadata...'):
-            meta = dataHandler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)
-        st.write(meta)
-    # TODO: should do something with it here (export, subcorpora, ...)
-
-
-def explain_search_options() -> None:
-    st.write('Please choose a search option.')
-    # TODO: more explanation
-
-
-def handrit_urls() -> None:
+def handrit_urls(_: Any) -> None:
     '''Workbench. Proper doc to follow soon.'''
     st.title("Result Workflow Builder")
-    if state.CurrentStep == 'Preprocessing':
+    if state.handrit_step == Step.Handrit_URL.Preprocessing:
         st.header("Preprocessing")
         st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
         state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per line.")
@@ -203,13 +93,13 @@ def handrit_urls() -> None:
         # state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
         if st.button("Run"):
             state.didRun = 'Started, dnf.'
-            state.CurrentStep = 'Processing'
+            state.handrit_step = Step.Handrit_URL.Processing
             # This block handles data delivery
 
             if state.currentURLs_str:
                 s_urls = [url.strip() for url in state.currentURLs_str.split(',')]
                 url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(
-                    urls=s_urls, sharedMode=(state.joinMode == False))  # type: ignore  # LATER: find solution for this type error
+                    urls=s_urls, sharedMode=(state.joinMode == False))
                 st.write("Processed Manuscript URLs:")
                 st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
                 state.currentURL_list += url_list
@@ -223,13 +113,13 @@ def handrit_urls() -> None:
             st.write(state.currentData)
     if state.didRun == 'OK':
         if st.button("Go to postprocessing"):
-            state.CurrentStep = 'Postprocessing'
-            state.didRun = None  # type: ignore  # LATER: find solution for this type error
+            state.handrit_step = Step.Handrit_URL.Postprocessing
+            state.didRun = None
             st.experimental_rerun()
-    if state.CurrentStep == 'Postprocessing':
+    if state.handrit_step == Step.Handrit_URL.Postprocessing:
         postprocessing()
         if st.button("Go back to preprocessing"):
-            state.CurrentStep = 'Preprocessing'
+            state.handrit_step = Step.Handrit_URL.Preprocessing
             state.currentData = None
             st.experimental_rerun()
 
@@ -285,7 +175,7 @@ def dataCleaner() -> None:  # TODO: Should not be neccessary. Should be done on 
         state.currentData = newDF
 
 
-def static_reports() -> None:
+def static_reports(a: Any) -> None:
     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
     st.text("Currently not available")
     # reports = {"Dating of all MSs": "all_MS_datings"}  # QUESTION: function not defined
@@ -294,7 +184,7 @@ def static_reports() -> None:
     # eval(selected + "()")
 
 
-def browse_data() -> None:
+def browse_data(a: Any) -> None:
     handler: DataHandler = state.data_handler
     st.title("Currently Loaded Dataset")
 
@@ -334,14 +224,8 @@ def browse_data() -> None:
     pers_matrix = handler.person_matrix
     st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
 
-    # Subcorpora
-    subs = handler.subcorpora
-    st.header("Sub-Corpora")
-    st.write("Not yet implemented")
-    st.write(subs)
 
-
-def help() -> None:
+def help(a: Any) -> None:
     st.markdown(Texts.HowToPage.info)
     if st.button("Show detailed help on Citavi import/export"):
         with open('docs/CITAVI-README.md', 'r') as citread:
@@ -359,18 +243,16 @@ def full_menu() -> None:
     '''
     MenuOptions = {"Home": mainPage,
                    "Browse Data": browse_data,
+                   "Groups": pages.groups.browse_groups,
                    "Search Functions": search_page,
                    "Reports": static_reports,
                    "Advanced Settings": adv_options,
                    "Help": help}
-    selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()))
+    selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()), on_change=state.steps.reset)
     selected_function = MenuOptions[selection]
-    selected_function()
+    selected_function(state)
 
 
-# TODO: move logger to session state, so that it doesn't multi-log
-# I'm guessing the logger should not be per session, but be stored similarly to the database connection.
-=======
 def warn_if_handler_not_up_to_date() -> None:
     """ Show a warning, if handler is not up to date with regard to the handrit git submodule """
     if not GitUtil.is_up_to_date():

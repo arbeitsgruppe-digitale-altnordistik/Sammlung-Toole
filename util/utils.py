@@ -1,27 +1,29 @@
 from __future__ import annotations
+
+import json
 import logging
+import os
+import subprocess
+import sys
+from datetime import timedelta
+from enum import Enum
+from logging.handlers import RotatingFileHandler
+from time import time
 from typing import Any, Dict, List, Optional
-from plotly.missing_ipywidgets import FigureWidget
+
+import pandas as pd
+import plotly.express as px
 import requests
 from bs4 import BeautifulSoup
-import sys
-import plotly.express as px
-import pandas as pd
-import os
-from enum import Enum
-from time import time
-import json
-import subprocess
-from datetime import timedelta
-
+from plotly.missing_ipywidgets import FigureWidget
 
 __logs: List[logging.Logger] = []
 
 
 class SearchOptions(Enum):
-    CONTAINS_ALL = 0
+    CONTAINS_ALL = "AND"
     """AND search: the item must contain all of the requested elements, in order to fit"""
-    CONTAINS_ONE = 1
+    CONTAINS_ONE = "OR"
     """OR search: the item must contain at least one of the requested elements, in order to fit"""
 
 
@@ -90,9 +92,9 @@ class GitUtil:
 
     @staticmethod
     def __write_data(data: Dict[str, Any]) -> None:
-        if os.path.exists(GitUtil._path):
-            with open(GitUtil._path, mode='w+', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
+        # if os.path.exists(GitUtil._path):
+        with open(GitUtil._path, mode='w+', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
 
     @staticmethod
     def update_handler_state() -> None:
@@ -233,12 +235,12 @@ def get_logger(name: str) -> logging.Logger:
     if not os.path.exists('logs'):
         os.mkdir('logs')
 
-    f_handler = logging.FileHandler('logs/warnings.log', mode='a', encoding='utf-8')
+    f_handler = RotatingFileHandler('logs/warnings.log', mode='a', maxBytes=1000000, backupCount=10, encoding='utf-8')
     f_handler.setLevel(logging.WARNING)
     f_handler.setFormatter(format)
     log.addHandler(f_handler)
 
-    f_handler2 = logging.FileHandler('logs/log.log', mode='a', encoding='utf-8')
+    f_handler2 = RotatingFileHandler('logs/log.log', mode='a', maxBytes=100000, backupCount=20, encoding='utf-8')
     f_handler2.setLevel(logging.DEBUG)
     f_handler2.setFormatter(format)
     log.addHandler(f_handler2)
