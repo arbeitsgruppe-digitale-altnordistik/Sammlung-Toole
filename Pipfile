@@ -1,0 +1,30 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+beautifulsoup4 = "*"
+lxml = "*"
+numpy = "*"
+pandas = "*"
+plotly = "*"
+requests = "*"
+scipy = "*"
+streamlit = "*"
+Markdown = "*"
+
+[dev-packages]
+mypy = "*"
+autopep8 = "*"
+types-markdown = "*"
+types-requests = "*"
+
+[requires]
+python_version = "3.9"
+
+[scripts]
+run = "python runner.py"
+quick = "python -m streamlit run interface.py"
+init = "git submodule update --init --remote --recursive"
+update = "git submodule update --remote --recursive"
