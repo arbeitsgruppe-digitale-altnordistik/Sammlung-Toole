@@ -93,6 +93,31 @@ def get_person_names() -> Dict[str, str]:
     return res
 
 
+def get_ppl_names() -> List[Tuple[str, str, str]]:
+    res: List[Tuple[str, str, str]] = []
+    tree = etree.parse(PERSON_DATA_PATH)
+    root = tree.getroot()
+    ppl = root.findall(".//person", nsmap)
+    print(len(ppl))
+    for pers in ppl:
+        id_ = pers.get('{http://www.w3.org/XML/1998/namespace}id')
+        name_tag = pers.find('persName', nsmap)
+        firstNameS = name_tag.findall('forename', nsmap)
+        lastNameS = name_tag.findall('surname', nsmap)
+        firstNameClean = [name.text for name in firstNameS if name.text]
+        if firstNameClean:
+            firstName = " ".join(firstNameClean)
+        else:
+            firstName = ""
+        lastName = " ".join([name.text for name in lastNameS])
+        if not firstName and not lastName:
+            if name_tag.text:
+                lastName = name_tag.text
+        currPers = (firstName, lastName, id_)
+        res.append(currPers)
+    return res
+
+
 def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
     # CHORE: document
     ms_ids: List[str] = []

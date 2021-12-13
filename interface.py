@@ -216,11 +216,11 @@ def browse_data(a: Any) -> None:
         st.write(counts)
 
     # Persons
-    pers = handler.person_names
+    pers = handler.get_all_ppl_data()
     st.header("Persons")
-    st.write(f'{len(pers.keys())} people loaded.')
+    st.write(f'{len(pers)} people loaded.')
     if st.button("show all"):
-        st.write(list(pers.values()))
+        st.write(pers)
     pers_matrix = handler.person_matrix
     st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
 

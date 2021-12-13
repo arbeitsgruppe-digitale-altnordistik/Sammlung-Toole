@@ -18,6 +18,7 @@ HANDLER_BACKUP_PATH_PERS_MATRIX = "data/backups/person-matrix.csv"
 HANDLER_BACKUP_PATH_PERS_DICT = "data/backups/person-name-dict.json"
 HANDLER_BACKUP_PATH_PERS_DICT_INV = "data/backups/person-name-inverse-dict.json"
 HANDLER_PATH_PICKLE = "data/handler_cache.pickle"
+DATABASE_PATH = "data/allthedata.db"
 
 GROUPS_PATH_PICKLE = "data/groups.pickle"
 

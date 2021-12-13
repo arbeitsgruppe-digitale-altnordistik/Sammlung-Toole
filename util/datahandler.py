@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import pickle
+import sqlite3
 import sys
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -15,7 +16,7 @@ from bs4 import BeautifulSoup
 from scipy import sparse
 
 import util.tamer as tamer
-from util import utils
+from util import database, utils
 from util.constants import *
 from util.groups import Groups
 from util.utils import GitUtil, SearchOptions, Settings
@@ -25,6 +26,7 @@ settings = Settings.get_settings()
 
 
 class DataHandler:
+
     manuscripts: pd.DataFrame
     """Manuscripts
     
@@ -89,6 +91,10 @@ class DataHandler:
     groups: Groups
     # CHORE: document
 
+    backend: sqlite3.Connection
+
+    db: sqlite3.Cursor
+
     def __init__(self) -> None:
         """DataHandler constructor.
 
@@ -108,6 +114,8 @@ class DataHandler:
         self.groups = Groups.from_cache() or Groups()
         log.debug(f"Groups loaded: {self.groups}")
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
+        self.backend = database.create_connection()
+        self.db = self.backend.cursor
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
 
@@ -191,6 +199,12 @@ class DataHandler:
         """
         log.info("Getting DataHandler")
         res: Optional[DataHandler] = cls._from_pickle()
+        dbConn = database.create_connection()
+        database.db_set_up(dbConn)
+        ppl = tamer.get_ppl_names()
+        database.populate_people_table(dbConn, ppl)
+        dbConn.commit()
+        dbConn.close()
         if res:
             return res
         log.info("Could not get DataHandler from pickle")
@@ -216,6 +230,13 @@ class DataHandler:
 
     # API Methods
     # -----------
+
+    def get_all_ppl_data(self) -> List[Tuple[str, str, str]]:
+        res: List[Tuple[str, str, str]] = []
+        with self.db as db:
+            for row in db.execute('SELECT * FROM people ORDER BY persID'):
+                res.append(row)
+        return res
 
     def get_all_manuscript_data(self) -> pd.DataFrame:
         """Get the manuscripts dataframe.
