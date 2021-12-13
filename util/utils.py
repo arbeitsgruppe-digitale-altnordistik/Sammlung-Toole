@@ -235,12 +235,12 @@ def get_logger(name: str) -> logging.Logger:
     if not os.path.exists('logs'):
         os.mkdir('logs')
 
-    f_handler = RotatingFileHandler('logs/warnings.log', mode='a', maxBytes=1000000, backupCount=10, encoding='utf-8')
+    f_handler = logging.FileHandler('logs/warnings.log', mode='a', encoding='utf-8')
     f_handler.setLevel(logging.WARNING)
     f_handler.setFormatter(format)
     log.addHandler(f_handler)
 
-    f_handler2 = RotatingFileHandler('logs/log.log', mode='a', maxBytes=100000, backupCount=20, encoding='utf-8')
+    f_handler2 = logging.FileHandler('logs/log.log', mode='a', encoding='utf-8')
     f_handler2.setLevel(logging.DEBUG)
     f_handler2.setFormatter(format)
     log.addHandler(f_handler2)
