@@ -5,10 +5,11 @@ This module handles data and provides convenient and efficient access to it.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import pickle
 import sqlite3
 import sys
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -91,10 +92,6 @@ class DataHandler:
     groups: Groups
     # CHORE: document
 
-    backend: sqlite3.Connection
-
-    db: sqlite3.Cursor
-
     def __init__(self) -> None:
         """DataHandler constructor.
 
@@ -114,8 +111,6 @@ class DataHandler:
         self.groups = Groups.from_cache() or Groups()
         log.debug(f"Groups loaded: {self.groups}")
         self.manuscripts.drop(columns=["content", "soup"], inplace=True)
-        self.backend = database.create_connection()
-        self.db = self.backend.cursor
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
 
@@ -125,7 +120,8 @@ class DataHandler:
     @staticmethod
     def _from_pickle() -> Optional[DataHandler]:
         """Load datahandler from pickle, if available. Returns None otherwise."""
-        if os.path.exists(HANDLER_PATH_PICKLE):
+        pickle_path = Path(HANDLER_PATH_PICKLE)
+        if pickle_path.exists():
             try:
                 prev = sys.getrecursionlimit()
                 with open(HANDLER_PATH_PICKLE, mode='rb') as file:
@@ -233,8 +229,9 @@ class DataHandler:
 
     def get_all_ppl_data(self) -> List[Tuple[str, str, str]]:
         res: List[Tuple[str, str, str]] = []
-        with self.db as db:
-            for row in db.execute('SELECT * FROM people ORDER BY persID'):
+        with database.create_connection() as conn:
+            cur = conn.cursor()
+            for row in cur.execute('SELECT * FROM people ORDER BY persID'):
                 res.append(row)
         return res
 

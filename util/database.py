@@ -30,6 +30,7 @@ def create_connection(db_file: str = DATABASE_PATH) -> Optional[sqlite3.Connecti
 def db_set_up(conn: sqlite3.Connection) -> None:
     curse = conn.cursor()
     curse.execute('''CREATE TABLE IF NOT EXISTS people (firstName, lastName, persID primary key)''')
+
     return
 
 
