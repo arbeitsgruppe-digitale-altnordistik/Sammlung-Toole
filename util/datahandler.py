@@ -142,7 +142,7 @@ class DataHandler:
         df = tamer.deliver_handler_data()
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_msinfo(x, persons))
-        log.info("Loaded MS Info")
+        log.info("Loaded MS Info for new backend.")
         df = df.join(msinfo)
         return df
 
@@ -181,6 +181,29 @@ class DataHandler:
         """Check if the data handler should be available from cache."""
         return os.path.exists(HANDLER_PATH_PICKLE)
 
+    @staticmethod
+    def _build_db() -> None:
+        dbConn = database.create_connection()
+        database.db_set_up(dbConn)
+        ppl = tamer.get_ppl_names()
+        database.populate_people_table(dbConn, ppl)
+        df = tamer.deliver_handler_data()
+        df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
+        msinfo = df['soup'].apply(lambda x: tamer.get_ms_info(x))
+        log.info("Loaded MS Info for new backend.")
+        df = df.drop('soup', axis=1)
+        df = df.drop('content', axis=1)
+        df = df.join(msinfo)
+        import pdb
+        pdb.set_trace()
+        database.populate_ms_table(dbConn, df)
+        cur = dbConn.cursor()
+        for row in cur.execute('SELECT * FROM manuscripts ORDER BY shelfmark'):
+            print(row)
+        dbConn.commit()
+        dbConn.close()
+        return
+
     # Class Methods
     # =============
 
@@ -195,12 +218,7 @@ class DataHandler:
         """
         log.info("Getting DataHandler")
         res: Optional[DataHandler] = cls._from_pickle()
-        dbConn = database.create_connection()
-        database.db_set_up(dbConn)
-        ppl = tamer.get_ppl_names()
-        database.populate_people_table(dbConn, ppl)
-        dbConn.commit()
-        dbConn.close()
+        cls._build_db()
         if res:
             return res
         log.info("Could not get DataHandler from pickle")
@@ -241,7 +259,7 @@ class DataHandler:
         Returns:
             A dataframe containing all manuscripts with their respective metadata.
 
-            The dataframe will have the followin structure:
+            The dataframe will have the following structure:
 
             Per row, there will be metadata to one manuscript. The row indices are integers 0..n.
 
@@ -269,7 +287,9 @@ class DataHandler:
             - 'full_id'
             - 'filename'
         """
-        return self.manuscripts
+        with database.create_connection() as conn:
+            res = pd.read_sql('SELECT * FROM manuscripts ORDER BY shelfmark', con=conn)
+        return res
 
     def search_manuscript_data(self,
                                full_ids: Union[List[str], pd.Series, pd.DataFrame] = None,

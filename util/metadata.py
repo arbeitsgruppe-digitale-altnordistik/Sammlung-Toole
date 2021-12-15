@@ -159,8 +159,9 @@ def get_origin(soup: BeautifulSoup) -> str:
     return pretty_origPlace
 
 
-def get_creator(soup: BeautifulSoup, persons: Dict[str, str]) -> str:
-    """Get creator(s).
+def get_creator(soup: BeautifulSoup, persons: Dict[str, str]) -> str:  # TODO: Kill once migrated.
+    """Deprecation warning: Will be removed once SQLite is full implemented.
+    Get creator(s).
 
     Args:
         soup (bs4.BeautifulSoup): BeautifulSoup object
@@ -194,6 +195,43 @@ def get_creator(soup: BeautifulSoup, persons: Dict[str, str]) -> str:
         pretty_creators = "Scribe(s) unknown"
 
     return pretty_creators
+
+
+def get_creators(soup: BeautifulSoup) -> List[str]:
+    """Get creator(s). Function for new SQLite backend.
+
+    Args:
+        soup (bs4.BeautifulSoup): BeautifulSoup object
+        persons (Dict[str, str]): look-up table for person names by ID
+
+    Returns:
+        str: creator name(s)
+    """
+    hands = soup.handDesc
+    pplIDs: List[str] = []
+
+    if hands:
+        try:
+            creators = hands.find_all('name', {'type': 'person'})
+
+            if not creators:
+                fKey = "NULL"
+                pplIDs.append(fKey)
+            else:
+                for creator in creators:
+                    key = creator.get('key')
+                    if key:
+                        pplIDs.append(key)
+        except:
+            # LATER: find out why, if that happens
+            fKey = "NULL"
+            pplIDs.append(fKey)
+    else:
+        # LATER: find out why, if that happens
+        fKey = "NULL"
+        pplIDs.append(fKey)
+
+    return pplIDs
 
 
 def get_shorttitle(soup: BeautifulSoup) -> str:

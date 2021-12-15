@@ -68,7 +68,9 @@ def deliver_handler_data() -> pd.DataFrame:
     return outDF
 
 
-def get_person_names() -> Dict[str, str]:
+def get_person_names() -> Dict[str, str]:  # TODO: Kill once migrated
+    """Deprecation warning: Function used by old, in-memory style handler. Will be removed in the near future.
+    """
     res: Dict[str, str] = {}
     tree = etree.parse(PERSON_DATA_PATH)
     root = tree.getroot()
@@ -94,6 +96,9 @@ def get_person_names() -> Dict[str, str]:
 
 
 def get_ppl_names() -> List[Tuple[str, str, str]]:
+    """Delivers the names found in the handrit names authority file.
+    Returns list of tuples containing: first name, last name, and alphanumeric, unique ID in that order.
+    """
     res: List[Tuple[str, str, str]] = []
     tree = etree.parse(PERSON_DATA_PATH)
     root = tree.getroot()
@@ -207,7 +212,9 @@ def _find_full_id(soup: BeautifulSoup) -> str:
     return str(id)
 
 
-def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:
+def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:  # TODO: Kill once migrated
+    """Deprecation warning: Function will be removed once SQLite is fully implemented.
+    """
     shorttitle = metadata.get_shorttitle(soup)
     _, country, settlement, repository = metadata.get_msID(soup)
     origin = metadata.get_origin(soup)
@@ -229,8 +236,48 @@ def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:
                       "repository": repository,
                       "origin": origin,
                       "date": date,
-                      "Terminus post quem": tp,
-                      "Terminus ante quem": ta,
+                      "terminusPostQuem": tp,
+                      "terminusAnteQuem": ta,
+                      "meandate": meandate,
+                      "yearrange": yearrange,
+                      "support": support,
+                      "folio": folio,
+                      "height": height,
+                      "width": width,
+                      "extent": extent,
+                      "description": description,
+                      "creator": creator,
+                      "id": id,
+                      "full_id": full_id,
+                      "filename": filename})
+
+
+def get_ms_info(soup: BeautifulSoup) -> pd.Series:
+    '''Will deliver a data frame to be crunched into SQL
+    '''
+    shorttitle = metadata.get_shorttitle(soup)
+    _, country, settlement, repository = metadata.get_msID(soup)
+    origin = metadata.get_origin(soup)
+    date, tp, ta, meandate, yearrange = metadata.get_date(soup)
+    support = metadata.get_support(soup)
+    folio = metadata.get_folio(soup)
+    height, width = metadata.get_dimensions(soup)
+    creator = metadata.get_creators(soup)
+    extent = metadata.get_extent(soup)
+    description = metadata.get_description(soup)
+    id = _find_id(soup)
+    full_id = _find_full_id(soup)
+    filename = _find_filename(soup)
+    log.debug(f"Sucessfully souped and strained {full_id}")
+
+    return pd.Series({"shorttitle": shorttitle,
+                      "country": country,
+                      "settlement": settlement,
+                      "repository": repository,
+                      "origin": origin,
+                      "date": date,
+                      "terminusPostQuem": tp,
+                      "terminusAnteQuem": ta,
                       "meandate": meandate,
                       "yearrange": yearrange,
                       "support": support,

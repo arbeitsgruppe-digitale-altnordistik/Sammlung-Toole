@@ -6,6 +6,7 @@ from lxml import etree
 import glob
 import sys
 from util.constants import *
+import pandas as pd
 
 
 nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
@@ -30,13 +31,18 @@ def create_connection(db_file: str = DATABASE_PATH) -> Optional[sqlite3.Connecti
 def db_set_up(conn: sqlite3.Connection) -> None:
     curse = conn.cursor()
     curse.execute('''CREATE TABLE IF NOT EXISTS people (firstName, lastName, persID primary key)''')
-
+    curse.execute('''CREATE TABLE IF NOT EXISTS manuscripts (shelfmark, shorttitle, country, settlement, repository, origin, date, terminusPostQuem, terminusAnteQuem, meandate, yearrange, support, folio, height, width, extent, description, creator, id, full_id primary key, filename)''')
     return
 
 
 def populate_people_table(conn: sqlite3.Connection, incoming: Any) -> None:
     curse = conn.cursor()
-    curse.executemany('''INSERT INTO people VALUES (?, ?, ?)''', incoming)
+    curse.executemany('''INSERT OR IGNORE INTO people VALUES (?, ?, ?)''', incoming)
+    return
+
+
+def populate_ms_table(conn: sqlite3.Connection, incoming: pd.DataFrame) -> None:
+    incoming.to_sql("manuscripts", conn, if_exists='append', index=False)
     return
 
 
