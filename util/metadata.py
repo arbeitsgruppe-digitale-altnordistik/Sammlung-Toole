@@ -18,6 +18,7 @@ log = utils.get_logger(__name__)
 
 
 """ Anmerkung: Folgender Funktion bedarf es noch für get_creator resp. get_persName. Ggf. streichen """  # QUESTION: what?
+# QUESTION: Unsure about above comments. Who wrote what? And by what I mean which comment, not 'what'^^
 
 
 def get_soup(url: str) -> BeautifulSoup:  # TODO: should become obsolete
@@ -57,20 +58,6 @@ def get_cleaned_text(carrot: Tag) -> str:
     return res
 
 
-# def get_structure(mylist: List[tuple], mytuple: Tuple[str]):  # TODO: might get obsolete?
-#     """Adds tuple to list.
-
-#     Args:
-#         mylist (list): list containing tuples
-#         mytuple (tuple): tuple containing metadata
-
-#     Returns:
-#         list: mylist
-#     """
-#     mylist.append(mytuple)
-#     return mylist
-
-
 def _get_digits(text: str) -> int:
     """Gets digits from text.
 
@@ -97,13 +84,6 @@ def _get_digits(text: str) -> int:
 
 # Pull meta data
 # ---------------
-
-
-# def get_tag(soup):  # TODO: should become obsolete
-#     tag = soup.msDesc
-#     handritID = str(tag['xml:id'])
-#     name = handritID[0:-3]
-#     return name
 
 
 def _get_key(leek: Tag) -> Optional[str]:
@@ -161,6 +141,7 @@ def get_origin(soup: BeautifulSoup) -> str:
 
 def get_creator(soup: BeautifulSoup, persons: Dict[str, str]) -> str:  # TODO: Kill once migrated.
     """Deprecation warning: Will be removed once SQLite is full implemented.
+
     Get creator(s).
 
     Args:
@@ -197,7 +178,7 @@ def get_creator(soup: BeautifulSoup, persons: Dict[str, str]) -> str:  # TODO: K
     return pretty_creators
 
 
-def get_creators(soup: BeautifulSoup) -> List[str]:
+def get_creators(soup: BeautifulSoup) -> str:  # TODO: Implement a method that works with foreign keys
     """Get creator(s). Function for new SQLite backend.
 
     Args:
@@ -230,8 +211,8 @@ def get_creators(soup: BeautifulSoup) -> List[str]:
         # LATER: find out why, if that happens
         fKey = "NULL"
         pplIDs.append(fKey)
-
-    return pplIDs
+    res = "; ".join(pplIDs)
+    return res
 
 
 def get_shorttitle(soup: BeautifulSoup) -> str:
@@ -355,7 +336,6 @@ def get_folio(soup: BeautifulSoup) -> int:
 
         if perfect_copy == True:
             folio_total = copy_no_space
-
         else:
             folio_total: int = 0
             '''Is a total of folio given:'''
@@ -876,53 +856,3 @@ def pandafy_data(result: list, columns: list) -> DataFrame:
 def CSVExport(FileName: str, DataFrame: pd.DataFrame) -> None:
     DataFrame.to_csv(FileName+".csv", sep='\t', encoding='utf-8', index=False)
     log.info("File exported")
-
-
-# Test Runner
-# -----------
-
-
-# Test URLs
-# myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml"]
-# myURLList = ["https://handrit.is/en/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4982-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-4925-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml", "https://handrit.is/is/manuscript/xml/JS04-0251-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/Lbs02-0152-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0197-en.xml", "https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/IB08-0165-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0110-I-II-is.xml", "https://handrit.is/is/manuscript/xml/AM08-0048-is.xml"]
-# myURLList = ["https://handrit.is/is/manuscript/xml/AM04-1056-XVII-en.xml", "https://handrit.is/is/manuscript/xml/IB08-0174-is.xml", "https://handrit.is/is/manuscript/xml/AM02-0344-is.xml", "https://handrit.is/da/manuscript/xml/Acc-0001-da.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
-# myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/en/manuscript/xml/Acc-0036-en.xml", "https://handrit.is/is/manuscript/xml/AM02-0115-is.xml", "https://handrit.is/en/manuscript/xml/NKS04-1809-is.xml", "https://handrit.is/is/manuscript/xml/Lbs08-2296-is.xml"]
-# myURLList = ["https://handrit.is/is/manuscript/xml/GKS04-2090-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml"]
-# myURLList = ["https://handrit.is/en/manuscript/xml/Lbs04-0590-is.xml", "https://handrit.is/is/manuscript/xml/GKS02-1005-is.xml", "https://handrit.is/en/manuscript/xml/AM02-0115-is.xml"]
-# myURLList = ["https://handrit.is/is/manuscript/xml/Lbs04-1495-is.xml", "https://handrit.is/is/manuscript/xml/Einkaeign-0021-is.xml"]
-# myURLList = ['AM02-0002', 'AM02-0022', 'AM02-190-b']
-
-
-# if __name__ == "__main__":
-#     print("Test Runner:")
-#     print("------------")
-#     print(f'Start: {datetime.now()}')
-
-#     '''Hier zwei Funktionen zum Citavi-freundliches Data oder alles Data zu bekommen (unten der Export)'''
-
-#     # Get data for citavi
-#     # -----------------------
-#     data_c, file_name_c = get_citavified_data(myURLList)
-
-#     # Get all data
-#     # ----------------
-#     # data = get_all_data(myURLList, DataType='ids')
-#     # print(data)
-
-#     '''Hier ist noch Balduins Titel-Finder. Allerdings noch nicht in einem richtigen Dataframe oder dergleichen!'''
-#     # Get all titles
-#     # --------------
-#     #list_of_results = do_it_my_way(myURLList)
-#     # for url, result in list_of_results:
-#     #    print(url)
-#     #    for vals in result:
-#     #        print(vals)
-#     #    print('\n------------------\n')
-
-#     # CSV exports
-#     # ----------
-#     # CSVExport(file_name_c, data_c)
-#     # CSVExport(file_name, data)
-
-#     print(f'Finished: {datetime.now()}')
-#     print("------------")
