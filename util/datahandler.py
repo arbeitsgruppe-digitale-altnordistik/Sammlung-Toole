@@ -218,7 +218,8 @@ class DataHandler:
         """
         log.info("Getting DataHandler")
         res: Optional[DataHandler] = cls._from_pickle()
-        cls._build_db()
+        if not Path(DATABASE_PATH).exists():
+            cls._build_db()
         if res:
             return res
         log.info("Could not get DataHandler from pickle")
@@ -296,7 +297,7 @@ class DataHandler:
                                ms_ids: Union[List[str], pd.Series, pd.DataFrame] = None,
                                shelfmarks: Union[List[str], pd.Series, pd.DataFrame] = None,
                                filenames: Union[List[str], pd.Series, pd.DataFrame] = None) -> Optional[pd.DataFrame]:
-        """Search manuscript metadata for certain manuscripts.
+        """Search manuscript metadata for certain manuscripts. 
 
         Basic search function:
 
@@ -319,55 +320,71 @@ class DataHandler:
             Optional[pd.DataFrame]: A dataframe containing the metadata for the requested manuscripts. 
                 Returns None if no manuscript was found or if no parameters were passed.
         """
-        log.info(f'Searching for manuscripts: {full_ids}/{ms_ids}/{filenames}')
+        log.info(f'Searching for manuscripts using new backend: {full_ids}/{ms_ids}/{filenames}')  # TODO: Remove "using new backend" once working
+        print("I am doing an SQLite!")
+        conn = database.create_connection()
+        search_table = "manuscripts"
+
         # full id
         if full_ids is not None:
             if isinstance(full_ids, list) and full_ids:
-                return self.manuscripts.loc[self.manuscripts['full_id'].isin(full_ids)]
+                full_ids_list = full_ids
             elif isinstance(full_ids, pd.DataFrame):
                 if full_ids.empty:
                     return None
-                return self.manuscripts.loc[self.manuscripts['full_id'].isin(full_ids['full_id'])]
+                full_ids_list = full_ids['full_id'].to_list()
             elif isinstance(full_ids, pd.Series):
                 if full_ids.empty:
                     return None
-                return self.manuscripts.loc[self.manuscripts['full_id'].isin(full_ids)]
+                full_ids_list = full_ids.tolist()
+            res = database.simple_search(conn, search_table, "full_id", full_ids_list)
+            print("I did an SQLite!")
+            return res
         # id
         elif ms_ids is not None:
             if isinstance(ms_ids, list) and ms_ids:
-                return self.manuscripts.loc[self.manuscripts['id'].isin(ms_ids)]
+                ms_ids_list = ms_ids
             elif isinstance(ms_ids, pd.DataFrame):
                 if ms_ids.empty:
                     return None
-                return self.manuscripts.loc[self.manuscripts['id'].isin(ms_ids['id'])]
+                ms_ids_list = ms_ids['id'].tolist()
             elif isinstance(ms_ids, pd.Series):
                 if ms_ids.empty:
                     return None
-                return self.manuscripts.loc[self.manuscripts['id'].isin(ms_ids)]
+                ms_ids_list = ms_ids.tolist()
+            res = database.simple_search(conn, search_table, "id", ms_ids_list)
+            print("I did an SQLite!")
+            return res
         # filename
         elif filenames is not None:
             if isinstance(filenames, list) and filenames:
-                return self.manuscripts.loc[self.manuscripts['filename'].isin(filenames)]
+                fn_list = filenames
             elif isinstance(filenames, pd.DataFrame):
                 if filenames.empty:
                     return None
-                return self.manuscripts.loc[self.manuscripts['filename'].isin(filenames['filename'])]
+                fn_list = filenames['filename'].tolist()
             elif isinstance(filenames, pd.Series):
                 if filenames.empty:
                     return None
-                return self.manuscripts.loc[self.manuscripts['filename'].isin(filenames)]
+                fn_list = filenames.tolist()
+            res = database.simple_search(conn, search_table, 'filename', fn_list)
+            print("I did an SQLite!")
+            return res
         # shelfmark
         elif shelfmarks is not None:
             if isinstance(shelfmarks, list) and shelfmarks:
-                return self.manuscripts.loc[self.manuscripts['shelfmark'].isin(shelfmarks)]
+                sig_list = shelfmarks
             elif isinstance(shelfmarks, pd.DataFrame):
                 if shelfmarks.empty:
                     return None
-                return self.manuscripts.loc[self.manuscripts['shelfmark'].isin(shelfmarks['shelfmark'])]
+                sig_list = shelfmarks['shelfmark'].tolist()
             elif isinstance(shelfmarks, pd.Series):
                 if shelfmarks.empty:
                     return None
-                return self.manuscripts.loc[self.manuscripts['shelfmark'].isin(shelfmarks)]
+                sig_list = shelfmarks.tolist()
+            res = database.simple_search(conn, search_table, "shelfmark", sig_list)
+            print("I did an SQLite!")
+            return res
         # no argument passed
         return None
 
@@ -471,20 +488,21 @@ class DataHandler:
     def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> Tuple[List[str], pd.DataFrame]:
         # CHORE: documentation
         # TODO: should probably be moved to tamer, right?
+        conn = database.create_connection()
         msss: List[pd.DataFrame] = []
         for url in urls:
             if "/search/results/" in url:
                 pages = tamer.get_search_result_pages(url)
                 shelfmarks = tamer.get_shelfmarks_from_urls(pages)
                 log.info(f"Loaded Shelfmarks: {shelfmarks}")
-                mss = self.manuscripts[self.manuscripts['shelfmark'].isin(shelfmarks)]
+                mss = database.simple_search(conn, "manuscripts", "shelfmark", shelfmarks)
             else:
                 ids = tamer.efnisordResult(url)
-                mss = self.manuscripts[self.manuscripts['id'].isin(ids)]
+                mss = mss = database.simple_search(conn, "manuscripts", "id", ids)
             msss.append(mss)
 
-        if sharedMode:  # Looked it over, they don't return the same. I got confused between this branch and stable (stable squishes results in tamer).
-            res = self.manuscripts
+        if sharedMode:
+            res = self.get_all_manuscript_data()
             for df in msss:
                 res = pd.merge(res, df, on='shelfmark', how='inner')
             return list(res['shelfmark']), res

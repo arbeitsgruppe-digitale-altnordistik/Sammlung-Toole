@@ -66,8 +66,24 @@ def populate_ms_table(conn: sqlite3.Connection, incoming: pd.DataFrame) -> None:
         incoming(pd.DataFrame): Dataframe containing the manuscript data. Column names
         of dataframe must match column names of db table.
     '''
-    incoming.to_sql("manuscripts", conn, if_exists='append', index=False)
+    incoming2 = incoming[~incoming.duplicated(["full_id"])]
+    dupl = incoming[incoming.duplicated(["full_id"])]
+    print(dupl)
+    incoming2.to_sql("manuscripts", conn, if_exists='append', index=False)
     return
+
+
+def simple_search(conn: sqlite3.Connection, table_name: str, column_name: str, search_criteria: List[str]) -> pd.DataFrame:
+    res = pd.DataFrame()
+    first_run = True
+    for i in search_criteria:
+        ii = pd.read_sql(sql=f"SELECT * FROM {table_name} WHERE {column_name} = '{i}'", con=conn)
+        if first_run:
+            res = res.reindex(columns=ii.columns)
+            first_run = False
+        res = res.append(ii)
+    res.reset_index(drop=True, inplace=True)
+    return res
 
 
 if __name__ == '__main__':
