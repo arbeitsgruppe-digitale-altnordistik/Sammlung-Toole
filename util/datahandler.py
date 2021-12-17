@@ -191,15 +191,16 @@ class DataHandler:
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_ms_info(x))
         log.info("Loaded MS Info for new backend.")
+        pplXmss = tamer.get_person_mss_matrix(msinfo)
         df = df.drop('soup', axis=1)
         df = df.drop('content', axis=1)
         df = df.join(msinfo)
-        import pdb
-        pdb.set_trace()
         database.populate_ms_table(dbConn, df)
-        cur = dbConn.cursor()
-        for row in cur.execute('SELECT * FROM manuscripts ORDER BY shelfmark'):
-            print(row)
+        log.debug("Populated MS Table")
+        database.populate_junctionPxM(dbConn, pplXmss)
+        report = database.PxM_integrity_check(dbConn, pplXmss)
+        print(report)
+        log.debug("Populated People x Manuscripts junction table.")
         dbConn.commit()
         dbConn.close()
         return
@@ -251,6 +252,14 @@ class DataHandler:
         with database.create_connection() as conn:
             cur = conn.cursor()
             for row in cur.execute('SELECT * FROM people ORDER BY persID'):
+                res.append(row)
+        return res
+
+    def get_all_ppl_hrf(self) -> List[str]:
+        res: List[str] = []
+        with database.create_connection() as conn:
+            cur = conn.cursor()
+            for row in cur.execute('SELECT firstName, lastName FROM people ORDER BY firstName'):
                 res.append(row)
         return res
 
@@ -511,9 +520,10 @@ class DataHandler:
             unique_hits = all_hits.drop_duplicates().reset_index(drop=True)
             return list(unique_hits['shelfmark']), unique_hits
 
-    def get_person_name(self, pers_id: str) -> str:
+    def get_person_name(self, pers_id: str) -> str:  # TODO: Might be obsolete with new backend?
         """Get a person's name, identified by the person's ID"""
-        return self.person_names.get(pers_id) or ""
+        res = database.simple_people_search(conn=database.create_connection(), persID=pers_id)
+        return res or ""
 
     def get_person_ids(self, pers_name: str) -> List[str]:
         """Get IDs of all persons with a certain name"""

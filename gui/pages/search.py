@@ -86,6 +86,8 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
         mode_selection = st.radio('Search mode', modes.keys())
         mode = modes[mode_selection]
         ppl = st.multiselect('Select Person', persons, format_func=lambda x: f"{handler.get_person_name(x)} ({x})")
+        # TODO: Change above line. This way of constructing the mutliselect is super slow with the new backend as it runs individual queries for each name
+        # instead of one for all names.
         if st.form_submit_button("Search Manuscripts"):
             log.debug(f'Search Mode: {mode}')
             log.debug(f'selected people: {ppl}')

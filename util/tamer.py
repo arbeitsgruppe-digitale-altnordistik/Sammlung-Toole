@@ -123,7 +123,8 @@ def get_ppl_names() -> List[Tuple[str, str, str]]:
     return res
 
 
-def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
+def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:  # TODO: Clean up after full SQLite migration
+    """Deprecation warning! Will soon be outdated!"""
     # CHORE: document
     ms_ids: List[str] = []
     pers_ids: List[str] = []
@@ -146,6 +147,25 @@ def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], Lis
                         pers_ids.append(pers_id)
                     coords.add((ms_index, pers_index))
     return ms_ids, pers_ids, list(coords)
+
+
+def get_person_mss_matrix(df: pd.DataFrame) -> List[Tuple[int, str, str]]:
+    # CHORE: document
+    res: List[Tuple[int, str, str]] = []
+    idgen = 1
+    for _, row in df.iterrows():
+        ms_id = row['full_id']
+        soup = row['soup']
+        persons = soup.find_all('name', {'type': 'person'})
+        # LATER: note that <handNote scribe="XYZ"/> won't be found like this (see e.g. Steph01-a-da.xml)
+        if persons:
+            for person in persons:
+                pers_id = person.get('key')
+                if pers_id:
+                    curT = (idgen, pers_id, ms_id)
+                    res.append(curT)
+                    idgen += 1
+    return res
 
 
 def get_text_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
