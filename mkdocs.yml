@@ -1,0 +1,24 @@
+site_name: Sammlung Toole
+nav:
+  - Home: index.md
+  - Simple Usage:
+      - Overview: simple/usage-overview.md
+      - Search: simple/search.md
+      - Groups: simple/groups.md
+      - Visualization: simple/visualization.md
+  - Advanced Usage: advanced-usage.md
+  - Development: development.md
+  - Contributing: contributing.md
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: amber
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+    - scheme: default
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
