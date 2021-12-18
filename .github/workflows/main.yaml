@@ -22,6 +22,7 @@ jobs:
         run: make setup
       - name: Run Unit Tests
         run: make test-unit
+
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -38,6 +39,7 @@ jobs:
         run: make setup
       - name: Run Integration Tests
         run: make test-integration
+
   test-e2e:
     name: End-to-end Tests
     runs-on: ubuntu-latest
@@ -54,8 +56,9 @@ jobs:
         run: make setup
       - name: Run E2E Tests
         run: make test-end-to-end
+
   test-docs-build:
-    name: Tests if Docs Build Successfully
+    name: Tests Docs Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -70,3 +73,24 @@ jobs:
         run: make setup
       - name: Build Docs
         run: make docs-build
+
+  publish-docs:
+    name: Publish Docs
+    runs-on: ubuntu-latest
+    # only publish the docs when merging into main
+    if: github.ref == 'refs/heads/main'
+    # only attempt this, if building the docs was successful
+    needs: test-docs-build
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install Requirements
+        run: make setup
+      - name: Build Docs
+        run: make docs-publish

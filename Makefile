@@ -64,6 +64,11 @@ docs-run: ## run the docs locally \
 	# TODO: wait for mkdocs
 	@echo "Not yet implemented"
 
+.PHONY: docs-publish
+docs-publish: ## publish docs as GH Pages (requires GH Secrets) \
+	# TODO: wait for mkdocs
+	@echo "Not yet implemented"
+
 
 
 ########################
