@@ -80,3 +80,12 @@ The data used in this application is pulled from [Handrit.is on GitHub](https://
 The Handrit/Manuscript repository is embedded in the present repo as a Git submodule.
 In order to initialize the submodule, you should execute `pipenv run init` before you run the tool for the first time.
 To keep your local data up to date, you can execute `pipenv run update`.
+
+### Makefile
+
+There is a `Makefile` to automate some tasks with the GNU Make commandline tool.  
+To execute make targets, you may need a UNIX-style terminal. On Linux and MacOS this should work out of the box. 
+On Windows you may try with Git Bash or some other UINX-type shell.
+
+To execute a make target, open the root of the repository in your terminal and run `make <target-name>` (where `<target-name>` should be replaced with a available target name).  
+To see the available targets, simply run `make help` or just `make`, which will give you a list of the commands and a short description, if available.
