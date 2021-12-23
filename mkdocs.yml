@@ -3,6 +3,7 @@ nav:
   - Home: index.md
   - Simple Usage:
       - Overview: simple/usage-overview.md
+      - Browse Data: simple/browse.md
       - Search: simple/search.md
       - Groups: simple/groups.md
       - Visualization: simple/visualization.md

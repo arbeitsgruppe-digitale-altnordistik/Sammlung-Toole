@@ -31,7 +31,7 @@ def how_to(_: StateHandler) -> None:
                 
                 - Handrit URLs:  
                   Use one/multiple search- or browse result URL from Handrit.is.  
-                  The tool will find the manuscripts as retuirned by Handrit.is, and show the according metadata.
+                  The tool will find the manuscripts as returned by Handrit.is, and show the according metadata.
                 
                 
                 - Manuscript by Person:  
