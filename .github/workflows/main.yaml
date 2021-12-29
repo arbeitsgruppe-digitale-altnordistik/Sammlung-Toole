@@ -80,15 +80,12 @@ jobs:
     # only attempt this, if building the docs was successful
     needs: test-docs-build
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v2
+      # check out repo
+      - uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-      - name: Install Requirements
-        run: make setup
-      - name: Build Docs
-        run: make docs-publish
+      - name: Deploy docs
+        uses: mhausenblas/mkdocs-deploy-gh-pages@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          REQUIREMENTS: dev-requirements.txt

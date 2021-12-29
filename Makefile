@@ -55,19 +55,12 @@ test-end-to-end: ## run end-to-end tests \
 ########################
 
 .PHONY: docs-build
-docs-build: ## build the docs \
-	# TODO: wait for mkdocs
-	@echo "Not yet implemented"
+docs-build: ## build the docs
+	@pipenv run mkdocs build
 
 .PHONY: docs-run
-docs-run: ## run the docs locally \
-	# TODO: wait for mkdocs
-	@echo "Not yet implemented"
-
-.PHONY: docs-publish
-docs-publish: ## publish docs as GH Pages (requires GH Secrets) \
-	# TODO: wait for mkdocs
-	@echo "Not yet implemented"
+docs-run: ## run the docs locally
+	@pipenv run mkdocs serve
 
 
 
