@@ -8,4 +8,4 @@ The tool aims to shed new light on the data found on [Handrit.is](https://handri
 
 It is written in Python using the UI framework Streamlit.
 
-For any information on how to use it etc., please consult this documentation.
+For any information on how to use it etc., please consult [this documentation](https://arbeitsgruppe-digitale-altnordistik.github.io/Sammlung-Toole/).
