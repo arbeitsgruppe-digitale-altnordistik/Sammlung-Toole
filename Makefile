@@ -62,11 +62,6 @@ docs-build: ## build the docs
 docs-run: ## run the docs locally
 	@pipenv run mkdocs serve
 
-.PHONY: docs-publish
-docs-publish: ## publish docs as GH Pages (requires GH Secrets) \
-	# TODO: wait for mkdocs
-	@echo "Not yet implemented"
-
 
 
 ########################
