@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 from scipy import sparse
+from functools import reduce
 
 import util.tamer as tamer
 from util import database, utils
@@ -142,7 +143,7 @@ class DataHandler:
         df = tamer.deliver_handler_data()
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_msinfo(x, persons))
-        log.info("Loaded MS Info for new backend.")
+        log.info("Loaded MS Info for old backend.")
         df = df.join(msinfo)
         return df
 
@@ -190,17 +191,21 @@ class DataHandler:
         df = tamer.deliver_handler_data()
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_ms_info(x))
+        df = df.join(msinfo)
         log.info("Loaded MS Info for new backend.")
-        pplXmss = tamer.get_person_mss_matrix(msinfo)
+        pplXmss = tamer.get_person_mss_matrix(df)
         df = df.drop('soup', axis=1)
         df = df.drop('content', axis=1)
-        df = df.join(msinfo)
         database.populate_ms_table(dbConn, df)
         log.debug("Populated MS Table")
         database.populate_junctionPxM(dbConn, pplXmss)
         report = database.PxM_integrity_check(dbConn, pplXmss)
-        print(report)
-        log.debug("Populated People x Manuscripts junction table.")
+        if report == True:
+            log.debug("Populated People x Manuscripts junction table.")
+            print("Integrity check passed.")
+        if report == False:
+            log.error("Data integrity in ppl by MS matrix damaged. Duplicate entries or other types of corruption.")
+            print("Integrity check failed.")
         dbConn.commit()
         dbConn.close()
         return
@@ -561,35 +566,33 @@ class DataHandler:
             log.info(f'Search result: {res}')
             return res
 
-    def search_manuscripts_related_to_persons(self, person_ids: List[str], searchOption: SearchOptions) -> List[str]:
+    def search_manuscripts_related_to_persons(self, person_ids: List[str], searchOption: SearchOptions) -> pd.DataFrame:
         # CHORE: Document
+        # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround
         log.info(f'Searching for manuscript related to people: {person_ids} ({searchOption})')
+
         if not person_ids:
             log.debug('Searched for empty list of ppl')
             return []
-        df = self.person_matrix
         if searchOption == SearchOptions.CONTAINS_ONE:
-            hits = []
-            for pers in person_ids:
-                d = df[df[pers] == True]
-                mss = list(d.index)
-                hits += mss
-            res = list(set(hits))
-            if not res:
-                log.info('no ms found')
-                return []
-            log.info(f'Search result: {res}')
+            res = database.ms_x_ppl(conn=database.create_connection(DATABASE_PATH), pplIDs=person_ids)
             return res
+
         else:
             sets = []
-            for pers in person_ids:
-                d = df[df[pers] == True]
-                s = set(d.index)
-                sets.append(s)
+            db = database.create_connection()
+            curse = db.cursor()
+            for i in person_ids:
+                curse.execute(f'SELECT msID from junctionPxM WHERE persID = "{i}"')
+                hits = curse.fetchall()
+                for ii in hits:
+                    iii = [x for x in ii]
+                    sets.append(iii)
             if not sets:
                 log.info('no ms fond')
                 return []
-            intersection = set.intersection(*sets)
-            res = list(intersection)
-            log.info(f'Search result: {res}')
+            msList = list(reduce(set.intersection, [set(x) for x in sets]))
+            log.info(f'Search result: {msList}')
+            sqlList = tuple(msList)
+            res = pd.read_sql(sql=f'SELECT * FROM manuscripts WHERE full_id IN {sqlList}', con=db)
             return res

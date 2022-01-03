@@ -6,6 +6,8 @@ from util.datahandler import DataHandler
 from util.groups import Group, GroupType
 from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions
+from util import database
+import pandas as pd
 
 
 @st.experimental_singleton   # type: ignore
@@ -81,9 +83,10 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
     with st.form("search_ms_by_person"):
         st.subheader("Select Person(s)")
         persons = list(handler.person_matrix.columns)
+        persons = [x.strip() for x in persons]
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', modes.keys())
+        mode_selection = st.radio('Search mode', modes.keys(), 1)
         mode = modes[mode_selection]
         ppl = st.multiselect('Select Person', persons, format_func=lambda x: f"{handler.get_person_name(x)} ({x})")
         # TODO: Change above line. This way of constructing the mutliselect is super slow with the new backend as it runs individual queries for each name
@@ -106,7 +109,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
     """
     handler = state.data_handler
     results = state.searchState.ms_by_pers.mss
-    if not results:
+    if not isinstance(results, pd.DataFrame):
         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
         st.experimental_rerun()
     ppl = state.searchState.ms_by_pers.ppl
@@ -152,7 +155,10 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                         st.experimental_rerun()
-    meta = handler.search_manuscript_data(full_ids=results).reset_index(drop=True)  # type: ignore
+    try:
+        meta = handler.search_manuscript_data(full_ids=results).reset_index(drop=True)  # type: ignore
+    except:
+        print('Uh-oh')  # TODO: Proper handling of empty results from AND queries.
     st.dataframe(meta)
     # TODO: visualization/citavi-export of result
 

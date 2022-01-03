@@ -29,12 +29,10 @@ def create_connection(db_file: str = DATABASE_PATH) -> sqlite3.Connection:
     :param db_file: database file
     :return: Connection object or None
     """
-    conn = None
-    try:
-        conn = sqlite3.connect(db_file)
-        return conn
-    except Error as e:
-        print(e)
+
+    conn = sqlite3.connect(db_file)
+
+    return conn
 
 
 def db_set_up(conn: sqlite3.Connection) -> None:
@@ -119,16 +117,19 @@ def populate_junctionPxM(conn: sqlite3.Connection, incoming: List[Tuple[int, str
     return
 
 
-def PxM_integrity_check(conn: sqlite3.Connection, incoming: List[Tuple[int, str, str]]) -> List[str]:
+def PxM_integrity_check(conn: sqlite3.Connection, incoming: List[Tuple[int, str, str]]) -> bool:
     curse = conn.cursor()
-    checklist = [x[0] for x in incoming]
     curse.execute(f"SELECT persID FROM junctionPxM")
-    l0 = [x[0] for x in incoming]
+    l0 = [x[1] for x in incoming]
     l1 = []
     for row in curse.fetchall():
         l1.append(row)
     l2 = [x for x in l0 if x not in l1]
-    return l2
+    l0.sort()
+    l2.sort()
+    print("Performing integrity check")
+    check = l0 == l2
+    return check
 
 
 def simple_search(conn: sqlite3.Connection, table_name: str, column_name: str, search_criteria: Union[str, List[str]]) -> Union[pd.DataFrame, str]:
@@ -141,7 +142,7 @@ def simple_search(conn: sqlite3.Connection, table_name: str, column_name: str, s
         search_criteria(List): What it is you are looking for
 
     Returns:
-        Results as either DataFrame, when a list was passed
+        pd.DataFrame
     """
     res = pd.DataFrame()
     first_run = True
@@ -152,8 +153,6 @@ def simple_search(conn: sqlite3.Connection, table_name: str, column_name: str, s
             first_run = False
         res = res.append(ii)
     res.reset_index(drop=True, inplace=True)
-    import pdb
-    pdb.set_trace()
     return res
 
 
@@ -168,6 +167,20 @@ def simple_people_search(conn: sqlite3.Connection, persID: str) -> str:
     raw = raw[0]
     res = " ".join(raw)
     curse.close()
+    return res
+
+
+def ms_x_ppl(conn: sqlite3.Connection, pplIDs: List[str]) -> pd.DataFrame:
+    res = pd.DataFrame()
+    first_run = True
+    for i in pplIDs:
+        ii = pd.read_sql(sql=f"SELECT * FROM manuscripts WHERE full_id IN (SELECT msID FROM junctionPxM WHERE persID = '{i}')", con=conn)
+        print(ii)
+        if first_run:
+            res = res.reindex(columns=ii.columns)
+            first_run = False
+        res = res.append(ii)
+    res.reset_index(drop=True, inplace=True)
     return res
 
 
