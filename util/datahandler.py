@@ -174,7 +174,7 @@ class DataHandler:
     @staticmethod
     def _load_persons() -> Tuple[Dict[str, str], Dict[str, List[str]]]:
         """Load person data"""
-        person_names = tamer.get_person_names()
+        person_names = database.persons_lookup_dict(conn=database.create_connection())
         return person_names, tamer.get_person_names_inverse(person_names)
 
     @staticmethod

@@ -82,13 +82,11 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
     handler = state.data_handler
     with st.form("search_ms_by_person"):
         st.subheader("Select Person(s)")
-        persons = list(handler.person_matrix.columns)
-        persons = [x.strip() for x in persons]
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
         mode_selection = st.radio('Search mode', modes.keys(), 1)
         mode = modes[mode_selection]
-        ppl = st.multiselect('Select Person', persons, format_func=lambda x: f"{handler.get_person_name(x)} ({x})")
+        ppl = st.multiselect('Select Person', handler.person_names, format_func=lambda x: f"{handler.person_names[x]} ({x})")
         # TODO: Change above line. This way of constructing the mutliselect is super slow with the new backend as it runs individual queries for each name
         # instead of one for all names.
         if st.form_submit_button("Search Manuscripts"):

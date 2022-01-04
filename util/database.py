@@ -184,6 +184,17 @@ def ms_x_ppl(conn: sqlite3.Connection, pplIDs: List[str]) -> pd.DataFrame:
     return res
 
 
+def persons_lookup_dict(conn: sqlite3.Connection) -> Dict[str, str]:
+    curse = conn.cursor()
+    curse.execute('SELECT * FROM people')
+    raw = curse.fetchall()
+    res = {}
+    for i in raw:
+        name = f"{i[0]} {i[1]}"
+        res[i[2]] = name
+    return res
+
+
 if __name__ == '__main__':
     conn = create_connection("./data/pythonsqlite.db")
     if not conn:
