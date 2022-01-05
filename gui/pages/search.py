@@ -1,5 +1,6 @@
 
 from logging import Logger
+from typing import List
 import streamlit as st
 from util import utils
 from util.datahandler import DataHandler
@@ -25,34 +26,34 @@ log: Logger = get_log()
 def how_to(_: StateHandler) -> None:
     """How-To page of the search page"""
     st.markdown("""
-                ### How To Search
-                
+                # How To Search
+
                 Please select one of the search options on the left in the navigation bar.
-                
+
                 The following search options are available:
-                
-                - Handrit URLs:  
-                  Use one/multiple search- or browse result URL from Handrit.is.  
+
+                - Handrit URLs:
+                  Use one/multiple search- or browse result URL from Handrit.is.
                   The tool will find the manuscripts as retuirned by Handrit.is, and show the according metadata.
-                
-                
-                - Manuscript by Person:  
-                  Select one/multiple persons form the Handrit.is authority file.  
+
+
+                - Manuscript by Person:
+                  Select one/multiple persons form the Handrit.is authority file.
                   The tool will find all manuscripts related to one/all of the selected people.
-                
-                
-                - Person by Manuscript:  
-                  Select one/multiple manuscripts form the Handrit.is collection.  
+
+
+                - Person by Manuscript:
+                  Select one/multiple manuscripts form the Handrit.is collection.
                   The tool will find all people related to one/all of the selected manuscripts.
-                
-                
-                - Manuscript by Text:  
-                  Select one/multiple texts mentioned in the Handrit.is collections.  
+
+
+                - Manuscript by Text:
+                  Select one/multiple texts mentioned in the Handrit.is collections.
                   The tool will find all manuscripts related to one/all of the selected texts.
-                
-                
-                - Text by Manuscript:  
-                  Select one/multiple manuscripts form the Handrit.is collection.  
+
+
+                - Text by Manuscript:
+                  Select one/multiple manuscripts form the Handrit.is collection.
                   The tool will find all texts occuring in one/all of the selected manuscripts.
                 """)
 
@@ -87,8 +88,6 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
         mode_selection = st.radio('Search mode', modes.keys(), 1)
         mode = modes[mode_selection]
         ppl = st.multiselect('Select Person', handler.person_names, format_func=lambda x: f"{handler.person_names[x]} ({x})")
-        # TODO: Change above line. This way of constructing the mutliselect is super slow with the new backend as it runs individual queries for each name
-        # instead of one for all names.
         if st.form_submit_button("Search Manuscripts"):
             log.debug(f'Search Mode: {mode}')
             log.debug(f'selected people: {ppl}')
@@ -186,13 +185,15 @@ def __search_person_by_mss_step_search(state: StateHandler) -> None:
     handler = state.data_handler
     with st.form("search_person_by_ms"):
         st.subheader("Select Manuscript(s)")
-        manuscripts = list(handler.person_matrix.index)
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', modes.keys())
+        mode_selection = st.radio('Search mode', modes.keys(), index=1)
         mode = modes[mode_selection]
-        # LATER: come up with a nice format function here (ideally including ms nicknames, sothat one could find "Flateyjarbók" etc.)
-        mss = st.multiselect('Select Manuscript', manuscripts)
+        # LATER: come up with a nice format function here (ideally including ms nicknames, so that one could find "Flateyjarbók" etc.)
+        # TODO: I tried to implement the above -> goes oom. Basically, it tries to map out a dict with 15k keys and the following structure: key[str]: Tuple[str, str]
+        # and dies. This is what I tried: format_func=lambda x: f"{handler.manuscripts[x][0]} ({handler.manuscripts[x][1]}) - {handler.manuscripts}
+        # (/SK)
+        mss = st.multiselect('Select Manuscript', handler.manuscripts)
         if st.form_submit_button("Search People"):
             log.debug(f'Search Mode: {mode}')
             log.debug(f'selected manuscripts: {mss}')
@@ -211,7 +212,7 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
     """
     handler = state.data_handler
     results = state.searchState.pers_by_ms.ppl
-    if not results:
+    if not isinstance(results, pd.DataFrame):
         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
         st.experimental_rerun()
     mss = state.searchState.pers_by_ms.mss
@@ -223,7 +224,11 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
         st.experimental_rerun()
     with st.expander('view results as list', False):
-        st.write(results)
+        resList = []  # TODO: Come up with more efficient method
+        for index, row in results.iterrows():
+            name = f"{row['firstName']} {row['lastName']}"
+            resList.append(name)
+        st.write(resList)
     with st.expander("Save results as group", False):
         with st.form("save_group"):
             name = st.text_input('Group Name', f'Search results for <{mss}>')
@@ -257,7 +262,7 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
                         st.experimental_rerun()
-    st.table([(x, handler.get_person_name(x)) for x in results])
+    st.table(results)
     # TODO: visualization/citavi-export of result
 
 # endregion
@@ -286,12 +291,11 @@ def __search_mss_by_text_step_search(state: StateHandler) -> None:
     handler = state.data_handler
     with st.form("search_ms_by_text"):
         st.subheader("Select Text(s)")
-        texts = list(handler.text_matrix.columns)
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', modes.keys())
+        mode_selection = st.radio('Search mode', modes.keys(), 1)
         mode = modes[mode_selection]
-        txt = st.multiselect('Select Text', texts)
+        txt = st.multiselect('Select Text', handler.texts)
         # LATER: find format function to make it pretty
         if st.form_submit_button("Search Manuscripts"):
             log.debug(f'Search Mode: {mode}')
@@ -311,7 +315,7 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
     """
     handler = state.data_handler
     results = state.searchState.ms_by_txt.mss
-    if not results:
+    if not isinstance(results, pd.DataFrame):
         log.warn("No results, going back to search")
         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
         st.experimental_rerun()
@@ -324,7 +328,7 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
         st.experimental_rerun()
     with st.expander('view results as list', False):
-        st.write(results)
+        st.write(results['shelfmark'].tolist())
     with st.expander("Save results as group", False):
         with st.form("save_group"):
             name = st.text_input('Group Name', f'Search results for <{txt}>')
@@ -334,6 +338,8 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
                 handler.groups.set(grp)
                 state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                 st.experimental_rerun()
+    st.table(results)
+    # TODO: Below code not yet checked for compatibility with new backend (/SK)
     if handler.groups.manuscript_groups:
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
@@ -358,8 +364,6 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                         st.experimental_rerun()
-    meta = handler.search_manuscript_data(shelfmarks=results).reset_index(drop=True)  # type: ignore
-    st.dataframe(meta)
     # TODO: visualization/citavi-export of result
 
 # endregion
@@ -388,13 +392,13 @@ def __search_text_by_mss_step_search(state: StateHandler) -> None:
     handler = state.data_handler
     with st.form("search_text_by_ms"):
         st.subheader("Select Manuscript(s)")
-        manuscripts = list(handler.text_matrix.index)
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', modes.keys())
+        mode_selection = st.radio('Search mode', modes.keys(), 1)
         mode = modes[mode_selection]
         # LATER: come up with a nice format function here (ideally including ms nicknames, sothat one could find "Flateyjarbók" etc.)
-        mss = st.multiselect('Select Manuscript', manuscripts)
+        # TODO: Cf. comment above in search ppl by ms (/SK)
+        mss = st.multiselect('Select Manuscript', handler.manuscripts)
         if st.form_submit_button("Search Texts"):
             log.debug(f'Search Mode: {mode}')
             log.debug(f'selected manuscripts: {mss}')

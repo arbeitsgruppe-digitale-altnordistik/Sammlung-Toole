@@ -17,6 +17,8 @@ from bs4 import BeautifulSoup
 from scipy import sparse
 from functools import reduce
 
+from scipy.sparse import data
+
 import util.tamer as tamer
 from util import database, utils
 from util.constants import *
@@ -29,39 +31,13 @@ settings = Settings.get_settings()
 
 class DataHandler:
 
-    manuscripts: pd.DataFrame
-    """Manuscripts
-    
-    A dataframe containing all manuscripts with their respective metadata.
-    
-    The dataframe will have the following structure:
-    
-    Per row, there will be metadata to one manuscript. The row indices are integers 0..n.
-    
-    The dataframe contains the following columns:
-    
-    - 'shelfmark'
-    - 'shorttitle'
-    - 'country'
-    - 'settlement'
-    - 'repository'
-    - 'origin'
-    - 'date'
-    - 'Terminus post quem'
-    - 'Terminus ante quem'
-    - 'meandate'
-    - 'yearrange'
-    - 'support'
-    - 'folio'
-    - 'height'
-    - 'width'
-    - 'extent'
-    - 'description'
-    - 'creator'
-    - 'id'
-    - 'full_id'
-    - 'filename'
+    manuscripts: Dict[str, List[str]]
+    """Lookup dictionary
+    Dictionary mapping full msIDs (handrit-IDs) to Shelfmarks, Nicknames of manuscripts.
     """
+    texts: List[str]
+    """Temporary lookup tool for search"""
+    # TODO: Come up with better solution -> Implement Tarrins unified names
 
     person_names: Dict[str, str]
     """Name lookup dictionary
@@ -75,20 +51,22 @@ class DataHandler:
     Dictionary mapping person names to a list of IDs of persons with said name"""
 
     text_matrix: pd.DataFrame
-    """Text-Manuscript-Matrix
+    # """Text-Manuscript-Matrix
 
-    Sparse matrix with a row per manuscript and a column per text name.
-    True, if the manuscript contains the text.
-    Allows for lookups, which manuscripts a particular text is connected to.
-    """  # TODO: Document the type of ID used for MSs in index/row label
+    # Sparse matrix with a row per manuscript and a column per text name.
+    # True, if the manuscript contains the text.
+    # Allows for lookups, which manuscripts a particular text is connected to.
+    # """
+    # TODO: Document the type of ID used for MSs in index/row label
 
-    person_matrix: pd.DataFrame
-    """Person-Manuscript-Matrix
+    # person_matrix: pd.DataFrame
+    # """Person-Manuscript-Matrix
 
-    Sparse matrix with a row per manuscript and a column per person ID.
-    True, if the manuscript is connected to the person (i.e. the description has the person tagged).
-    Allows for lookups, which manuscripts a particular person is connected to.
-    """
+    # Sparse matrix with a row per manuscript and a column per person ID.
+    # True, if the manuscript is connected to the person (i.e. the description has the person tagged).
+    # Allows for lookups, which manuscripts a particular person is connected to.
+    # """
+    # TODO: Still needed? Implemented as table in new backend. Delete?
 
     groups: Groups
     # CHORE: document
@@ -103,15 +81,16 @@ class DataHandler:
         log.info("Creating new handler")
         self.person_names, self.person_names_inverse = DataHandler._load_persons()
         log.info("Loaded Person Info")
-        self.manuscripts = DataHandler._load_ms_info(persons=self.person_names)
+        self.manuscripts = DataHandler._load_ms_info()
         log.info("Loaded MS Info")
-        self.text_matrix = DataHandler._load_text_matrix(self.manuscripts)
+        # self.text_matrix = DataHandler._load_text_matrix(self.manuscripts)
+        self.texts = DataHandler._load_txt_list()
         log.info("Loaded Text Info")
-        self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
-        log.info("Loaded Person-MSS-Matrix Info")
+        # self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
+        # log.info("Loaded Person-MSS-Matrix Info")
         self.groups = Groups.from_cache() or Groups()
         log.debug(f"Groups loaded: {self.groups}")
-        self.manuscripts.drop(columns=["content", "soup"], inplace=True)
+        # self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
 
@@ -138,14 +117,15 @@ class DataHandler:
         return None
 
     @staticmethod
-    def _load_ms_info(persons: Dict[str, str]) -> pd.DataFrame:
-        """Load manuscript metadata"""
-        df = tamer.deliver_handler_data()
-        df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
-        msinfo = df['soup'].apply(lambda x: tamer.get_msinfo(x, persons))
-        log.info("Loaded MS Info for old backend.")
-        df = df.join(msinfo)
-        return df
+    def _load_ms_info() -> Dict[str, List[str]]:
+        """Load manuscript lookup dict from DB"""
+        res = database.ms_lookup_dict(conn=database.create_connection())
+        return res
+
+    @staticmethod
+    def _load_txt_list() -> List[str]:
+        res = database.txt_lookup_list(conn=database.create_connection())
+        return res
 
     @staticmethod
     def _load_text_matrix(df: pd.DataFrame) -> pd.DataFrame:
@@ -194,6 +174,7 @@ class DataHandler:
         df = df.join(msinfo)
         log.info("Loaded MS Info for new backend.")
         pplXmss = tamer.get_person_mss_matrix(df)
+        txtXmss = tamer.get_text_mss_matrix(df)
         df = df.drop('soup', axis=1)
         df = df.drop('content', axis=1)
         database.populate_ms_table(dbConn, df)
@@ -206,6 +187,7 @@ class DataHandler:
         if report == False:
             log.error("Data integrity in ppl by MS matrix damaged. Duplicate entries or other types of corruption.")
             print("Integrity check failed.")
+        database.populate_junctionTxM(conn=dbConn, incoming=txtXmss)
         dbConn.commit()
         dbConn.close()
         return
@@ -406,7 +388,7 @@ class DataHandler:
         """return the text-manuscript-matrix"""
         return self.text_matrix
 
-    def search_manuscripts_containing_texts(self, texts: List[str], searchOption: SearchOptions) -> List[str]:
+    def search_manuscripts_containing_texts(self, texts: List[str], searchOption: SearchOptions) -> pd.DataFrame:
         """Search manuscripts containing certain texts
 
         Args:
@@ -422,33 +404,25 @@ class DataHandler:
             log.debug('Searched texts are empty list')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            hits = []
-            for t in texts:
-                df = self.text_matrix[self.text_matrix[t] == True]
-                mss = list(df.index)
-                hits += mss
-            res_ = list(set(hits))
-            _res = self.manuscripts[self.manuscripts['full_id'].isin(res_)]
-            res = list(set(_res['shelfmark'].tolist()))
-            if not res:
-                log.info('no manuscripts found')
-                return []
-            log.info(f'Search result: {res}')
+            res = database.ms_x_txts(conn=database.create_connection(), txts=texts)
             return res
         else:
-            hits = []
-            for t in texts:
-                df = self.text_matrix[self.text_matrix[t] == True]
-                s = set(df.index)
-                hits.append(s)
-            if not hits:
-                log.info('no manuscripts fond')
+            sets = []
+            db = database.create_connection()
+            curse = db.cursor()
+            for i in texts:
+                curse.execute(f'SELECT msID from junctionTxM WHERE txtName = "{i}"')
+                hits = curse.fetchall()
+                for ii in hits:
+                    iii = [x[0] for x in ii]
+                    sets.append(set(iii))
+            if not sets:
+                log.info('no ms found')
                 return []
-            intersection = set.intersection(*hits)
-            res_ = list(intersection)
-            _res = self.manuscripts[self.manuscripts['full_id'].isin(res_)]
-            res = list(set(_res['shelfmark'].tolist()))
-            log.info(f'Search result: {res}')
+            msList = list(set.intersection(*sets))
+            log.info(f'Search result: {msList}')
+            sqlList = tuple(msList)
+            res = pd.read_sql(sql=f'SELECT * FROM manuscripts WHERE full_id IN {sqlList}', con=db)
             return res
 
     def search_texts_contained_by_manuscripts(self, Inmss: List[str], searchOption: SearchOptions) -> List[str]:
@@ -470,32 +444,22 @@ class DataHandler:
         if not Inmss:
             log.debug('Searched for empty list of mss')
             return []
-        mss_ = self.manuscripts[self.manuscripts['full_id'].isin(Inmss)]
-        mss = mss_['full_id'].tolist()
-        df = self.text_matrix.transpose()
         if searchOption == SearchOptions.CONTAINS_ONE:
-            hits = []
-            for ms in mss:
-                d = df[df[ms] == True]
-                mss = list(d.index)
-                hits += mss
-            res = list(set(hits))
-            if not res:
-                log.info('no texts found')
-                return []
-            log.info(f'Search result: {res}')
+            res = database.txts_x_ms(conn=database.create_connection(), mss=Inmss)
             return res
         else:
             sets = []
-            for ms in mss:
-                d = df[df[ms] == True]
-                s = set(d.index)
-                sets.append(s)
+            db = database.create_connection()
+            curse = db.cursor()
+            for i in Inmss:
+                curse.execute(f"SELECT txtName WHERE msID ='{i}'")
+                for ii in curse.fetchall():
+                    iii = [x[0] for x in ii]
+                    sets.append(set(iii))
             if not sets:
-                log.info('no texts found')
+                log.info("No Texts found.")
                 return []
-            intersection = set.intersection(*sets)
-            res = list(intersection)
+            res = list(set.intersection(*sets))
             log.info(f'Search result: {res}')
             return res
 
@@ -534,36 +498,31 @@ class DataHandler:
         """Get IDs of all persons with a certain name"""
         return self.person_names_inverse[pers_name]
 
-    def search_persons_related_to_manuscripts(self, ms_full_ids: List[str], searchOption: SearchOptions) -> List[str]:
+    def search_persons_related_to_manuscripts(self, ms_full_ids: List[str], searchOption: SearchOptions) -> pd.DataFrame:
         log.info(f'Searching for persons related to manuscripts: {ms_full_ids} ({searchOption})')
         if not ms_full_ids:
             log.debug('Searched for empty list of mss')
             return []
-        df = self.person_matrix.transpose()
         if searchOption == SearchOptions.CONTAINS_ONE:
-            hits = []
-            for ms in ms_full_ids:
-                d = df[df[ms] == True]
-                mss = list(d.index)
-                hits += mss
-            res = list(set(hits))
-            if not res:
-                log.info('no person found')
-                return []
-            log.info(f'Search result: {res}')
+            res = database.ppl_x_mss(conn=database.create_connection(), msIDs=ms_full_ids)
             return res
         else:
             sets = []
-            for ms in ms_full_ids:
-                d = df[df[ms] == True]
-                s = set(d.index)
-                sets.append(s)
+            db = database.create_connection()
+            curse = db.cursor()
+            for i in ms_full_ids:
+                curse.execute(f'SELECT persID from junctionPxM WHERE msID = "{i}"')
+                hits = curse.fetchall()
+                for ii in hits:
+                    iii = [x[0] for x in ii]
+                    sets.append(set(iii))
             if not sets:
-                log.info('no person fond')
+                log.info('no ms fond')
                 return []
-            intersection = set.intersection(*sets)
-            res = list(intersection)
-            log.info(f'Search result: {res}')
+            persList = list(set.intersection(*sets))
+            log.info(f'Search result: {persList}')
+            sqlList = tuple(persList)
+            res = pd.read_sql(sql=f'SELECT * FROM people WHERE persID IN {sqlList}', con=db)
             return res
 
     def search_manuscripts_related_to_persons(self, person_ids: List[str], searchOption: SearchOptions) -> pd.DataFrame:
@@ -586,12 +545,12 @@ class DataHandler:
                 curse.execute(f'SELECT msID from junctionPxM WHERE persID = "{i}"')
                 hits = curse.fetchall()
                 for ii in hits:
-                    iii = [x for x in ii]
-                    sets.append(iii)
+                    iii = [x[0] for x in ii]
+                    sets.append(set(iii))
             if not sets:
-                log.info('no ms fond')
+                log.info('no ms found')
                 return []
-            msList = list(reduce(set.intersection, [set(x) for x in sets]))
+            msList = list(set.intersection(*sets))
             log.info(f'Search result: {msList}')
             sqlList = tuple(msList)
             res = pd.read_sql(sql=f'SELECT * FROM manuscripts WHERE full_id IN {sqlList}', con=db)

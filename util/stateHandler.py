@@ -64,7 +64,7 @@ class SearchState:
 
     @dataclass
     class MS_by_Txt:
-        mss: List[str] = field(default_factory=list)
+        mss: pd.DataFrame = field(default_factory=pd.DataFrame)
         txt: List[str] = field(default_factory=list)
         mode: SearchOptions = SearchOptions.CONTAINS_ALL
 

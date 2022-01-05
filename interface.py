@@ -201,19 +201,20 @@ def browse_data(a: Any) -> None:
         st.dataframe(mss)
 
     # Texts
-    txt = handler.text_matrix
+    txt = handler.texts
     st.header("Texts")
-    st.write(f'Found {len(txt.columns)} texts.')
+    st.write(f'Found {len(txt)} texts.')
     # st.dataframe(txt.head())
     if st.button("List all texts"):
-        st.write(txt.columns)
-    if st.button("Show text counts"):
-        counts = txt.apply(
-            lambda x: pd.Series({"count": x[x == True].count()})).transpose().sort_values(
-            by=['count'],
-            ascending=False).reset_index().rename(
-            columns={"index": "text"})
-        st.write(counts)
+        st.write(txt)
+    # if st.button("Show text counts"):
+    #     counts = txt.apply(
+    #         lambda x: pd.Series({"count": x[x == True].count()})).transpose().sort_values(
+    #         by=['count'],
+    #         ascending=False).reset_index().rename(
+    #         columns={"index": "text"})
+    #     st.write(counts)
+    # TODO: Implement again!
 
     # Persons
     pers = handler.get_all_ppl_data()
@@ -221,8 +222,9 @@ def browse_data(a: Any) -> None:
     st.write(f'{len(pers)} people loaded.')
     if st.button("show all"):
         st.write(pers)
-    pers_matrix = handler.person_matrix
-    st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
+    # pers_matrix = handler.person_matrix
+    # st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
+    # TODO: Implement in SQL if we want to keep this function.
 
 
 def help(a: Any) -> None:

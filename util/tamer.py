@@ -164,11 +164,12 @@ def get_person_mss_matrix(df: pd.DataFrame) -> List[Tuple[int, str, str]]:
                 if pers_id:
                     curT = (idgen, pers_id, ms_id)
                     res.append(curT)
-                    idgen += 1
+                    idgen += 1  # TODO: idgen not needed, adjust SQL to use autincrement on primary key column
     return res
 
 
-def get_text_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
+def get_text_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:  # TODO: Remove once SQLite fully implemented.
+    """Deprecation warning! Will be removed once new backend is fully implemented."""
     # CHORE: document
     ms_ids: List[str] = []
     text_names: List[str] = []
@@ -189,6 +190,21 @@ def get_text_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[
                         text_names.append(text)
                     coords.add((ms_index, text_index))
     return ms_ids, text_names, list(coords)
+
+
+def get_text_mss_matrix(df: pd.DataFrame) -> List[Tuple[str, str]]:
+    # CHORE: document
+    res: List[Tuple[str, str]] = []
+    for _, row in df.iterrows():
+        ms_id = row['full_id']
+        soup = row['soup']
+        texts = [t[1] for t in metadata._title_from_soup(soup) if t[1]]
+        if texts:
+            for text in texts:
+                if text:
+                    curT = (ms_id, text)
+                    res.append(curT)
+    return res
 
 
 # Helpers

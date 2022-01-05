@@ -73,8 +73,12 @@ def db_set_up(conn: sqlite3.Connection) -> None:
     curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer PRIMARY KEY DEFAULT 0 NOT NULL, 
                                                                 persID, 
                                                                 msID, 
-                                                                FOREIGN KEY(persID) REFERENCES people(persID) ON DELETE CASCADE,
-                                                                FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE)''')
+                                                                FOREIGN KEY(persID) REFERENCES people(persID) ON DELETE CASCADE ON UPDATE CASCADE,
+                                                                FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
+    curse.execute('''CREATE TABLE IF NOT EXISTS junctionTxM (locID integer PRIMARY KEY,
+                                                                msID,
+                                                                txtName,
+                                                                FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
     return
 
 
@@ -105,7 +109,6 @@ def populate_ms_table(conn: sqlite3.Connection, incoming: pd.DataFrame) -> None:
     '''
     incoming2 = incoming[~incoming.duplicated(["full_id"])]
     dupl = incoming[incoming.duplicated(["full_id"])]
-    print(dupl)
     incoming2.to_sql("manuscripts", conn, if_exists='append', index=False)
     return
 
@@ -117,13 +120,20 @@ def populate_junctionPxM(conn: sqlite3.Connection, incoming: List[Tuple[int, str
     return
 
 
+def populate_junctionTxM(conn: sqlite3.Connection, incoming: List[Tuple[str, str]]) -> None:
+    curse = conn.cursor()
+    curse.executemany("INSERT OR IGNORE INTO junctionTxM(msID, txtName) VALUES (?,?)", incoming)
+    curse.close()
+    return
+
+
 def PxM_integrity_check(conn: sqlite3.Connection, incoming: List[Tuple[int, str, str]]) -> bool:
     curse = conn.cursor()
     curse.execute(f"SELECT persID FROM junctionPxM")
     l0 = [x[1] for x in incoming]
     l1 = []
     for row in curse.fetchall():
-        l1.append(row)
+        l1.append(row[0])
     l2 = [x for x in l0 if x not in l1]
     l0.sort()
     l2.sort()
@@ -175,12 +185,51 @@ def ms_x_ppl(conn: sqlite3.Connection, pplIDs: List[str]) -> pd.DataFrame:
     first_run = True
     for i in pplIDs:
         ii = pd.read_sql(sql=f"SELECT * FROM manuscripts WHERE full_id IN (SELECT msID FROM junctionPxM WHERE persID = '{i}')", con=conn)
+        if first_run:
+            res = res.reindex(columns=ii.columns)
+            first_run = False
+        res = res.append(ii)
+    res.reset_index(drop=True, inplace=True)
+    return res
+
+
+def ppl_x_mss(conn: sqlite3.Connection, msIDs: List[str]) -> pd.DataFrame:
+    res = pd.DataFrame()
+    first_run = True
+    for i in msIDs:
+        ii = pd.read_sql(sql=f'SELECT * FROM people WHERE persID IN (SELECT persID FROM junctionPxM WHERE msID = "{i}")', con=conn)
         print(ii)
         if first_run:
             res = res.reindex(columns=ii.columns)
             first_run = False
         res = res.append(ii)
     res.reset_index(drop=True, inplace=True)
+    return res
+
+
+def ms_x_txts(conn: sqlite3.Connection, txts: List[str]) -> pd.DataFrame:
+    res = pd.DataFrame()
+    first_run = True
+    for i in txts:
+        ii = pd.read_sql(f"SELECT * FROM manuscripts WHERE full_id IN (SELECT msID FROM junctionTxM WHERE txtName = '{i}')", con=conn)
+        if first_run:
+            res = res.reindex(columns=ii.columns)
+            first_run = False
+        res = res.append(ii)
+    res.reset_index(drop=True, inplace=True)
+    return res
+
+
+def txts_x_ms(conn: sqlite3.Connection, mss: List[str]) -> List[str]:
+    res: List[str] = []
+    curse = conn.cursor()
+    if len(mss) == 1:
+        curse.execute(f'SELECT txtName FROM junctionTxM WHERE msID = "{mss[0]}"')
+    elif len(mss) >= 2:
+        sqlT = tuple(mss)
+        curse.execute(f'SELECT txtName FROM junctionTxM WHERE msID IN {sqlT}')
+    for i in curse.fetchall():
+        res.append(i[0])
     return res
 
 
@@ -192,6 +241,27 @@ def persons_lookup_dict(conn: sqlite3.Connection) -> Dict[str, str]:
     for i in raw:
         name = f"{i[0]} {i[1]}"
         res[i[2]] = name
+    return res
+
+
+def ms_lookup_dict(conn: sqlite3.Connection) -> Dict[str, List[str]]:
+    curse = conn.cursor()
+    curse.execute('SELECT full_ID, shelfmark, shorttitle FROM manuscripts')
+    raw = curse.fetchall()
+    res = {}
+    for i in raw:
+        res[i[0]] = [i[1], i[2]]
+    return res
+
+
+def txt_lookup_list(conn: sqlite3.Connection) -> List[str]:
+    curse = conn.cursor()
+    curse.execute('SELECT txtName FROM junctionTxM')
+    raw = curse.fetchall()
+    res = []
+    for i in raw:
+        if i[0] not in res:
+            res.append(i[0])
     return res
 
 
