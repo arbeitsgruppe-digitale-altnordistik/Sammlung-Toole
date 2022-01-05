@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import markdown
-from util import sessionState, tamer
+from util import tamer
 from util import utils
 from util.constants import IMAGE_HOME
 from util.groups import Group, GroupType
@@ -268,8 +268,9 @@ def warn_if_handler_not_up_to_date() -> None:
 
 
 if __name__ == '__main__':
-    session_state: sessionState.SessionState = sessionState.get(state=StateHandler())  # type: ignore
-    state = session_state.state  # type: ignore
+    if not 'state' in st.session_state:
+        st.session_state['state'] = StateHandler()
+    state = st.session_state['state']
     dataHandler = state.data_handler
     warn_if_handler_not_up_to_date()
     if not dataHandler:

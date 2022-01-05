@@ -39,6 +39,7 @@ def how_to(_: StateHandler) -> None:
 
                 - Manuscript by Person:
                   Select one/multiple persons form the Handrit.is authority file.
+
                   The tool will find all manuscripts related to one/all of the selected people.
 
 
