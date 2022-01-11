@@ -37,7 +37,8 @@ def isUpToDate() -> bool:
 def db_init():
     dbConn = database.create_connection()
     database.db_set_up(dbConn)
-    ppl = tamer.get_person_names()
+    ppl = tamer.get_ppl_names()
+
     database.populate_people_table(dbConn, ppl)
     dbConn.commit()
     dbConn.close()
