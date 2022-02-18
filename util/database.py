@@ -36,7 +36,7 @@ def create_connection(db_file: str = DATABASE_PATH) -> sqlite3.Connection:
 
 
 def db_set_up(conn: sqlite3.Connection) -> None:
-    '''This function creates all the tables for the SQLite DB and 
+    '''This function creates all the tables for the SQLite DB and
     defines the schema.
 
     Args:
@@ -46,33 +46,33 @@ def db_set_up(conn: sqlite3.Connection) -> None:
         None
     '''
     curse = conn.cursor()
-    curse.execute('''CREATE TABLE IF NOT EXISTS people (firstName, 
-                                                        lastName, 
+    curse.execute('''CREATE TABLE IF NOT EXISTS people (firstName,
+                                                        lastName,
                                                         persID PRIMARY KEY)''')
-    curse.execute('''CREATE TABLE IF NOT EXISTS manuscripts (shelfmark, 
-                                                            shorttitle, 
-                                                            country, 
-                                                            settlement, 
-                                                            repository, 
-                                                            origin, 
-                                                            date, 
-                                                            terminusPostQuem, 
-                                                            terminusAnteQuem, 
-                                                            meandate, 
-                                                            yearrange, 
-                                                            support, 
-                                                            folio, 
-                                                            height, 
-                                                            width, 
-                                                            extent, 
-                                                            description, 
-                                                            creator, 
-                                                            id, 
-                                                            full_id PRIMARY KEY, 
+    curse.execute('''CREATE TABLE IF NOT EXISTS manuscripts (shelfmark,
+                                                            shorttitle,
+                                                            country,
+                                                            settlement,
+                                                            repository,
+                                                            origin,
+                                                            date,
+                                                            terminusPostQuem,
+                                                            terminusAnteQuem,
+                                                            meandate,
+                                                            yearrange,
+                                                            support,
+                                                            folio,
+                                                            height,
+                                                            width,
+                                                            extent,
+                                                            description,
+                                                            creator,
+                                                            id,
+                                                            full_id PRIMARY KEY,
                                                             filename)''')
-    curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer PRIMARY KEY DEFAULT 0 NOT NULL, 
-                                                                persID, 
-                                                                msID, 
+    curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer PRIMARY KEY DEFAULT 0 NOT NULL,
+                                                                persID,
+                                                                msID,
                                                                 FOREIGN KEY(persID) REFERENCES people(persID) ON DELETE CASCADE ON UPDATE CASCADE,
                                                                 FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
     curse.execute('''CREATE TABLE IF NOT EXISTS junctionTxM (locID integer PRIMARY KEY,
@@ -142,7 +142,7 @@ def PxM_integrity_check(conn: sqlite3.Connection, incoming: List[Tuple[int, str,
     return check
 
 
-def simple_search(conn: sqlite3.Connection, table_name: str, column_name: str, search_criteria: Union[str, List[str]]) -> Union[pd.DataFrame, str]:
+def get_metadata(conn: sqlite3.Connection, table_name: str, column_name: str, search_criteria: List[str]) -> pd.DataFrame:
     """One stop shop for simple search/SELECT queries.
 
     Args:
@@ -180,43 +180,30 @@ def simple_people_search(conn: sqlite3.Connection, persID: str) -> str:
     return res
 
 
-def ms_x_ppl(conn: sqlite3.Connection, pplIDs: List[str]) -> pd.DataFrame:
-    res = pd.DataFrame()
-    first_run = True
-    for i in pplIDs:
-        ii = pd.read_sql(sql=f"SELECT * FROM manuscripts WHERE full_id IN (SELECT msID FROM junctionPxM WHERE persID = '{i}')", con=conn)
-        if first_run:
-            res = res.reindex(columns=ii.columns)
-            first_run = False
-        res = res.append(ii)
-    res.reset_index(drop=True, inplace=True)
+def ms_x_ppl(conn: sqlite3.Connection, pplIDs: list[str]) -> list[str]:
+    """
+    Get IDs of all manuscripts related to a list of people.
+    """
+    curse = conn.cursor()
+    sqPpl = tuple(pplIDs)  # Casts list to tuple so SQL will recognise it as a list
+    curse.execute(f"SELECT msID FROM junctionPxM WHERE persID in {sqPpl}")
+    res = [x[0] for x in curse.fetchall()]
     return res
 
 
-def ppl_x_mss(conn: sqlite3.Connection, msIDs: List[str]) -> pd.DataFrame:
-    res = pd.DataFrame()
-    first_run = True
-    for i in msIDs:
-        ii = pd.read_sql(sql=f'SELECT * FROM people WHERE persID IN (SELECT persID FROM junctionPxM WHERE msID = "{i}")', con=conn)
-        print(ii)
-        if first_run:
-            res = res.reindex(columns=ii.columns)
-            first_run = False
-        res = res.append(ii)
-    res.reset_index(drop=True, inplace=True)
+def ppl_x_mss(conn: sqlite3.Connection, msIDs: list[str]) -> list[str]:
+    curse = conn.cursor()
+    sqMs = tuple(msIDs)  # Casts list to tuple so SQL will recognise it as a list
+    curse.execute(f"SELECT persID FROM junctionPxM WHERE msID in {sqMs}")
+    res = [x[0] for x in curse.fetchall()]
     return res
 
 
-def ms_x_txts(conn: sqlite3.Connection, txts: List[str]) -> pd.DataFrame:
-    res = pd.DataFrame()
-    first_run = True
-    for i in txts:
-        ii = pd.read_sql(f"SELECT * FROM manuscripts WHERE full_id IN (SELECT msID FROM junctionTxM WHERE txtName = '{i}')", con=conn)
-        if first_run:
-            res = res.reindex(columns=ii.columns)
-            first_run = False
-        res = res.append(ii)
-    res.reset_index(drop=True, inplace=True)
+def ms_x_txts(conn: sqlite3.Connection, txts: List[str]) -> List[str]:
+    curse = conn.cursor()
+    sqList = tuple(txts)
+    curse.execute(f"SELECT msID FROM junctionTxM WHERE txtName in {sqList}")
+    res = [x[0] for x in curse.fetchall()]
     return res
 
 

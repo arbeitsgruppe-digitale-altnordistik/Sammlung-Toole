@@ -517,7 +517,7 @@ class DataHandler:
                     iii = [x[0] for x in ii]
                     sets.append(set(iii))
             if not sets:
-                log.info('no ms fond')
+                log.info('no ms found')
                 return []
             persList = list(set.intersection(*sets))
             log.info(f'Search result: {persList}')
@@ -525,7 +525,7 @@ class DataHandler:
             res = pd.read_sql(sql=f'SELECT * FROM people WHERE persID IN {sqlList}', con=db)
             return res
 
-    def search_manuscripts_related_to_persons(self, person_ids: List[str], searchOption: SearchOptions) -> pd.DataFrame:
+    def search_manuscripts_related_to_persons(self, person_ids: List[str], searchOption: SearchOptions) -> List:
         # CHORE: Document
         # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround
         log.info(f'Searching for manuscript related to people: {person_ids} ({searchOption})')
@@ -536,7 +536,6 @@ class DataHandler:
         if searchOption == SearchOptions.CONTAINS_ONE:
             res = database.ms_x_ppl(conn=database.create_connection(DATABASE_PATH), pplIDs=person_ids)
             return res
-
         else:
             sets = []
             db = database.create_connection()

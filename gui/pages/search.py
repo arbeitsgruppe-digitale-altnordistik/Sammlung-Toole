@@ -464,7 +464,7 @@ def __search_text_by_mss_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
                         st.experimental_rerun()
-    st.table(results)
+    st.write(results)
     # TODO: visualization/citavi-export of result
 
 # endregion
