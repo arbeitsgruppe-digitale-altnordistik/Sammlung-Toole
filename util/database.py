@@ -48,7 +48,7 @@ def db_set_up(conn: sqlite3.Connection) -> None:
     curse = conn.cursor()
     curse.execute('''CREATE TABLE IF NOT EXISTS people (firstName,
                                                         lastName,
-                                                        persID PRIMARY KEY)''')
+                                                        persID PRIMARY KEY)''')  # TODO: put primary keys in their rightful places
     curse.execute('''CREATE TABLE IF NOT EXISTS manuscripts (shelfmark,
                                                             shorttitle,
                                                             country,
@@ -192,6 +192,10 @@ def ms_x_ppl(conn: sqlite3.Connection, pplIDs: list[str]) -> list[str]:
 
 
 def ppl_x_mss(conn: sqlite3.Connection, msIDs: list[str]) -> list[str]:
+    """
+    Get IDs of all people connected to a list of manuscripts.
+    Returns list of IDs for people.
+    """
     curse = conn.cursor()
     sqMs = tuple(msIDs)  # Casts list to tuple so SQL will recognise it as a list
     curse.execute(f"SELECT persID FROM junctionPxM WHERE msID in {sqMs}")
@@ -199,7 +203,11 @@ def ppl_x_mss(conn: sqlite3.Connection, msIDs: list[str]) -> list[str]:
     return res
 
 
-def ms_x_txts(conn: sqlite3.Connection, txts: List[str]) -> List[str]:
+def ms_x_txts(conn: sqlite3.Connection, txts: list[str]) -> list[str]:
+    """
+    Get IDs of all manuscripts connected to a list of texts.
+    Returns list of IDs for manuscripts.
+    """  # TODO: clarify text definition
     curse = conn.cursor()
     sqList = tuple(txts)
     curse.execute(f"SELECT msID FROM junctionTxM WHERE txtName in {sqList}")
@@ -207,7 +215,11 @@ def ms_x_txts(conn: sqlite3.Connection, txts: List[str]) -> List[str]:
     return res
 
 
-def txts_x_ms(conn: sqlite3.Connection, mss: List[str]) -> List[str]:
+def txts_x_ms(conn: sqlite3.Connection, mss: list[str]) -> list[str]:
+    """
+    Get IDs of all texts connected to a list of manuscripts.
+    Returns list of IDs for texts.
+    """  # TODO: clarify text definition
     res: List[str] = []
     curse = conn.cursor()
     if len(mss) == 1:
@@ -220,35 +232,36 @@ def txts_x_ms(conn: sqlite3.Connection, mss: List[str]) -> List[str]:
     return res
 
 
-def persons_lookup_dict(conn: sqlite3.Connection) -> Dict[str, str]:
+def persons_lookup_dict(conn: sqlite3.Connection) -> dict[str, str]:
+    """
+    Returns the lookup-dict for the IDs of people to their natural names.
+    """
     curse = conn.cursor()
     curse.execute('SELECT * FROM people')
     raw = curse.fetchall()
-    res = {}
-    for i in raw:
-        name = f"{i[0]} {i[1]}"
-        res[i[2]] = name
+    res = {x[2]: f"{x[0]} {x[1]}" for x in raw}
     return res
 
 
-def ms_lookup_dict(conn: sqlite3.Connection) -> Dict[str, List[str]]:
+def ms_lookup_dict(conn: sqlite3.Connection) -> dict[str, list[str]]:
+    """
+    Returns the lookup-dict for the IDs of manuscripts to their human readable signatures.
+    """
     curse = conn.cursor()
     curse.execute('SELECT full_ID, shelfmark, shorttitle FROM manuscripts')
     raw = curse.fetchall()
-    res = {}
-    for i in raw:
-        res[i[0]] = [i[1], i[2]]
+    res = {x[0]: [x[1], x[2]] for x in raw}
     return res
 
 
-def txt_lookup_list(conn: sqlite3.Connection) -> List[str]:
+def txt_lookup_list(conn: sqlite3.Connection) -> list[str]:
+    """
+    Returns the lookup-list for the texts. Used in front end search.
+    """
     curse = conn.cursor()
     curse.execute('SELECT txtName FROM junctionTxM')
     raw = curse.fetchall()
-    res = []
-    for i in raw:
-        if i[0] not in res:
-            res.append(i[0])
+    res = list(set([x[0] for x in raw]))
     return res
 
 

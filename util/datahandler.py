@@ -7,9 +7,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import pickle
-import sqlite3
 import sys
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -31,21 +30,21 @@ settings = Settings.get_settings()
 
 class DataHandler:
 
-    manuscripts: Dict[str, List[str]]
+    manuscripts: dict[str, list[str]]
     """Lookup dictionary
     Dictionary mapping full msIDs (handrit-IDs) to Shelfmarks, Nicknames of manuscripts.
     """
-    texts: List[str]
+    texts: list[str]
     """Temporary lookup tool for search"""
     # TODO: Come up with better solution -> Implement Tarrins unified names
 
-    person_names: Dict[str, str]
+    person_names: dict[str, str]
     """Name lookup dictionary
 
     Lookup dictionary mapping person IDs to the full name of the person
     """
 
-    person_names_inverse: Dict[str, List[str]]
+    person_names_inverse: dict[str, list[str]]
     """Inverted name lookup dictionary
     
     Dictionary mapping person names to a list of IDs of persons with said name"""
@@ -117,13 +116,13 @@ class DataHandler:
         return None
 
     @staticmethod
-    def _load_ms_info() -> Dict[str, List[str]]:
+    def _load_ms_info() -> dict[str, list[str]]:
         """Load manuscript lookup dict from DB"""
         res = database.ms_lookup_dict(conn=database.create_connection())
         return res
 
     @staticmethod
-    def _load_txt_list() -> List[str]:
+    def _load_txt_list() -> list[str]:
         res = database.txt_lookup_list(conn=database.create_connection())
         return res
 
@@ -152,7 +151,7 @@ class DataHandler:
         return df
 
     @staticmethod
-    def _load_persons() -> Tuple[Dict[str, str], Dict[str, List[str]]]:
+    def _load_persons() -> Tuple[dict[str, str], dict[str, list[str]]]:
         """Load person data"""
         person_names = database.persons_lookup_dict(conn=database.create_connection())
         return person_names, tamer.get_person_names_inverse(person_names)
@@ -234,16 +233,16 @@ class DataHandler:
     # API Methods
     # -----------
 
-    def get_all_ppl_data(self) -> List[Tuple[str, str, str]]:
-        res: List[Tuple[str, str, str]] = []
+    def get_all_ppl_data(self) -> list[Tuple[str, str, str]]:
+        res: list[Tuple[str, str, str]] = []
         with database.create_connection() as conn:
             cur = conn.cursor()
             for row in cur.execute('SELECT * FROM people ORDER BY persID'):
                 res.append(row)
         return res
 
-    def get_all_ppl_hrf(self) -> List[str]:
-        res: List[str] = []
+    def get_all_ppl_hrf(self) -> list[str]:
+        res: list[str] = []
         with database.create_connection() as conn:
             cur = conn.cursor()
             for row in cur.execute('SELECT firstName, lastName FROM people ORDER BY firstName'):
@@ -288,12 +287,8 @@ class DataHandler:
             res = pd.read_sql('SELECT * FROM manuscripts ORDER BY shelfmark', con=conn)
         return res
 
-    def search_manuscript_data(self,
-                               full_ids: Union[List[str], pd.Series, pd.DataFrame] = None,
-                               ms_ids: Union[List[str], pd.Series, pd.DataFrame] = None,
-                               shelfmarks: Union[List[str], pd.Series, pd.DataFrame] = None,
-                               filenames: Union[List[str], pd.Series, pd.DataFrame] = None) -> Optional[pd.DataFrame]:
-        """Search manuscript metadata for certain manuscripts. 
+    def search_manuscript_data(self, mssIDs: list[str]) -> pd.DataFrame:
+        """Search manuscript metadata for certain manuscripts.
 
         Basic search function:
 
@@ -307,96 +302,32 @@ class DataHandler:
         Note: Exactly one of the four optional parameters should be passed.
 
         Args:
-            full_ids (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of catalogue entry IDs. Defaults to None.
-            ms_ids (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of manuscript IDs. Defaults to None.
-            shelfmarks (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of manuscript IDs. Defaults to None.
-            filenames (Union[List[str], pd.Series, pd.DataFrame], optional): List/Series/Dataframe of XML file names. Defaults to None.
+            full_ids (Union[list[str], pd.Series, pd.DataFrame], optional): list/Series/Dataframe of catalogue entry IDs. Defaults to None.
+            ms_ids (Union[list[str], pd.Series, pd.DataFrame], optional): list/Series/Dataframe of manuscript IDs. Defaults to None.
+            shelfmarks (Union[list[str], pd.Series, pd.DataFrame], optional): list/Series/Dataframe of manuscript IDs. Defaults to None.
+            filenames (Union[list[str], pd.Series, pd.DataFrame], optional): list/Series/Dataframe of XML file names. Defaults to None.
 
         Returns:
-            Optional[pd.DataFrame]: A dataframe containing the metadata for the requested manuscripts. 
+            Optional[pd.DataFrame]: A dataframe containing the metadata for the requested manuscripts.
                 Returns None if no manuscript was found or if no parameters were passed.
         """
-        log.info(f'Searching for manuscripts using new backend: {full_ids}/{ms_ids}/{filenames}')  # TODO: Remove "using new backend" once working
-        print("I am doing an SQLite!")
-        conn = database.create_connection()
-        search_table = "manuscripts"
-
-        # full id
-        if full_ids is not None:
-            if isinstance(full_ids, list) and full_ids:
-                full_ids_list = full_ids
-            elif isinstance(full_ids, pd.DataFrame):
-                if full_ids.empty:
-                    return None
-                full_ids_list = full_ids['full_id'].to_list()
-            elif isinstance(full_ids, pd.Series):
-                if full_ids.empty:
-                    return None
-                full_ids_list = full_ids.tolist()
-            res = database.simple_search(conn, search_table, "full_id", full_ids_list)
-            print("I did an SQLite!")
-            return res
-        # id
-        elif ms_ids is not None:
-            if isinstance(ms_ids, list) and ms_ids:
-                ms_ids_list = ms_ids
-            elif isinstance(ms_ids, pd.DataFrame):
-                if ms_ids.empty:
-                    return None
-                ms_ids_list = ms_ids['id'].tolist()
-            elif isinstance(ms_ids, pd.Series):
-                if ms_ids.empty:
-                    return None
-                ms_ids_list = ms_ids.tolist()
-            res = database.simple_search(conn, search_table, "id", ms_ids_list)
-            print("I did an SQLite!")
-            return res
-        # filename
-        elif filenames is not None:
-            if isinstance(filenames, list) and filenames:
-                fn_list = filenames
-            elif isinstance(filenames, pd.DataFrame):
-                if filenames.empty:
-                    return None
-                fn_list = filenames['filename'].tolist()
-            elif isinstance(filenames, pd.Series):
-                if filenames.empty:
-                    return None
-                fn_list = filenames.tolist()
-            res = database.simple_search(conn, search_table, 'filename', fn_list)
-            print("I did an SQLite!")
-            return res
-        # shelfmark
-        elif shelfmarks is not None:
-            if isinstance(shelfmarks, list) and shelfmarks:
-                sig_list = shelfmarks
-            elif isinstance(shelfmarks, pd.DataFrame):
-                if shelfmarks.empty:
-                    return None
-                sig_list = shelfmarks['shelfmark'].tolist()
-            elif isinstance(shelfmarks, pd.Series):
-                if shelfmarks.empty:
-                    return None
-                sig_list = shelfmarks.tolist()
-            res = database.simple_search(conn, search_table, "shelfmark", sig_list)
-            print("I did an SQLite!")
-            return res
-        # no argument passed
-        return None
+        db = database.create_connection()
+        res = database.get_metadata(table_name="manuscripts", column_name="full_id", search_criteria=mssIDs, conn=db)
+        return res
 
     def get_all_texts(self) -> pd.DataFrame:
         """return the text-manuscript-matrix"""
         return self.text_matrix
 
-    def search_manuscripts_containing_texts(self, texts: List[str], searchOption: SearchOptions) -> pd.DataFrame:
+    def search_manuscripts_containing_texts(self, texts: list[str], searchOption: SearchOptions) -> list[str]:
         """Search manuscripts containing certain texts
 
         Args:
-            texts (List[str]): A list of text names
+            texts (list[str]): A list of text names
             searchOption (SearchOption): wether to do an AND or an OR search
 
         Returns:
-            List[str]: A list of `full_id`s of manuscripts containing either one or all of the passed texts, depending on the chosen searchOption.
+            list[str]: A list of `full_id`s of manuscripts containing either one or all of the passed texts, depending on the chosen searchOption.
                 Returns an empty list, if none were found.
         """
         log.info(f'Searching for manuscripts with texts: {texts} ({searchOption})')
@@ -409,23 +340,17 @@ class DataHandler:
         else:
             sets = []
             db = database.create_connection()
-            curse = db.cursor()
             for i in texts:
-                curse.execute(f'SELECT msID from junctionTxM WHERE txtName = "{i}"')
-                hits = curse.fetchall()
-                for ii in hits:
-                    iii = [x[0] for x in ii]
-                    sets.append(set(iii))
+                ii = database.ms_x_txts(db, list(i))
+                sets.append(set(ii))
             if not sets:
                 log.info('no ms found')
                 return []
-            msList = list(set.intersection(*sets))
-            log.info(f'Search result: {msList}')
-            sqlList = tuple(msList)
-            res = pd.read_sql(sql=f'SELECT * FROM manuscripts WHERE full_id IN {sqlList}', con=db)
+            res = list(set.intersection(*sets))
+            log.info(f'Search result: {res}')
             return res
 
-    def search_texts_contained_by_manuscripts(self, Inmss: List[str], searchOption: SearchOptions) -> List[str]:
+    def search_texts_contained_by_manuscripts(self, Inmss: list[str], searchOption: SearchOptions) -> list[str]:
         """Search the texts contained by certain manuscripts.
 
         Search for all texts contained by a given number of manuscripts.
@@ -434,11 +359,11 @@ class DataHandler:
         or the texts appearing in all manuscripts will be returned.
 
         Args:
-            mss (List[str]): a list of manuscript full_id strings
+            mss (list[str]): a list of manuscript full_id strings
             searchOption (SearchOptions):  wether to do an AND or an OR search
 
         Returns:
-            List[str]: A list of text names.
+            list[str]: A list of text names.
         """
         log.info(f'Searching for texts contained by manuscripts: {Inmss} ({searchOption})')
         if not Inmss:
@@ -462,43 +387,44 @@ class DataHandler:
             res = list(set.intersection(*sets))
             log.info(f'Search result: {res}')
             return res
+    # TODO: adapt to new handrit interface when/if you feel like it
+    # def get_ms_urls_from_search_or_browse_urls(self, urls: list[str], sharedMode: bool = False) -> Tuple[list[str], pd.DataFrame]:
+    #     # CHORE: documentation
+    #     # TODO: should probably be moved to tamer, right?
+    #     conn = database.create_connection()
+    #     msss: list[pd.DataFrame] = []
+    #     for url in urls:
+    #         if "/search/results/" in url:
+    #             pages = tamer.get_search_result_pages(url)
+    #             shelfmarks = tamer.get_shelfmarks_from_urls(pages)
+    #             log.info(f"Loaded Shelfmarks: {shelfmarks}")
+    #             mss = database.simple_search(conn, "manuscripts", "shelfmark", shelfmarks)
+    #         else:
+    #             ids = tamer.efnisordResult(url)
+    #             mss = mss = database.simple_search(conn, "manuscripts", "id", ids)
+    #         msss.append(mss)
 
-    def get_ms_urls_from_search_or_browse_urls(self, urls: List[str], sharedMode: bool = False) -> Tuple[List[str], pd.DataFrame]:
-        # CHORE: documentation
-        # TODO: should probably be moved to tamer, right?
-        conn = database.create_connection()
-        msss: List[pd.DataFrame] = []
-        for url in urls:
-            if "/search/results/" in url:
-                pages = tamer.get_search_result_pages(url)
-                shelfmarks = tamer.get_shelfmarks_from_urls(pages)
-                log.info(f"Loaded Shelfmarks: {shelfmarks}")
-                mss = database.simple_search(conn, "manuscripts", "shelfmark", shelfmarks)
-            else:
-                ids = tamer.efnisordResult(url)
-                mss = mss = database.simple_search(conn, "manuscripts", "id", ids)
-            msss.append(mss)
-
-        if sharedMode:
-            res = self.get_all_manuscript_data()
-            for df in msss:
-                res = pd.merge(res, df, on='shelfmark', how='inner')
-            return list(res['shelfmark']), res
-        else:
-            all_hits: pd.DataFrame = pd.concat(msss)
-            unique_hits = all_hits.drop_duplicates().reset_index(drop=True)
-            return list(unique_hits['shelfmark']), unique_hits
+    #     if sharedMode:
+    #         res = self.get_all_manuscript_data()
+    #         for df in msss:
+    #             res = pd.merge(res, df, on='shelfmark', how='inner')
+    #         return list(res['shelfmark']), res
+    #     else:
+    #         all_hits: pd.DataFrame = pd.concat(msss)
+    #         unique_hits = all_hits.drop_duplicates().reset_index(drop=True)
+    #         return list(unique_hits['shelfmark']), unique_hits
 
     def get_person_name(self, pers_id: str) -> str:  # TODO: Might be obsolete with new backend?
         """Get a person's name, identified by the person's ID"""
         res = database.simple_people_search(conn=database.create_connection(), persID=pers_id)
         return res or ""
 
-    def get_person_ids(self, pers_name: str) -> List[str]:
+    def get_person_ids(self, pers_name: str) -> list[str]:
         """Get IDs of all persons with a certain name"""
         return self.person_names_inverse[pers_name]
 
-    def search_persons_related_to_manuscripts(self, ms_full_ids: List[str], searchOption: SearchOptions) -> pd.DataFrame:
+    def search_persons_related_to_manuscripts(self, ms_full_ids: list[str], searchOption: SearchOptions) -> list[str]:
+        # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround
         log.info(f'Searching for persons related to manuscripts: {ms_full_ids} ({searchOption})')
         if not ms_full_ids:
             log.debug('Searched for empty list of mss')
@@ -511,21 +437,16 @@ class DataHandler:
             db = database.create_connection()
             curse = db.cursor()
             for i in ms_full_ids:
-                curse.execute(f'SELECT persID from junctionPxM WHERE msID = "{i}"')
-                hits = curse.fetchall()
-                for ii in hits:
-                    iii = [x[0] for x in ii]
-                    sets.append(set(iii))
+                ii = database.ppl_x_mss(db, list(i))
+                sets.append(set(ii))
             if not sets:
                 log.info('no ms found')
                 return []
-            persList = list(set.intersection(*sets))
-            log.info(f'Search result: {persList}')
-            sqlList = tuple(persList)
-            res = pd.read_sql(sql=f'SELECT * FROM people WHERE persID IN {sqlList}', con=db)
+            res = list(set.intersection(*sets))
+            log.info(f'Search result: {res}')
             return res
 
-    def search_manuscripts_related_to_persons(self, person_ids: List[str], searchOption: SearchOptions) -> List:
+    def search_manuscripts_related_to_persons(self, person_ids: list[str], searchOption: SearchOptions) -> list[str]:
         # CHORE: Document
         # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround
         log.info(f'Searching for manuscript related to people: {person_ids} ({searchOption})')
@@ -538,19 +459,13 @@ class DataHandler:
             return res
         else:
             sets = []
-            db = database.create_connection()
-            curse = db.cursor()
+            db = database.create_connection(DATABASE_PATH)
             for i in person_ids:
-                curse.execute(f'SELECT msID from junctionPxM WHERE persID = "{i}"')
-                hits = curse.fetchall()
-                for ii in hits:
-                    iii = [x[0] for x in ii]
-                    sets.append(set(iii))
+                ii = database.ms_x_ppl(db, list(i))
+                sets.append(set(ii))
             if not sets:
                 log.info('no ms found')
                 return []
-            msList = list(set.intersection(*sets))
-            log.info(f'Search result: {msList}')
-            sqlList = tuple(msList)
-            res = pd.read_sql(sql=f'SELECT * FROM manuscripts WHERE full_id IN {sqlList}', con=db)
+            res = list(set.intersection(*sets))
+            log.info(f'Search result: {res}')
             return res

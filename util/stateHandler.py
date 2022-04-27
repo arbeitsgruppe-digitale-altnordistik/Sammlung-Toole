@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, List
+from typing import Any
 
 import pandas as pd
 
@@ -52,26 +52,26 @@ class Step:
 class SearchState:
     @dataclass
     class MS_by_Pers:
-        mss: List[str] = field(default_factory=list)
-        ppl: List[str] = field(default_factory=list)
+        mss: list[str] = field(default_factory=list)
+        ppl: list[str] = field(default_factory=list)
         mode: SearchOptions = SearchOptions.CONTAINS_ALL
 
     @dataclass
     class Pers_by_MS:
-        mss: List[str] = field(default_factory=list)
-        ppl: List[str] = field(default_factory=list)
+        mss: list[str] = field(default_factory=list)
+        ppl: list[str] = field(default_factory=list)
         mode: SearchOptions = SearchOptions.CONTAINS_ALL
 
     @dataclass
     class MS_by_Txt:
-        mss: pd.DataFrame = field(default_factory=pd.DataFrame)
-        txt: List[str] = field(default_factory=list)
+        mss: list[str] = field(default_factory=list)
+        txt: list[str] = field(default_factory=list)
         mode: SearchOptions = SearchOptions.CONTAINS_ALL
 
     @dataclass
     class Txt_by_MS:
-        mss: List[str] = field(default_factory=list)
-        txt: List[str] = field(default_factory=list)
+        mss: list[str] = field(default_factory=list)
+        txt: list[str] = field(default_factory=list)
         mode: SearchOptions = SearchOptions.CONTAINS_ALL
 
     ms_by_pers = MS_by_Pers()
@@ -85,7 +85,7 @@ class StateHandler:
     def __init__(self) -> None:
         self.currentData = pd.DataFrame()
         self.currentURLs_str: str = ''
-        self.currentURL_list: List[str] = []
+        self.currentURL_list: list[str] = []
         self.joinMode = 'All'
         self.didRun = 'dnr'
         self.CitaviSelect: Any = []

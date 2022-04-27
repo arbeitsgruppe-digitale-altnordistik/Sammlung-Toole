@@ -73,7 +73,9 @@ def manuscripts_by_persons(state: StateHandler) -> None:
     """
     if state.steps.search_mss_by_persons == Step.MS_by_Pers.Search_person:
         __search_mss_by_person_step_search(state)
+        print("Initial search step")
     else:
+        print("Got some results, trying to display them:")
         __search_mss_by_person_step_save_results(state)
 
 
@@ -107,9 +109,6 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
     """
     handler = state.data_handler
     results = state.searchState.ms_by_pers.mss
-    if not isinstance(results, pd.DataFrame):
-        state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
-        st.experimental_rerun()
     ppl = state.searchState.ms_by_pers.ppl
     mode = state.searchState.ms_by_pers.mode
     st.subheader("Person(s) selected")
@@ -154,10 +153,10 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
                         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                         st.experimental_rerun()
     try:
-        meta = handler.search_manuscript_data(full_ids=results).reset_index(drop=True)  # type: ignore
+        meta = handler.search_manuscript_data(results).reset_index(drop=True)  # type: ignore
+        st.table(meta)
     except:
         print('Uh-oh')  # TODO: Proper handling of empty results from AND queries.
-    st.dataframe(meta)
     # TODO: visualization/citavi-export of result
 
 # endregion
@@ -213,9 +212,9 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
     """
     handler = state.data_handler
     results = state.searchState.pers_by_ms.ppl
-    if not isinstance(results, pd.DataFrame):
-        state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
-        st.experimental_rerun()
+    # if not isinstance(results, pd.DataFrame):
+    #     state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
+    #     st.experimental_rerun()
     mss = state.searchState.pers_by_ms.mss
     mode = state.searchState.pers_by_ms.mode
     st.subheader("Manuscript(s) selected")
@@ -225,10 +224,7 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
         st.experimental_rerun()
     with st.expander('view results as list', False):
-        resList = []  # TODO: Come up with more efficient method
-        for index, row in results.iterrows():
-            name = f"{row['firstName']} {row['lastName']}"
-            resList.append(name)
+        resList = [handler.person_names[x] for x in results]
         st.write(resList)
     with st.expander("Save results as group", False):
         with st.form("save_group"):
@@ -263,8 +259,7 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
                         st.experimental_rerun()
-    st.table(results)
-    # TODO: visualization/citavi-export of result
+    # TODO: What now?
 
 # endregion
 
@@ -316,10 +311,6 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
     """
     handler = state.data_handler
     results = state.searchState.ms_by_txt.mss
-    if not isinstance(results, pd.DataFrame):
-        log.warn("No results, going back to search")
-        state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
-        st.experimental_rerun()
     txt = state.searchState.ms_by_txt.txt
     mode = state.searchState.ms_by_txt.mode
     st.subheader("Text(s) selected")
@@ -329,7 +320,7 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
         st.experimental_rerun()
     with st.expander('view results as list', False):
-        st.write(results['shelfmark'].tolist())
+        st.write([handler.manuscripts[x] for x in results])
     with st.expander("Save results as group", False):
         with st.form("save_group"):
             name = st.text_input('Group Name', f'Search results for <{txt}>')
@@ -340,7 +331,7 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
                 state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                 st.experimental_rerun()
     st.table(results)
-    # TODO: Below code not yet checked for compatibility with new backend (/SK)
+    # TODO: Below code not yet checked for compatibility with new backend (/SK) Should be working though...? (/SK&BL)
     if handler.groups.manuscript_groups:
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
