@@ -341,7 +341,7 @@ class DataHandler:
             sets = []
             db = database.create_connection()
             for i in texts:
-                ii = database.ms_x_txts(db, list(i))
+                ii = database.ms_x_txts(db, [i])
                 sets.append(set(ii))
             if not sets:
                 log.info('no ms found')
@@ -373,46 +373,22 @@ class DataHandler:
             res = database.txts_x_ms(conn=database.create_connection(), mss=Inmss)
             return res
         else:
-            sets = []
+            sets: list[set[str]] = []
             db = database.create_connection()
             curse = db.cursor()
             for i in Inmss:
-                curse.execute(f"SELECT txtName WHERE msID ='{i}'")
-                for ii in curse.fetchall():
-                    iii = [x[0] for x in ii]
-                    sets.append(set(iii))
+                sets = []
+                db = database.create_connection()
+                for i in Inmss:
+                    ii = database.txts_x_ms(db, [i])
+                    sets.append(set(ii))
+                    print(ii)
             if not sets:
                 log.info("No Texts found.")
                 return []
             res = list(set.intersection(*sets))
             log.info(f'Search result: {res}')
             return res
-    # TODO: adapt to new handrit interface when/if you feel like it
-    # def get_ms_urls_from_search_or_browse_urls(self, urls: list[str], sharedMode: bool = False) -> Tuple[list[str], pd.DataFrame]:
-    #     # CHORE: documentation
-    #     # TODO: should probably be moved to tamer, right?
-    #     conn = database.create_connection()
-    #     msss: list[pd.DataFrame] = []
-    #     for url in urls:
-    #         if "/search/results/" in url:
-    #             pages = tamer.get_search_result_pages(url)
-    #             shelfmarks = tamer.get_shelfmarks_from_urls(pages)
-    #             log.info(f"Loaded Shelfmarks: {shelfmarks}")
-    #             mss = database.simple_search(conn, "manuscripts", "shelfmark", shelfmarks)
-    #         else:
-    #             ids = tamer.efnisordResult(url)
-    #             mss = mss = database.simple_search(conn, "manuscripts", "id", ids)
-    #         msss.append(mss)
-
-    #     if sharedMode:
-    #         res = self.get_all_manuscript_data()
-    #         for df in msss:
-    #             res = pd.merge(res, df, on='shelfmark', how='inner')
-    #         return list(res['shelfmark']), res
-    #     else:
-    #         all_hits: pd.DataFrame = pd.concat(msss)
-    #         unique_hits = all_hits.drop_duplicates().reset_index(drop=True)
-    #         return list(unique_hits['shelfmark']), unique_hits
 
     def get_person_name(self, pers_id: str) -> str:  # TODO: Might be obsolete with new backend?
         """Get a person's name, identified by the person's ID"""
@@ -424,7 +400,7 @@ class DataHandler:
         return self.person_names_inverse[pers_name]
 
     def search_persons_related_to_manuscripts(self, ms_full_ids: list[str], searchOption: SearchOptions) -> list[str]:
-        # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround
+        # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround # TODO: the hacky-whack should live in its own function
         log.info(f'Searching for persons related to manuscripts: {ms_full_ids} ({searchOption})')
         if not ms_full_ids:
             log.debug('Searched for empty list of mss')
@@ -435,9 +411,8 @@ class DataHandler:
         else:
             sets = []
             db = database.create_connection()
-            curse = db.cursor()
             for i in ms_full_ids:
-                ii = database.ppl_x_mss(db, list(i))
+                ii = database.ppl_x_mss(db, [i])
                 sets.append(set(ii))
             if not sets:
                 log.info('no ms found')
@@ -461,8 +436,10 @@ class DataHandler:
             sets = []
             db = database.create_connection(DATABASE_PATH)
             for i in person_ids:
-                ii = database.ms_x_ppl(db, list(i))
+                ii = database.ms_x_ppl(db, [i])
+                print(ii)
                 sets.append(set(ii))
+            print(sets)
             if not sets:
                 log.info('no ms found')
                 return []
