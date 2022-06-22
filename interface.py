@@ -69,7 +69,7 @@ def search_page(a: Any) -> None:
     st.header('Search Page')
     opts = {
         'How To': pages.search.how_to,
-        'Handrit URLs': handrit_urls,
+        # 'Handrit URLs': handrit_urls,
         'Search Manuscripts by related People': pages.search.manuscripts_by_persons,
         'Search People by related Manuscripts': pages.search.persons_by_manuscripts,
         'Search Manuscripts by Text': pages.search.manuscripts_by_texts,
@@ -81,107 +81,107 @@ def search_page(a: Any) -> None:
     fn(state)
 
 
-def handrit_urls(_: Any) -> None:
-    '''Workbench. Proper doc to follow soon.'''
-    st.title("Result Workflow Builder")
-    if state.handrit_step == Step.Handrit_URL.Preprocessing:
-        st.header("Preprocessing")
-        st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
-        state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per line.")
+# def handrit_urls(_: Any) -> None:
+#     '''Workbench. Proper doc to follow soon.'''
+#     st.title("Result Workflow Builder")
+#     if state.handrit_step == Step.Handrit_URL.Preprocessing:
+#         st.header("Preprocessing")
+#         st.markdown(Texts.SearchPage.instructions)  # XXX: markdown not working here?
+#         state.currentURLs_str = st.text_area("Input handrit search or browse URL(s) here", help="If multiple URLs, put one URL per line.")
 
-        # state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
-        # state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
-        if st.button("Run"):
-            state.didRun = 'Started, dnf.'
-            state.handrit_step = Step.Handrit_URL.Processing
-            # This block handles data delivery
+#         # state.resultMode = st.radio("Select the type of information you want to extract", ['Contents', 'Metadata'], index=0)
+#         # state.joinMode = st.radio("Show only shared or all MSs?", ['Shared', 'All'], index=1)
+#         if st.button("Run"):
+#             state.didRun = 'Started, dnf.'
+#             state.handrit_step = Step.Handrit_URL.Processing
+#             # This block handles data delivery
 
-            if state.currentURLs_str:
-                s_urls = [url.strip() for url in state.currentURLs_str.split(',')]
-                url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(
-                    urls=s_urls, sharedMode=(state.joinMode == False))
-                st.write("Processed Manuscript URLs:")
-                st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
-                state.currentURL_list += url_list
-                st.write("Overall MS URLs:")
-                st.write(state.currentURL_list)  # TODO: Required?
+#             if state.currentURLs_str:
+#                 s_urls = [url.strip() for url in state.currentURLs_str.split(',')]
+#                 url_list, state.currentData = state.data_handler.get_ms_urls_from_search_or_browse_urls(
+#                     urls=s_urls, sharedMode=(state.joinMode == False))
+#                 st.write("Processed Manuscript URLs:")
+#                 st.write(url_list)  # TODO: give indication which strings are being watched, add "clear" button
+#                 state.currentURL_list += url_list
+#                 st.write("Overall MS URLs:")
+#                 st.write(state.currentURL_list)  # TODO: Required?
 
-            if not state.currentData.empty:
-                state.didRun = 'OK'
-        if state.didRun == 'OK':
-            st.header('Results')
-            st.write(state.currentData)
-    if state.didRun == 'OK':
-        if st.button("Go to postprocessing"):
-            state.handrit_step = Step.Handrit_URL.Postprocessing
-            state.didRun = None
-            st.experimental_rerun()
-    if state.handrit_step == Step.Handrit_URL.Postprocessing:
-        postprocessing()
-        if st.button("Go back to preprocessing"):
-            state.handrit_step = Step.Handrit_URL.Preprocessing
-            state.currentData = None
-            st.experimental_rerun()
-
-
-def postprocessing() -> None:
-    st.header("Postprocessing menu")
-    st.header("Current result data set")
-    st.write(state.currentData)
-    if st.button("Export to CSV"):
-        state.postStep = 'CSV'
-    if state.postStep == 'CSV':
-        csv = state.currentData.to_csv(index=False)
-        st.download_button(label="Download", data=csv, file_name="citavi-export.csv")
-    if st.button("Export references to Citavi"):
-        state.postStep = 'Citavi'
-    if state.postStep == 'Citavi':
-        citaviExporter()
-    if st.button("Clean data"):
-        state.postStep = 'Cleaning'
-    if state.postStep == 'Cleaning':
-        dataCleaner()
-    if st.button('Plot dating'):
-        state.postStep = 'Plotting'
-    if state.postStep == 'Plotting':
-        fig = utils.date_plotting(state.currentData)
-        st.plotly_chart(fig, use_container_width=True)
+#             if not state.currentData.empty:
+#                 state.didRun = 'OK'
+#         if state.didRun == 'OK':
+#             st.header('Results')
+#             st.write(state.currentData)
+#     if state.didRun == 'OK':
+#         if st.button("Go to postprocessing"):
+#             state.handrit_step = Step.Handrit_URL.Postprocessing
+#             state.didRun = None
+#             st.experimental_rerun()
+#     if state.handrit_step == Step.Handrit_URL.Postprocessing:
+#         postprocessing()
+#         if st.button("Go back to preprocessing"):
+#             state.handrit_step = Step.Handrit_URL.Preprocessing
+#             state.currentData = None
+#             st.experimental_rerun()
 
 
-def citaviExporter() -> None:
-    foundList = state.currentData['shelfmark'].to_list()
-    state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
-                                        help="This will export your selected references as a CSV file for Citavi.")
-    if st.button('Export'):
-        state.currentCitaviData = state.currentData.loc(axis=0)[state.currentData['shelfmark'].isin(state.CitaviSelect)]
-        state.currentCitaviData = state.currentCitaviData[["id", "creator", "shorttitle", "description", "date", "origin",  "settlement", "repository", "shelfmark"]]
-        st.write(state.currentCitaviData)
-        csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
-        st.download_button(label="Download Citavi file", data=csv, file_name="citavi-export.csv", help="There no longer is a bug. It is now safe to just click Download.")
+# def postprocessing() -> None:
+#     st.header("Postprocessing menu")
+#     st.header("Current result data set")
+#     st.write(state.currentData)
+#     if st.button("Export to CSV"):
+#         state.postStep = 'CSV'
+#     if state.postStep == 'CSV':
+#         csv = state.currentData.to_csv(index=False)
+#         st.download_button(label="Download", data=csv, file_name="citavi-export.csv")
+#     if st.button("Export references to Citavi"):
+#         state.postStep = 'Citavi'
+#     if state.postStep == 'Citavi':
+#         citaviExporter()
+#     if st.button("Clean data"):
+#         state.postStep = 'Cleaning'
+#     if state.postStep == 'Cleaning':
+#         dataCleaner()
+#     if st.button('Plot dating'):
+#         state.postStep = 'Plotting'
+#     if state.postStep == 'Plotting':
+#         fig = utils.date_plotting(state.currentData)
+#         st.plotly_chart(fig, use_container_width=True)
 
 
-def dataCleaner() -> None:  # TODO: Should not be neccessary. Should be done on handler construction.
-    state.currentData = state.currentData.replace('None', np.nan)
-    itemsPrev = len(state.currentData.index)
-    newDF = state.currentData.dropna(axis=0, how='all')
-    itemsAfter = len(newDF.index)
-    diff = itemsPrev - itemsAfter
-    newDF = newDF.drop_duplicates(subset='shelfmark').reset_index(drop=True)
-    itemsAfter = len(newDF.index)
-    diff1 = itemsPrev - itemsAfter
-    st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values. Found and removed {diff1} duplicates.")
-    st.write(newDF)
-    if st.button("Keep cleaned data"):
-        state.currentData = newDF
+# def citaviExporter() -> None:
+#     foundList = state.currentData['shelfmark'].to_list()
+#     state.CitaviSelect = st.multiselect(label="Select which MSs you want to export to Citavi", options=foundList,
+#                                         help="This will export your selected references as a CSV file for Citavi.")
+#     if st.button('Export'):
+#         state.currentCitaviData = state.currentData.loc(axis=0)[state.currentData['shelfmark'].isin(state.CitaviSelect)]
+#         state.currentCitaviData = state.currentCitaviData[["id", "creator", "shorttitle", "description", "date", "origin",  "settlement", "repository", "shelfmark"]]
+#         st.write(state.currentCitaviData)
+#         csv = state.currentCitaviData.to_csv(sep='\t', encoding='utf-8', index=False)
+#         st.download_button(label="Download Citavi file", data=csv, file_name="citavi-export.csv", help="There no longer is a bug. It is now safe to just click Download.")
 
 
-def static_reports(a: Any) -> None:
-    '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
-    st.text("Currently not available")
-    # reports = {"Dating of all MSs": "all_MS_datings"}  # QUESTION: function not defined
-    # selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
-    # selected = reports[selection]
-    # eval(selected + "()")
+# def dataCleaner() -> None:  # TODO: Should not be neccessary. Should be done on handler construction.
+#     state.currentData = state.currentData.replace('None', np.nan)
+#     itemsPrev = len(state.currentData.index)
+#     newDF = state.currentData.dropna(axis=0, how='all')
+#     itemsAfter = len(newDF.index)
+#     diff = itemsPrev - itemsAfter
+#     newDF = newDF.drop_duplicates(subset='shelfmark').reset_index(drop=True)
+#     itemsAfter = len(newDF.index)
+#     diff1 = itemsPrev - itemsAfter
+#     st.write(f"Started out with {itemsPrev}, left with {itemsAfter}. Found {diff} NaN values. Found and removed {diff1} duplicates.")
+#     st.write(newDF)
+#     if st.button("Keep cleaned data"):
+#         state.currentData = newDF
+
+
+# def static_reports(a: Any) -> None:
+#     '''Page for expensive reports. As of yet only contains one item. Can be expanded later'''
+#     st.text("Currently not available")
+#     # reports = {"Dating of all MSs": "all_MS_datings"}  # QUESTION: function not defined
+#     # selection = st.sidebar.radio("Select report to display", list(reports.keys()), index=0)
+#     # selected = reports[selection]
+#     # eval(selected + "()")
 
 
 def browse_data(a: Any) -> None:
@@ -191,38 +191,33 @@ def browse_data(a: Any) -> None:
     # Manuscripts
     mss = handler.manuscripts
     st.header("Manuscripts")
-    st.write(f"Currently loaded data: Dataframe with {len(mss.index)} entries, {len(mss.columns)} columns each.")
+    st.write(f"We have {len(mss)} mss")
     st.write("Each manuscript can have entries in multiple languages (English, Icelandic, Danish)")
-    st.write(f"The present {len(mss.index)} entries correspond to {mss['id'].unique().size} unique manuscripts, \
-             stored in {mss['repository'].unique().size} collections.")
-    st.write("Head and tail of the dataset:")
-    st.dataframe(mss.head().append(mss.tail()))
-    if st.button("Show all manuscripts"):
-        st.dataframe(mss)
+    if st.button("List all manuscripts"):
+        st.write(list(mss.keys()))
 
     # Texts
-    txt = handler.text_matrix
+    txt = handler.texts
     st.header("Texts")
-    st.write(f'Found {len(txt.columns)} texts.')
+    st.write(f'Found {len(txt)} texts.')
     # st.dataframe(txt.head())
     if st.button("List all texts"):
-        st.write(txt.columns)
-    if st.button("Show text counts"):
-        counts = txt.apply(
-            lambda x: pd.Series({"count": x[x == True].count()})).transpose().sort_values(
-            by=['count'],
-            ascending=False).reset_index().rename(
-            columns={"index": "text"})
-        st.write(counts)
+        st.write(txt)
+    # if st.button("Show text counts"):
+    #     counts = txt.apply(
+    #         lambda x: pd.Series({"count": x[x == True].count()})).transpose().sort_values(
+    #         by=['count'],
+    #         ascending=False).reset_index().rename(
+    #         columns={"index": "text"})
+    #     st.write(counts)
+    # TODO: Implement again!
 
     # Persons
-    pers = handler.person_names
+    pers = handler.get_all_ppl_data()
     st.header("Persons")
-    st.write(f'{len(pers.keys())} people loaded.')
+    st.write(f'{len(pers)} people loaded.')
     if st.button("show all"):
-        st.write(list(pers.values()))
-    pers_matrix = handler.person_matrix
-    st.write(f'Built a person-text-matrix of shape: {pers_matrix.shape}')
+        st.write(pers)
 
 
 def help(a: Any) -> None:
@@ -245,7 +240,7 @@ def full_menu() -> None:
                    "Browse Data": browse_data,
                    "Groups": pages.groups.browse_groups,
                    "Search Functions": search_page,
-                   "Reports": static_reports,
+                   #    "Reports": static_reports,
                    "Advanced Settings": adv_options,
                    "Help": help}
     selection = st.sidebar.selectbox("Menu", list(MenuOptions.keys()), on_change=state.steps.reset)

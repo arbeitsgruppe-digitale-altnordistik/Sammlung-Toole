@@ -68,7 +68,9 @@ def deliver_handler_data() -> pd.DataFrame:
     return outDF
 
 
-def get_person_names() -> Dict[str, str]:
+def get_person_names() -> Dict[str, str]:  # TODO: Kill once migrated
+    """Deprecation warning: Function used by old, in-memory style handler. Will be removed in the near future.
+    """
     res: Dict[str, str] = {}
     tree = etree.parse(PERSON_DATA_PATH)
     root = tree.getroot()
@@ -93,7 +95,36 @@ def get_person_names() -> Dict[str, str]:
     return res
 
 
-def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
+def get_ppl_names() -> List[Tuple[str, str, str]]:
+    """Delivers the names found in the handrit names authority file.
+    Returns list of tuples containing: first name, last name, and alphanumeric, unique ID in that order.
+    """
+    res: List[Tuple[str, str, str]] = []
+    tree = etree.parse(PERSON_DATA_PATH)
+    root = tree.getroot()
+    ppl = root.findall(".//person", nsmap)
+    print(len(ppl))
+    for pers in ppl:
+        id_ = pers.get('{http://www.w3.org/XML/1998/namespace}id')
+        name_tag = pers.find('persName', nsmap)
+        firstNameS = name_tag.findall('forename', nsmap)
+        lastNameS = name_tag.findall('surname', nsmap)
+        firstNameClean = [name.text for name in firstNameS if name.text]
+        if firstNameClean:
+            firstName = " ".join(firstNameClean)
+        else:
+            firstName = ""
+        lastName = " ".join([name.text for name in lastNameS])
+        if not firstName and not lastName:
+            if name_tag.text:
+                lastName = name_tag.text
+        currPers = (firstName, lastName, id_)
+        res.append(currPers)
+    return res
+
+
+def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:  # TODO: Clean up after full SQLite migration
+    """Deprecation warning! Will soon be outdated!"""
     # CHORE: document
     ms_ids: List[str] = []
     pers_ids: List[str] = []
@@ -118,7 +149,27 @@ def get_person_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], Lis
     return ms_ids, pers_ids, list(coords)
 
 
-def get_text_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:
+def get_person_mss_matrix(df: pd.DataFrame) -> List[Tuple[int, str, str]]:
+    # CHORE: document
+    res: List[Tuple[int, str, str]] = []
+    idgen = 1
+    for _, row in df.iterrows():
+        ms_id = row['full_id']
+        soup = row['soup']
+        persons = soup.find_all('name', {'type': 'person'})
+        # LATER: note that <handNote scribe="XYZ"/> won't be found like this (see e.g. Steph01-a-da.xml)
+        if persons:
+            for person in persons:
+                pers_id = person.get('key')
+                if pers_id:
+                    curT = (idgen, pers_id, ms_id)
+                    res.append(curT)
+                    idgen += 1  # TODO: idgen not needed, adjust SQL to use autincrement on primary key column
+    return res
+
+
+def get_text_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[str], List[Tuple[int, int]]]:  # TODO: Remove once SQLite fully implemented.
+    """Deprecation warning! Will be removed once new backend is fully implemented."""
     # CHORE: document
     ms_ids: List[str] = []
     text_names: List[str] = []
@@ -139,6 +190,21 @@ def get_text_mss_matrix_coordinatres(df: pd.DataFrame) -> Tuple[List[str], List[
                         text_names.append(text)
                     coords.add((ms_index, text_index))
     return ms_ids, text_names, list(coords)
+
+
+def get_text_mss_matrix(df: pd.DataFrame) -> List[Tuple[str, str]]:
+    # CHORE: document
+    res: List[Tuple[str, str]] = []
+    for _, row in df.iterrows():
+        ms_id = row['full_id']
+        soup = row['soup']
+        texts = [t[1] for t in metadata._title_from_soup(soup) if t[1]]
+        if texts:
+            for text in texts:
+                if text:
+                    curT = (ms_id, text)
+                    res.append(curT)
+    return res
 
 
 # Helpers
@@ -182,7 +248,9 @@ def _find_full_id(soup: BeautifulSoup) -> str:
     return str(id)
 
 
-def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:
+def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:  # TODO: Kill once migrated
+    """Deprecation warning: Function will be removed once SQLite is fully implemented.
+    """
     shorttitle = metadata.get_shorttitle(soup)
     _, country, settlement, repository = metadata.get_msID(soup)
     origin = metadata.get_origin(soup)
@@ -204,8 +272,48 @@ def get_msinfo(soup: BeautifulSoup, persons: Dict[str, str]) -> pd.Series:
                       "repository": repository,
                       "origin": origin,
                       "date": date,
-                      "Terminus post quem": tp,
-                      "Terminus ante quem": ta,
+                      "terminusPostQuem": tp,
+                      "terminusAnteQuem": ta,
+                      "meandate": meandate,
+                      "yearrange": yearrange,
+                      "support": support,
+                      "folio": folio,
+                      "height": height,
+                      "width": width,
+                      "extent": extent,
+                      "description": description,
+                      "creator": creator,
+                      "id": id,
+                      "full_id": full_id,
+                      "filename": filename})
+
+
+def get_ms_info(soup: BeautifulSoup) -> pd.Series:
+    '''Will deliver a data frame to be crunched into SQL
+    '''
+    shorttitle = metadata.get_shorttitle(soup)
+    _, country, settlement, repository = metadata.get_msID(soup)
+    origin = metadata.get_origin(soup)
+    date, tp, ta, meandate, yearrange = metadata.get_date(soup)
+    support = metadata.get_support(soup)
+    folio = metadata.get_folio(soup)
+    height, width = metadata.get_dimensions(soup)
+    creator = metadata.get_creators(soup)
+    extent = metadata.get_extent(soup)
+    description = metadata.get_description(soup)
+    id = _find_id(soup)
+    full_id = _find_full_id(soup)
+    filename = _find_filename(soup)
+    log.debug(f"Sucessfully souped and strained {full_id}")
+
+    return pd.Series({"shorttitle": shorttitle,
+                      "country": country,
+                      "settlement": settlement,
+                      "repository": repository,
+                      "origin": origin,
+                      "date": date,
+                      "terminusPostQuem": tp,
+                      "terminusAnteQuem": ta,
                       "meandate": meandate,
                       "yearrange": yearrange,
                       "support": support,
