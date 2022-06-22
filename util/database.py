@@ -157,7 +157,7 @@ def get_metadata(conn: sqlite3.Connection, table_name: str, column_name: str, se
     res = pd.DataFrame()
     first_run = True
     for i in search_criteria:
-        ii = pd.read_sql(sql=f"SELECT * FROM {table_name} WHERE {column_name} = '{i}'", con=conn)
+        ii = pd.read_sql(sql=f"SELECT * FROM {table_name} WHERE {column_name} = '{i}'", con=conn)  # TODO: replace with ? notation
         if first_run:
             res = res.reindex(columns=ii.columns)
             first_run = False
@@ -168,7 +168,7 @@ def get_metadata(conn: sqlite3.Connection, table_name: str, column_name: str, se
 
 def simple_people_search(conn: sqlite3.Connection, persID: str) -> str:
     curse = conn.cursor()
-    curse.execute(f"SELECT firstName, lastName FROM people WHERE persID = '{persID}'")
+    curse.execute(f"SELECT firstName, lastName FROM people WHERE persID = '{persID}'")  # TODO: replace with ? notation
     raw = curse.fetchall()
     if len(raw) == 0:
         log.debug(f"No record in DB for: {persID}")
@@ -185,8 +185,8 @@ def ms_x_ppl(conn: sqlite3.Connection, pplIDs: list[str]) -> list[str]:
     Get IDs of all manuscripts related to a list of people.
     """
     curse = conn.cursor()
-    sqPpl = tuple(pplIDs)  # Casts list to tuple so SQL will recognise it as a list
-    curse.execute(f"SELECT msID FROM junctionPxM WHERE persID in {sqPpl}")
+    sqlQ = f"SELECT msID FROM junctionPxM WHERE persID in ({', '.join('?' for _ in pplIDs)})"
+    curse.execute(sqlQ, pplIDs)
     res = [x[0] for x in curse.fetchall()]
     return res
 
@@ -197,8 +197,8 @@ def ppl_x_mss(conn: sqlite3.Connection, msIDs: list[str]) -> list[str]:
     Returns list of IDs for people.
     """
     curse = conn.cursor()
-    sqMs = tuple(msIDs)  # Casts list to tuple so SQL will recognise it as a list
-    curse.execute(f"SELECT persID FROM junctionPxM WHERE msID in {sqMs}")
+    sqlQ = f"SELECT persID FROM junctionPxM WHERE msID in ({', '.join('?' for _ in msIDs)})"
+    curse.execute(sqlQ, msIDs)
     res = [x[0] for x in curse.fetchall()]
     return res
 
@@ -209,8 +209,8 @@ def ms_x_txts(conn: sqlite3.Connection, txts: list[str]) -> list[str]:
     Returns list of IDs for manuscripts.
     """  # TODO: clarify text definition
     curse = conn.cursor()
-    sqList = tuple(txts)
-    curse.execute(f"SELECT msID FROM junctionTxM WHERE txtName in {sqList}")
+    sqlQ = f"SELECT msID FROM junctionTxM WHERE txtName in ({', '.join('?' for _ in txts)})"
+    curse.execute(sqlQ, txts)
     res = [x[0] for x in curse.fetchall()]
     return res
 
@@ -220,15 +220,10 @@ def txts_x_ms(conn: sqlite3.Connection, mss: list[str]) -> list[str]:
     Get IDs of all texts connected to a list of manuscripts.
     Returns list of IDs for texts.
     """  # TODO: clarify text definition
-    res: List[str] = []
     curse = conn.cursor()
-    if len(mss) == 1:
-        curse.execute(f'SELECT txtName FROM junctionTxM WHERE msID = "{mss[0]}"')
-    elif len(mss) >= 2:
-        sqlT = tuple(mss)
-        curse.execute(f'SELECT txtName FROM junctionTxM WHERE msID IN {sqlT}')
-    for i in curse.fetchall():
-        res.append(i[0])
+    sqlQ = f"SELECT txtName FROM junctionTxM WHERE msID in ({', '.join('?' for _ in mss)})"
+    curse.execute(sqlQ, mss)
+    res = [x[0] for x in curse.fetchall()]
     return res
 
 
