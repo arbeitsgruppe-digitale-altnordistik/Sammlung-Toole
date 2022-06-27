@@ -9,7 +9,6 @@ from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions
 from util import database
 import pandas as pd
-from st_aggrid import AgGrid as ag
 
 
 @st.experimental_singleton   # type: ignore
@@ -120,6 +119,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
         st.experimental_rerun()
     with st.expander('view results as list', False):
         st.write(results)
+    metadatahandler.process_ms_results(state, results)
     with st.expander("Save results as group", False):
         with st.form("save_group"):
             name = st.text_input('Group Name', f'Search results for <{ppl}>')
@@ -153,18 +153,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                         st.experimental_rerun()
-    try:
-        meta = handler.search_manuscript_data(results).reset_index(drop=True)  # type: ignore
-        with st.expander("Show results as table"):
-            st.table(meta)
-    except:
-        print('Uh-oh')  # TODO: Proper handling of empty results from AND queries.
-    if isinstance(meta, pd.DataFrame):
-        with st.expander("Export results to Citavi"):
-            metadatahandler.citavi_export(meta)
-        with st.expander("Plot dating of manuscripts"):
-            metadatahandler.plotting(meta)
-    # TODO: visualization/citavi-export of result
+
 
 # endregion
 
@@ -337,8 +326,7 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
                 handler.groups.set(grp)
                 state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                 st.experimental_rerun()
-    st.table(results)
-    # TODO: Below code not yet checked for compatibility with new backend (/SK) Should be working though...? (/SK&BL)
+    metadatahandler.process_ms_results(state, results)
     if handler.groups.manuscript_groups:
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
@@ -363,7 +351,6 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
                         handler.groups.set(new_group)
                         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                         st.experimental_rerun()
-    # TODO: visualization/citavi-export of result
 
 # endregion
 
