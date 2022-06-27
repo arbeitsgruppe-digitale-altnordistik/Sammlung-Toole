@@ -34,7 +34,7 @@ def isUpToDate() -> bool:
     return res
 
 
-def db_init():
+def db_init():  # TODO: Purge?
     dbConn = database.create_connection()
     database.db_set_up(dbConn)
     ppl = tamer.get_ppl_names()
@@ -53,7 +53,7 @@ def main() -> None:
             update()
         if not isUpToDate():
             log.warning("Data is not up to date despite trying to update")
-        db_init()
+        # db_init() # I think this fucks up the db-rebuild because it creates a db file and thus interrupts the rebuild (/SK)
     except Exception:
         log.exception("Failed to load Handrit.is data from github")
 

@@ -13,6 +13,7 @@ requests = "*"
 scipy = "*"
 streamlit = "*"
 Markdown = "*"
+streamlit-aggrid = "*"
 
 [dev-packages]
 mypy = "*"

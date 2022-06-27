@@ -2,13 +2,14 @@
 from logging import Logger
 from typing import List
 import streamlit as st
-from util import utils
+from util import metadatahandler, utils
 from util.datahandler import DataHandler
 from util.groups import Group, GroupType
 from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions
 from util import database
 import pandas as pd
+from st_aggrid import AgGrid as ag
 
 
 @st.experimental_singleton   # type: ignore
@@ -154,9 +155,15 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
                         st.experimental_rerun()
     try:
         meta = handler.search_manuscript_data(results).reset_index(drop=True)  # type: ignore
-        st.table(meta)
+        with st.expander("Show results as table"):
+            st.table(meta)
     except:
         print('Uh-oh')  # TODO: Proper handling of empty results from AND queries.
+    if isinstance(meta, pd.DataFrame):
+        with st.expander("Export results to Citavi"):
+            metadatahandler.citavi_export(meta)
+        with st.expander("Plot dating of manuscripts"):
+            metadatahandler.plotting(meta)
     # TODO: visualization/citavi-export of result
 
 # endregion
