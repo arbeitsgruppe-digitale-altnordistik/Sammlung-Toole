@@ -208,9 +208,6 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
     """
     handler = state.data_handler
     results = state.searchState.pers_by_ms.ppl
-    # if not isinstance(results, pd.DataFrame):
-    #     state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
-    #     st.experimental_rerun()
     mss = state.searchState.pers_by_ms.mss
     mode = state.searchState.pers_by_ms.mode
     st.subheader("Manuscript(s) selected")

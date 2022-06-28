@@ -35,6 +35,10 @@ class Step:
         Combine_MSS = 2
         Combine_TXT = 3
         Combine_PPL = 4
+        Meta_MSS = 5
+
+    class Work_Groups(Enum):
+        meta_MSS = 1
 
     def reset(self) -> None:
         self.browseGroups = Step.Browse_Groups.Browse

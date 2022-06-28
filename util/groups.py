@@ -91,6 +91,7 @@ class Groups:
         log.info(f"Set Group: {group.group_id} - {group.name} ({group.group_type})")
         if group.group_type == GroupType.ManuscriptGroup:
             self.manuscript_groups[group.group_id] = group
+            log.debug(f"New manuscript group created: {group}")
         elif group.group_type == GroupType.TextGroup:
             self.text_groups[group.group_id] = group
         elif group.group_type == GroupType.PersonGroup:

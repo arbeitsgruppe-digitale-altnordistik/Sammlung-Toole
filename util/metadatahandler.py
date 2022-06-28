@@ -13,7 +13,7 @@ def citavi_export(metadata: pd.DataFrame) -> None:
     st.download_button(label="Download", data=csv, file_name=f"toole-citave-export{tstamp}.csv")
 
 
-def plotting(metadata: pd.DataFrame) -> None:
+def plot_date_scatter(metadata: pd.DataFrame) -> None:
     fig = utils.date_plotting(metadata)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -31,4 +31,4 @@ def process_ms_results(state: StateHandler, mss: list[str]) -> None:
         with st.expander("Export results to Citavi"):
             citavi_export(meta)
         with st.expander("Plot dating of manuscripts"):
-            plotting(meta)
+            plot_date_scatter(meta)
