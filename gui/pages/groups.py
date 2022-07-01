@@ -32,24 +32,24 @@ def browse_groups(state: StateHandler) -> None:
     if state.steps.browseGroups == Step.Browse_Groups.Browse:
         # Manuscript Groups
         st.header("Manuscript Groups")
-        mss = [(b.name, f"{len(b.items)} Manuscripts", b.date.strftime('%c')) for a, b in groups.manuscript_groups.items()]
+        mss = [(b.name, f"{len(b.items)} Manuscripts", b.date.strftime('%c')) for _, b in groups.manuscript_groups.items()]
         st.table(mss)
         if len(mss) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_mss"):
             state.steps.browseGroups = Step.Browse_Groups.Combine_MSS
             st.experimental_rerun()
-        if st.button("Get metadata for group(s)"):
+        if mss and st.button("Get metadata for group(s)"):
             state.steps.browseGroups = Step.Browse_Groups.Meta_MSS
             st.experimental_rerun()
             # Text Groups
         st.header("Text Groups")
-        txt = [(b.name, f"{len(b.items)} Texts", b.date.strftime('%c')) for a, b in groups.text_groups.items()]
+        txt = [(b.name, f"{len(b.items)} Texts", b.date.strftime('%c')) for _, b in groups.text_groups.items()]
         st.table(txt)
         if len(txt) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_txt"):
             state.steps.browseGroups = Step.Browse_Groups.Combine_TXT
             st.experimental_rerun()
         # Person Groups
         st.header("People Groups")
-        ppl = [(b.name, f"{len(b.items)} People", b.date.strftime('%c')) for a, b in groups.person_groups.items()]
+        ppl = [(b.name, f"{len(b.items)} People", b.date.strftime('%c')) for _, b in groups.person_groups.items()]
         st.table(ppl)
         if len(ppl) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_ppl"):
             state.steps.browseGroups = Step.Browse_Groups.Combine_PPL
@@ -69,6 +69,7 @@ def __meta_mss_groups(state: StateHandler) -> None:
     st.header("Get metadata for group(s)")
     sel = __group_selector(state)
     if sel:
+        res = None
         if len(sel) > 1:
             combMode = __union_selector()
             selComb = __group_combinator(sel, combMode)
@@ -112,7 +113,7 @@ def __union_selector() -> SearchOptions:
         'OR  (union - pick items that appear in at least one selected group)': SearchOptions.CONTAINS_ONE,
         'AND (intersection - pick items that appear in all selected groups)': SearchOptions.CONTAINS_ALL,
     }
-    mode_selection = st.radio('Combination mode', modes.keys())
+    mode_selection = st.radio('Combination mode', list(modes.keys()))
     mode = modes[mode_selection]
     return mode
 
@@ -205,7 +206,7 @@ def __combine_txt_groups(state: StateHandler) -> None:
         'OR  (union - pick items that appear in at least one selected group)': SearchOptions.CONTAINS_ONE,
         'AND (intersection - pick items that appear in all selected groups)': SearchOptions.CONTAINS_ALL,
     }
-    mode_selection = st.radio('Combination mode', modes.keys())
+    mode_selection = st.radio('Combination mode', list(modes.keys()))
     mode = modes[mode_selection]
     st.write("---")
     st.write("Select the groups you want to combine.")
@@ -248,7 +249,7 @@ def __combine_ppl_groups(state: StateHandler) -> None:
         'OR  (union - pick items that appear in at least one selected group)': SearchOptions.CONTAINS_ONE,
         'AND (intersection - pick items that appear in all selected groups)': SearchOptions.CONTAINS_ALL,
     }
-    mode_selection = st.radio('Combination mode', modes.keys())
+    mode_selection = st.radio('Combination mode', list(modes.keys()))
     mode = modes[mode_selection]
     st.write("---")
     st.write("Select the groups you want to combine.")

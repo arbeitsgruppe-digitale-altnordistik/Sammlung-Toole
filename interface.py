@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 import numpy as np
 import streamlit as st
 import pandas as pd
@@ -67,7 +67,7 @@ def adv_options(a: Any) -> None:
 
 def search_page(a: Any) -> None:
     st.header('Search Page')
-    opts = {
+    opts: dict[str, Callable[[StateHandler], None]] = {
         'How To': pages.search.how_to,
         # 'Handrit URLs': handrit_urls,
         'Search Manuscripts by related People': pages.search.manuscripts_by_persons,
@@ -76,7 +76,7 @@ def search_page(a: Any) -> None:
         'Search Texts contained by Manuscripts': pages.search.text_by_manuscripts,
     }
     st.sidebar.write("---")
-    choice = st.sidebar.radio('What would you like to search?', options=opts.keys())
+    choice = st.sidebar.radio('What would you like to search?', options=list(opts.keys()))
     fn = opts[choice]
     fn(state)
 
@@ -248,16 +248,22 @@ def full_menu() -> None:
     selected_function(state)
 
 
-def warn_if_handler_not_up_to_date() -> None:
-    """ Show a warning, if handler is not up to date with regard to the handrit git submodule """
-    if not GitUtil.is_up_to_date():
-        delta_t = GitUtil.get_time_difference()
-        link = GitUtil.get_comparison_link()
-        st.info("Warning: Your data may not be up to date.")
-        st.write(f"Time Difference between head and your data: {delta_t}")
-        st.markdown(f"See data changes [here]({link}).")
-        st.write("Please consider wiping the cache and rebuilding the handler.")
-        st.markdown("-----")
+# TODO: this currently doesn't work reasonably anymore:
+# we should keep track of how old the database version is (the handler isn't significant here anymore),
+# and put this in git too, as the database is git synchronized too.
+# Currently, you can get a up-to-date database from git but your handler-state may be old;
+# or you can get an outdated database but have a seemingly up-to-date handler. Both are wrong. (BL)
+
+# def warn_if_handler_not_up_to_date() -> None:
+#     """ Show a warning, if handler is not up to date with regard to the handrit git submodule """
+#     if not GitUtil.is_up_to_date():
+#         delta_t = GitUtil.get_time_difference()
+#         link = GitUtil.get_comparison_link()
+#         st.info("Warning: Your data may not be up to date.")
+#         st.write(f"Time Difference between head and your data: {delta_t}")
+#         st.markdown(f"See data changes [here]({link}).")
+#         st.write("Please consider wiping the cache and rebuilding the handler.")
+#         st.markdown("-----")
 
 
 if __name__ == '__main__':
@@ -265,7 +271,7 @@ if __name__ == '__main__':
         st.session_state['state'] = StateHandler()
     state = st.session_state['state']
     dataHandler = state.data_handler
-    warn_if_handler_not_up_to_date()
+    # warn_if_handler_not_up_to_date()
     if not dataHandler:
         get_handler()
     full_menu()
