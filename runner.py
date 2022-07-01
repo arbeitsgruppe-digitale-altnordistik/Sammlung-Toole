@@ -3,8 +3,6 @@ import sys
 
 from util import utils
 from util.utils import GitUtil
-from util import database
-from util import tamer
 
 log = utils.get_logger(__name__)
 
@@ -30,12 +28,13 @@ def isUpToDate() -> bool:
     numbers = [int(s) for s in output.split() if s.isdigit()]
     res = not bool(numbers and numbers[0])
     log.info(f"Checking if handrit data is up to date evaluated: {res}")
-    log.debug(output)
+    log.debug(f"Git diff output: {output if output else 'None'}")
     return res
 
 
 def main() -> None:
     # update submodule data
+    log.info("Runner started... checking submodule status")
     try:
         initialize()
         if not isUpToDate():

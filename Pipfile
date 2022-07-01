@@ -15,6 +15,7 @@ streamlit = "*"
 Markdown = "*"
 streamlit-aggrid = "*"
 networkx = "*"
+colorama = "*"
 
 [dev-packages]
 mypy = "*"

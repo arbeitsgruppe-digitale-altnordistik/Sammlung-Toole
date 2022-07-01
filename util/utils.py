@@ -4,10 +4,9 @@ import json
 import logging
 import os
 import subprocess
-import sys
 from datetime import timedelta
 from enum import Enum
-from logging.handlers import RotatingFileHandler
+import sys
 from time import time
 from typing import Any, Dict, List, Optional
 
@@ -15,7 +14,7 @@ import pandas as pd
 import plotly.express as px
 import requests
 from bs4 import BeautifulSoup
-from plotly.missing_ipywidgets import FigureWidget
+from plotly.graph_objs import Figure
 
 __logs: List[logging.Logger] = []
 
@@ -286,7 +285,7 @@ __log = get_logger(__name__)
 # Util functions for interface
 # ----------------------------
 
-def date_plotting(inDF: pd.DataFrame) -> FigureWidget:  # TODO Update doc  # LATER: maybe have a separate module for plotting stuff/reports
+def date_plotting(inDF: pd.DataFrame) -> Figure:  # TODO Update doc  # LATER: maybe have a separate module for plotting stuff/reports
     ''' Plots the data of a given set of MSs. Used with MS metadata results. Returns scatterplot.
     Args:
         inDF(dataFrame, required): pandas DataFrame
