@@ -5,18 +5,13 @@ This module handles data and provides convenient and efficient access to it.
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import pickle
 import sys
+from pathlib import Path
 from typing import Optional, Tuple
 
-import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
-from scipy import sparse
-from functools import reduce
-
-from scipy.sparse import data
 
 import util.tamer as tamer
 from util import database, utils
@@ -88,7 +83,6 @@ class DataHandler:
         # self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
         # log.info("Loaded Person-MSS-Matrix Info")
         self.groups = Groups.from_cache() or Groups()
-        log.debug(f"Groups loaded: {self.groups}")
         # self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
@@ -109,7 +103,6 @@ class DataHandler:
                     sys.setrecursionlimit(prev)
                     if isinstance(obj, DataHandler):
                         obj.groups = Groups.from_cache() or Groups()
-                        log.debug(f"Groups loaded: {obj.groups}")
                         return obj
             except Exception:
                 log.exception("Cound not load handler from pickle")
@@ -125,30 +118,6 @@ class DataHandler:
     def _load_txt_list() -> list[str]:
         res = database.txt_lookup_list(conn=database.create_connection())
         return res
-
-    @staticmethod
-    def _load_text_matrix(df: pd.DataFrame) -> pd.DataFrame:
-        """Load the text-manuscript-matrix"""
-        mss_ids, text_names, coords = tamer.get_text_mss_matrix_coordinatres(df)
-        r, c = map(list, zip(*coords))
-        row = np.array(r)
-        col = np.array(c)
-        data = np.array([True]*len(row))
-        matrix = sparse.coo_matrix((data, (row, col)))
-        df = pd.DataFrame.sparse.from_spmatrix(matrix, index=mss_ids, columns=text_names)
-        return df
-
-    @staticmethod
-    def _load_person_matrix(df: pd.DataFrame) -> pd.DataFrame:
-        """Load the person-manuscript-matrix"""
-        mss_ids, pers_ids, coords = tamer.get_person_mss_matrix_coordinatres(df)
-        r, c = map(list, zip(*coords))
-        row = np.array(r)
-        col = np.array(c)
-        data = np.array([True]*len(row))
-        matrix = sparse.coo_matrix((data, (row, col)))
-        df = pd.DataFrame.sparse.from_spmatrix(matrix, index=mss_ids, columns=pers_ids)
-        return df
 
     @staticmethod
     def _load_persons() -> Tuple[dict[str, str], dict[str, list[str]]]:
@@ -249,43 +218,43 @@ class DataHandler:
                 res.append(row)
         return res
 
-    def get_all_manuscript_data(self) -> pd.DataFrame:
-        """Get the manuscripts dataframe.
+    # def get_all_manuscript_data(self) -> pd.DataFrame:  # TODO: not used, right? (BL)
+    #     """Get the manuscripts dataframe.
 
-        Returns:
-            A dataframe containing all manuscripts with their respective metadata.
+    #     Returns:
+    #         A dataframe containing all manuscripts with their respective metadata.
 
-            The dataframe will have the following structure:
+    #         The dataframe will have the following structure:
 
-            Per row, there will be metadata to one manuscript. The row indices are integers 0..n.
+    #         Per row, there will be metadata to one manuscript. The row indices are integers 0..n.
 
-            The dataframe contains the following columns:
+    #         The dataframe contains the following columns:
 
-            - 'shelfmark'
-            - 'shorttitle'
-            - 'country'
-            - 'settlement'
-            - 'repository'
-            - 'origin'
-            - 'date'
-            - 'Terminus post quem'
-            - 'Terminus ante quem'
-            - 'meandate'
-            - 'yearrange'
-            - 'support'
-            - 'folio'
-            - 'height'
-            - 'width'
-            - 'extent'
-            - 'description'
-            - 'creator'
-            - 'id'
-            - 'full_id'
-            - 'filename'
-        """
-        with database.create_connection() as conn:
-            res = pd.read_sql('SELECT * FROM manuscripts ORDER BY shelfmark', con=conn)
-        return res
+    #         - 'shelfmark'
+    #         - 'shorttitle'
+    #         - 'country'
+    #         - 'settlement'
+    #         - 'repository'
+    #         - 'origin'
+    #         - 'date'
+    #         - 'Terminus post quem'
+    #         - 'Terminus ante quem'
+    #         - 'meandate'
+    #         - 'yearrange'
+    #         - 'support'
+    #         - 'folio'
+    #         - 'height'
+    #         - 'width'
+    #         - 'extent'
+    #         - 'description'
+    #         - 'creator'
+    #         - 'id'
+    #         - 'full_id'
+    #         - 'filename'
+    #     """
+    #     with database.create_connection() as conn:
+    #         res = pd.read_sql('SELECT * FROM manuscripts ORDER BY shelfmark', con=conn)
+    #     return res
 
     def search_manuscript_data(self, mssIDs: list[str]) -> pd.DataFrame:
         """Search manuscript metadata for certain manuscripts.
@@ -375,7 +344,6 @@ class DataHandler:
         else:
             sets: list[set[str]] = []
             db = database.create_connection()
-            curse = db.cursor()
             for i in Inmss:
                 sets = []
                 db = database.create_connection()
