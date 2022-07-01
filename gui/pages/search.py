@@ -125,7 +125,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
             name = st.text_input('Group Name', f'Search results for <{ppl}>')
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.ManuscriptGroup, name, set(results))
-                log.debug(f"Should be saving group: {grp}")
+                # log.debug(f"Should be saving group: {grp}")
                 handler.groups.set(grp)
                 state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                 st.experimental_rerun()
@@ -224,7 +224,7 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
             name = st.text_input('Group Name', f'Search results for <{mss}>')
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.PersonGroup, name, set(results))
-                log.debug(f"Should be saving group: {grp}")
+                # log.debug(f"Should be saving group: {grp}")
                 handler.groups.set(grp)
                 state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
                 st.experimental_rerun()
@@ -319,7 +319,7 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
             name = st.text_input('Group Name', f'Search results for <{txt}>')
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.ManuscriptGroup, name, set(results))
-                log.debug(f"Should be saving group: {grp}")
+                # log.debug(f"Should be saving group: {grp}")
                 handler.groups.set(grp)
                 state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                 st.experimental_rerun()
@@ -418,7 +418,7 @@ def __search_text_by_mss_step_save_results(state: StateHandler) -> None:
             name = st.text_input('Group Name', f'Search results for manuscript search <{mss}>')
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.TextGroup, name, set(results))
-                log.debug(f"Should be saving group: {grp}")
+                # log.debug(f"Should be saving group: {grp}")
                 handler.groups.set(grp)
                 state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
                 st.experimental_rerun()

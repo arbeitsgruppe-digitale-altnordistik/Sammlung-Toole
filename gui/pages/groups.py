@@ -27,7 +27,7 @@ def browse_groups(state: StateHandler) -> None:
     """
     handler: DataHandler = state.data_handler
     groups = handler.groups
-    log.debug(f"Browsing Groups: {groups}")
+    # log.debug(f"Browsing Groups: {groups}")
     st.title("Groups")
     if state.steps.browseGroups == Step.Browse_Groups.Browse:
         # Manuscript Groups
