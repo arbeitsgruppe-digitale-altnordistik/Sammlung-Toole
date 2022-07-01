@@ -154,15 +154,11 @@ def get_metadata(conn: sqlite3.Connection, table_name: str, column_name: str, se
     Returns:
         pd.DataFrame
     """
-    res = pd.DataFrame()
-    first_run = True
+    dfs: list[pd.DataFrame] = []
     for i in search_criteria:
         ii = pd.read_sql(sql=f"SELECT * FROM {table_name} WHERE {column_name} = '{i}'", con=conn)  # TODO: replace with ? notation
-        if first_run:
-            res = res.reindex(columns=ii.columns)
-            first_run = False
-        res = res.append(ii)
-    res.reset_index(drop=True, inplace=True)
+        dfs.append(ii)
+    res = pd.concat(dfs)
     return res
 
 
