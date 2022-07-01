@@ -1,14 +1,11 @@
 
 from logging import Logger
-from typing import List
+
 import streamlit as st
 from util import metadatahandler, utils
-from util.datahandler import DataHandler
 from util.groups import Group, GroupType
 from util.stateHandler import StateHandler, Step
 from util.utils import SearchOptions
-from util import database
-import pandas as pd
 
 
 @st.experimental_singleton   # type: ignore
@@ -88,7 +85,7 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
         st.subheader("Select Person(s)")
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', modes.keys(), 1)
+        mode_selection = st.radio('Search mode', list(modes.keys()), 1)
         mode = modes[mode_selection]
         ppl = st.multiselect('Select Person', handler.person_names, format_func=lambda x: f"{handler.person_names[x]} ({x})")
         if st.form_submit_button("Search Manuscripts"):
@@ -137,7 +134,7 @@ def __search_mss_by_person_step_save_results(state: StateHandler) -> None:
                     'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
                     'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                 }
-                mode_selection = st.radio('Search mode', modes.keys())
+                mode_selection = st.radio('Search mode', list(modes.keys()))
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for <{ppl} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
@@ -183,7 +180,7 @@ def __search_person_by_mss_step_search(state: StateHandler) -> None:
         st.subheader("Select Manuscript(s)")
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', modes.keys(), index=1)
+        mode_selection = st.radio('Search mode', list(modes.keys()), index=1)
         mode = modes[mode_selection]
         # LATER: come up with a nice format function here (ideally including ms nicknames, so that one could find "Flateyjarbók" etc.)
         # TODO: I tried to implement the above -> goes oom. Basically, it tries to map out a dict with 15k keys and the following structure: key[str]: Tuple[str, str]
@@ -236,7 +233,7 @@ def __search_person_by_mss_step_save_results(state: StateHandler) -> None:
                     'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
                     'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                 }
-                mode_selection = st.radio('Search mode', modes.keys())
+                mode_selection = st.radio('Search mode', list(modes.keys()))
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
@@ -282,7 +279,7 @@ def __search_mss_by_text_step_search(state: StateHandler) -> None:
         st.subheader("Select Text(s)")
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', modes.keys(), 1)
+        mode_selection = st.radio('Search mode', list(modes.keys()), 1)
         mode = modes[mode_selection]
         txt = st.multiselect('Select Text', handler.texts)
         # LATER: find format function to make it pretty
@@ -332,7 +329,7 @@ def __search_mss_by_text_step_save_results(state: StateHandler) -> None:
                     'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
                     'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                 }
-                mode_selection = st.radio('Search mode', modes.keys())
+                mode_selection = st.radio('Search mode', list(modes.keys()))
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for <{txt} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
@@ -377,7 +374,7 @@ def __search_text_by_mss_step_search(state: StateHandler) -> None:
         st.subheader("Select Manuscript(s)")
         modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', modes.keys(), 1)
+        mode_selection = st.radio('Search mode', list(modes.keys()), 1)
         mode = modes[mode_selection]
         # LATER: come up with a nice format function here (ideally including ms nicknames, sothat one could find "Flateyjarbók" etc.)
         # TODO: Cf. comment above in search ppl by ms (/SK)
@@ -430,7 +427,7 @@ def __search_text_by_mss_step_save_results(state: StateHandler) -> None:
                     'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
                     'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
                 }
-                mode_selection = st.radio('Search mode', modes.keys())
+                mode_selection = st.radio('Search mode', list(modes.keys()))
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
