@@ -87,7 +87,7 @@ def __search_mss_by_person_step_search(state: StateHandler) -> None:
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
         mode_selection = st.radio('Search mode', list(modes.keys()), 1)
         mode = modes[mode_selection]
-        ppl = st.multiselect('Select Person', handler.person_names, format_func=lambda x: f"{handler.person_names[x]} ({x})")
+        ppl = st.multiselect('Select Person', list(handler.person_names.keys()), format_func=lambda x: f"{handler.person_names[x]} ({x})")
         if st.form_submit_button("Search Manuscripts"):
             log.debug(f'Search Mode: {mode}')
             log.debug(f'selected people: {ppl}')
@@ -182,11 +182,7 @@ def __search_person_by_mss_step_search(state: StateHandler) -> None:
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
         mode_selection = st.radio('Search mode', list(modes.keys()), index=1)
         mode = modes[mode_selection]
-        # LATER: come up with a nice format function here (ideally including ms nicknames, so that one could find "Flateyjarbók" etc.)
-        # TODO: I tried to implement the above -> goes oom. Basically, it tries to map out a dict with 15k keys and the following structure: key[str]: Tuple[str, str]
-        # and dies. This is what I tried: format_func=lambda x: f"{handler.manuscripts[x][0]} ({handler.manuscripts[x][1]}) - {handler.manuscripts}
-        # (/SK)
-        mss = st.multiselect('Select Manuscript', handler.manuscripts)
+        mss = st.multiselect('Select Manuscript', list(handler.manuscripts.keys()), format_func=lambda x: f"{' / '.join(handler.manuscripts[x])} ({x})")
         if st.form_submit_button("Search People"):
             log.debug(f'Search Mode: {mode}')
             log.debug(f'selected manuscripts: {mss}')
@@ -376,9 +372,7 @@ def __search_text_by_mss_step_search(state: StateHandler) -> None:
                  'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
         mode_selection = st.radio('Search mode', list(modes.keys()), 1)
         mode = modes[mode_selection]
-        # LATER: come up with a nice format function here (ideally including ms nicknames, sothat one could find "Flateyjarbók" etc.)
-        # TODO: Cf. comment above in search ppl by ms (/SK)
-        mss = st.multiselect('Select Manuscript', handler.manuscripts)
+        mss = st.multiselect('Select Manuscript', list(handler.manuscripts.keys()), format_func=lambda x: f"{' / '.join(handler.manuscripts[x])} ({x})")
         if st.form_submit_button("Search Texts"):
             log.debug(f'Search Mode: {mode}')
             log.debug(f'selected manuscripts: {mss}')
