@@ -29,29 +29,23 @@ def how_to(_: StateHandler) -> None:
 
                 The following search options are available:
 
-                - Handrit URLs:
-                  Use one/multiple search- or browse result URL from Handrit.is.
-                  The tool will find the manuscripts as retuirned by Handrit.is, and show the according metadata.
-
-
                 - Manuscript by Person:
-                  Select one/multiple persons form the Handrit.is authority file.
-
+                  Select one/multiple persons form the Handrit.is authority file.  
                   The tool will find all manuscripts related to one/all of the selected people.
 
 
                 - Person by Manuscript:
-                  Select one/multiple manuscripts form the Handrit.is collection.
+                  Select one/multiple manuscripts form the Handrit.is collection.  
                   The tool will find all people related to one/all of the selected manuscripts.
 
 
                 - Manuscript by Text:
-                  Select one/multiple texts mentioned in the Handrit.is collections.
+                  Select one/multiple texts mentioned in the Handrit.is collections.  
                   The tool will find all manuscripts related to one/all of the selected texts.
 
 
                 - Text by Manuscript:
-                  Select one/multiple manuscripts form the Handrit.is collection.
+                  Select one/multiple manuscripts form the Handrit.is collection.  
                   The tool will find all texts occuring in one/all of the selected manuscripts.
                 """)
 

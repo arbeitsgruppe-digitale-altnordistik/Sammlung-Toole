@@ -1,18 +1,13 @@
-from os import system
 import sqlite3
-from sqlite3 import Error
-from typing import Any, Dict, List, Set, Tuple, Optional, Union
-from lxml import etree
-import glob
 import sys
-from util.constants import *
-import pandas as pd
 from logging import Logger
-from util import utils
+from typing import List, Tuple
+
+import pandas as pd
 import streamlit as st
 
-
-nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
+from util import utils
+from util.constants import *
 
 
 @st.experimental_singleton   # type: ignore
