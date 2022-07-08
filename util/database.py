@@ -1,18 +1,13 @@
-from os import system
 import sqlite3
-from sqlite3 import Error
-from typing import Any, Dict, List, Set, Tuple, Optional, Union
-from lxml import etree
-import glob
 import sys
-from util.constants import *
-import pandas as pd
 from logging import Logger
-from util import utils
+from typing import List, Tuple
+
+import pandas as pd
 import streamlit as st
 
-
-nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
+from util import utils
+from util.constants import *
 
 
 @st.experimental_singleton   # type: ignore
@@ -154,15 +149,11 @@ def get_metadata(conn: sqlite3.Connection, table_name: str, column_name: str, se
     Returns:
         pd.DataFrame
     """
-    res = pd.DataFrame()
-    first_run = True
+    dfs: list[pd.DataFrame] = []
     for i in search_criteria:
         ii = pd.read_sql(sql=f"SELECT * FROM {table_name} WHERE {column_name} = '{i}'", con=conn)  # TODO: replace with ? notation
-        if first_run:
-            res = res.reindex(columns=ii.columns)
-            first_run = False
-        res = res.append(ii)
-    res.reset_index(drop=True, inplace=True)
+        dfs.append(ii)
+    res = pd.concat(dfs)
     return res
 
 

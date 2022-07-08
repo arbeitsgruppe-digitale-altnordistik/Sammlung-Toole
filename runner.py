@@ -3,8 +3,6 @@ import sys
 
 from util import utils
 from util.utils import GitUtil
-from util import database
-from util import tamer
 
 log = utils.get_logger(__name__)
 
@@ -30,30 +28,19 @@ def isUpToDate() -> bool:
     numbers = [int(s) for s in output.split() if s.isdigit()]
     res = not bool(numbers and numbers[0])
     log.info(f"Checking if handrit data is up to date evaluated: {res}")
-    log.debug(output)
+    log.debug(f"Git diff output: {output if output else 'None'}")
     return res
-
-
-def db_init():
-    dbConn = database.create_connection()
-    database.db_set_up(dbConn)
-    ppl = tamer.get_ppl_names()
-
-    database.populate_people_table(dbConn, ppl)
-    dbConn.commit()
-    dbConn.close()
-    return
 
 
 def main() -> None:
     # update submodule data
+    log.info("Runner started... checking submodule status")
     try:
         initialize()
         if not isUpToDate():
             update()
         if not isUpToDate():
             log.warning("Data is not up to date despite trying to update")
-        db_init()
     except Exception:
         log.exception("Failed to load Handrit.is data from github")
 

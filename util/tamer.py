@@ -1,21 +1,16 @@
 import os
-import sys
+import time
+from pathlib import Path
 from typing import Dict, List, Set, Tuple
-from bs4 import BeautifulSoup
-import lxml
+
 import pandas as pd
+import requests
 from bs4 import BeautifulSoup
+from lxml import etree
+
 import util.metadata as metadata
 import util.utils as utils
 from util.constants import *
-import zipfile
-import glob
-from lxml import etree
-import requests
-import time
-from pathlib import Path
-from urllib.request import urlopen
-
 
 log = utils.get_logger(__name__)
 nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}

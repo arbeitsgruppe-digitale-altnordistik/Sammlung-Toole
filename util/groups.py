@@ -1,11 +1,13 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Dict, List, Optional, Set, Union
-import uuid
+
 import os
 import pickle
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Dict, List, Optional, Set, Union
+
 from util import utils
 from util.constants import GROUPS_PATH_PICKLE
 
@@ -70,7 +72,7 @@ class Groups:
             return None
 
     def cache(self) -> None:
-        """Cache the Groups object as a picle file."""
+        """Cache the Groups object as a pickle file."""
         try:
             with open(GROUPS_PATH_PICKLE, 'wb') as f:
                 pickle.dump(self, f)
@@ -91,6 +93,7 @@ class Groups:
         log.info(f"Set Group: {group.group_id} - {group.name} ({group.group_type})")
         if group.group_type == GroupType.ManuscriptGroup:
             self.manuscript_groups[group.group_id] = group
+            # log.debug(f"New manuscript group created: {group}")
         elif group.group_type == GroupType.TextGroup:
             self.text_groups[group.group_id] = group
         elif group.group_type == GroupType.PersonGroup:
