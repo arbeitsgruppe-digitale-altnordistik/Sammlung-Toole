@@ -1,8 +1,8 @@
 import subprocess
 import sys
 
-from src.lib import utils
-from src.lib.utils import GitUtil
+from lib import utils
+from lib.utils import GitUtil
 
 log = utils.get_logger(__name__)
 
@@ -47,7 +47,12 @@ def main() -> None:
     # run streamlit app
     try:
         log.info("Starting Streamlit app...")
-        process = subprocess.run("pipenv run python -m streamlit run src/gui/interface.py".split())
+        # The following try-except is a very inelegant solution to the problem of pipenv not being on path
+        try:
+            process = subprocess.run("pipenv run python -m streamlit run src/gui/interface.py".split())
+        except:
+            log.debug("pipenv not on path?")
+            process = subprocess.run("python3 -m pipenv run python -m streamlit run src/gui/interface.py".split(), shell=True)
         log.info(f"Process terminated with status code: {process.returncode}")
         code = process.returncode
     except KeyboardInterrupt:

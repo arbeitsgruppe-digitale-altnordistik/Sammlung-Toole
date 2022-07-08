@@ -2,10 +2,10 @@
 from logging import Logger
 
 import streamlit as st
-from util import metadatahandler, utils
-from util.groups import Group, GroupType
-from util.stateHandler import StateHandler, Step
-from util.utils import SearchOptions
+from src.lib import metadatahandler, utils
+from src.lib.groups import Group, GroupType
+from src.lib.stateHandler import StateHandler, Step
+from src.lib.utils import SearchOptions
 
 
 @st.experimental_singleton   # type: ignore

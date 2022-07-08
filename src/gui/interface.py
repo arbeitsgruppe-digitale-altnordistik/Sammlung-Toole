@@ -10,7 +10,8 @@ from src.lib.constants import IMAGE_HOME
 from src.lib.stateHandler import StateHandler
 from src.lib.utils import Settings
 from src.lib.datahandler import DataHandler
-from gui import pages
+from src.gui.pages import groups
+from src.gui.pages import search
 from src.lib.guiUtils import Texts
 
 
@@ -67,12 +68,12 @@ def adv_options(a: Any) -> None:
 def search_page(a: Any) -> None:
     st.header('Search Page')
     opts: dict[str, Callable[[StateHandler], None]] = {
-        'How To': pages.search.how_to,
+        'How To': search.how_to,
         # 'Handrit URLs': handrit_urls,
-        'Search Manuscripts by related People': pages.search.manuscripts_by_persons,
-        'Search People by related Manuscripts': pages.search.persons_by_manuscripts,
-        'Search Manuscripts by Text': pages.search.manuscripts_by_texts,
-        'Search Texts contained by Manuscripts': pages.search.text_by_manuscripts,
+        'Search Manuscripts by related People': search.manuscripts_by_persons,
+        'Search People by related Manuscripts': search.persons_by_manuscripts,
+        'Search Manuscripts by Text': search.manuscripts_by_texts,
+        'Search Texts contained by Manuscripts': search.text_by_manuscripts,
     }
     st.sidebar.write("---")
     choice = st.sidebar.radio('What would you like to search?', options=list(opts.keys()))
@@ -237,7 +238,7 @@ def full_menu() -> None:
     '''
     MenuOptions = {"Home": mainPage,
                    "Browse Data": browse_data,
-                   "Groups": pages.groups.browse_groups,
+                   "Groups": groups.browse_groups,
                    "Search Functions": search_page,
                    #    "Reports": static_reports,
                    "Advanced Settings": adv_options,
