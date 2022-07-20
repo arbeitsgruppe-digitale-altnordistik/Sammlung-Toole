@@ -56,11 +56,11 @@ test-end-to-end: ## run end-to-end tests \
 
 .PHONY: docs-build
 docs-build: ## build the docs
-	@pipenv run tests/mkdocs build
+	@pipenv run mkdocs build
 
 .PHONY: docs-run
 docs-run: ## run the docs locally
-	@pipenv run tests/mkdocs serve
+	@pipenv run mkdocs serve
 
 
 
