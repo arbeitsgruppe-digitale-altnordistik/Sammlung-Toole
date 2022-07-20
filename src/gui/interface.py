@@ -10,8 +10,8 @@ from src.lib.constants import IMAGE_HOME
 from src.lib.stateHandler import StateHandler
 from src.lib.utils import Settings
 from src.lib.datahandler import DataHandler
-from src.gui.pages import groups
-from src.gui.pages import search
+from src.gui.pgs import groups
+from src.gui.pgs import search
 from src.lib.guiUtils import Texts
 
 
