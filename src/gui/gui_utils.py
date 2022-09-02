@@ -8,7 +8,7 @@ from src.lib.stateHandler import StateHandler
 
 @st.experimental_singleton   # type: ignore
 def get_log() -> Logger:
-    return utils.get_logger(__name__)
+    return utils.get_logger("GUI")
 
 
 @st.experimental_singleton   # type: ignore
