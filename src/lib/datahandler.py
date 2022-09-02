@@ -10,11 +10,11 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import pandas as pd
-from bs4 import BeautifulSoup
-
 import src.lib.tamer as tamer
-from src.lib import database, utils
+from bs4 import BeautifulSoup
+from src.lib import utils
 from src.lib.constants import *
+from src.lib.database import database, db_init
 from src.lib.groups import Groups
 from src.lib.utils import GitUtil, SearchOptions, Settings
 
@@ -111,9 +111,9 @@ class DataHandler:
     @staticmethod
     def _build_db() -> None:
         dbConn = database.create_connection()
-        database.db_set_up(dbConn)
+        db_init.db_set_up(dbConn)
         ppl = tamer.get_ppl_names()
-        database.populate_people_table(dbConn, ppl)
+        db_init.populate_people_table(dbConn, ppl)
         df = tamer.deliver_handler_data()
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_ms_info(x))
@@ -123,17 +123,15 @@ class DataHandler:
         txtXmss = tamer.get_text_mss_matrix(df)
         df = df.drop('soup', axis=1)
         df = df.drop('content', axis=1)
-        database.populate_ms_table(dbConn, df)
+        db_init.populate_ms_table(dbConn, df)
         log.debug("Populated MS Table")
-        database.populate_junctionPxM(dbConn, pplXmss)
-        report = database.PxM_integrity_check(dbConn, pplXmss)
+        db_init.populate_junctionPxM(dbConn, pplXmss)
+        report = db_init.PxM_integrity_check(dbConn, pplXmss)
         if report == True:
             log.debug("Populated People x Manuscripts junction table.")
-            print("Integrity check passed.")
         if report == False:
             log.error("Data integrity in ppl by MS matrix damaged. Duplicate entries or other types of corruption.")
-            print("Integrity check failed.")
-        database.populate_junctionTxM(conn=dbConn, incoming=txtXmss)
+        db_init.populate_junctionTxM(conn=dbConn, incoming=txtXmss)
         dbConn.commit()
         dbConn.close()
         return
@@ -286,7 +284,6 @@ class DataHandler:
                 for i in Inmss:
                     ii = database.txts_x_ms(db.cursor(), [i])
                     sets.append(set(ii))
-                    print(ii)
             if not sets:
                 log.info("No Texts found.")
                 return []
@@ -341,9 +338,7 @@ class DataHandler:
             db = database.create_connection()
             for i in person_ids:
                 ii = database.ms_x_ppl(db.cursor(), [i])
-                print(ii)
                 sets.append(set(ii))
-            print(sets)
             if not sets:
                 log.info('no ms found')
                 return []
