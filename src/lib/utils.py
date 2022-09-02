@@ -26,7 +26,7 @@ class SearchOptions(Enum):
     """OR search: the item must contain at least one of the requested elements, in order to fit"""
 
 
-class Settings:
+class Settings:  # TODO-BL: this should probably be done with streamlit cache in the state handler or so
     """Data structure to hold settings for the application."""
 
     def __init__(self) -> None:

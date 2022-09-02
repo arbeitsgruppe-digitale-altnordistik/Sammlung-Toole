@@ -3,8 +3,6 @@ from enum import Enum, auto
 from typing import Any
 
 import pandas as pd
-
-from src.lib.datahandler import DataHandler
 from src.lib.utils import SearchOptions
 
 
@@ -98,4 +96,3 @@ class StateHandler:
         self.currentCitaviData = pd.DataFrame()
         self.searchState = SearchState()
         self.steps: Step = Step()
-        self.data_handler: DataHandler = None  # type: ignore
