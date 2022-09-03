@@ -39,9 +39,8 @@ generate-requirements: ## generate requirements.txt and dev-requirements.txt
 test: docs-build test-unit test-integration test-end-to-end ## run all tests
 
 .PHONY: test-unit
-test-unit: ## run unit tests \
-	# TODO: implement
-	@echo "Not yet implemented"
+test-unit: ## run unit tests
+	pipenv run coverage run -m pytest tests/unit
 
 .PHONY: test-integration
 test-integration: ## run integration tests \
