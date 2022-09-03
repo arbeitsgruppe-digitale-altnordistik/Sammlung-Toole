@@ -25,6 +25,11 @@ install-pipenv: ## install pipenv
 	pip install pipenv
 # TODO: think about if it makes sense to have pipenv here
 
+.PHONY: generate-requirements
+generate-requirements: ## generate requirements.txt and dev-requirements.txt
+	pipenv lock --requirements > requirements.txt
+	pipenv lock --requirements --dev-only > dev-requirements.txt
+
 
 ########################
 # Test Targets
@@ -47,6 +52,10 @@ test-integration: ## run integration tests \
 test-end-to-end: ## run end-to-end tests \
 	## TODO: implement
 	@echo "Not yet implemented"
+
+.PHONY: coverage-report
+coverage-report: ## run end-to-end tests
+	pipenv run coverage run -m pytest
 
 
 
