@@ -55,7 +55,7 @@ test-end-to-end: ## run end-to-end tests \
 
 .PHONY: coverage-report
 coverage-report: ## run end-to-end tests
-	pipenv run coverage run -m pytest --cov-report=xml
+	pipenv run coverage run -m pytest --cov --cov-report=xml
 
 
 
