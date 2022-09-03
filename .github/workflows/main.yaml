@@ -4,6 +4,26 @@ on:
   push:
 
 jobs:
+  codecov:
+    name: CodeCov
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install Requirements
+        run: make setup
+      - name: Generate Report
+        run: make coverage-report
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v3
+
+jobs:
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
