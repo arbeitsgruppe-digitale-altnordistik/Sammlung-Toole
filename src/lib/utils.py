@@ -32,7 +32,6 @@ class Settings:  # TODO-BL: this should probably be done with streamlit cache in
     def __init__(self) -> None:
         self.__verbose = True
         self.__debug = True
-        # self.__max_res = sys.maxsize
         self.cache = True
         self.use_cache = True
         global __last
@@ -229,24 +228,24 @@ def get_logger(name: str) -> logging.Logger:
     else:
         log.setLevel(logging.WARNING)
 
-    format = logging.Formatter('%(asctime)s [ %(name)s ] - %(levelname)s:   %(message)s')
+    log_format = logging.Formatter('%(asctime)s [ %(name)s ] - %(levelname)s:   %(message)s')
 
     if not os.path.exists('logs'):
         os.mkdir('logs')
 
     f_handler = logging.FileHandler('logs/warnings.log', mode='a', encoding='utf-8')
     f_handler.setLevel(logging.WARNING)
-    f_handler.setFormatter(format)
+    f_handler.setFormatter(log_format)
     log.addHandler(f_handler)
 
     f_handler2 = logging.FileHandler('logs/log.log', mode='a', encoding='utf-8')
     f_handler2.setLevel(logging.DEBUG)
-    f_handler2.setFormatter(format)
+    f_handler2.setFormatter(log_format)
     log.addHandler(f_handler2)
 
     c_h = logging.StreamHandler(sys.stdout)
     c_h.setLevel(logging.INFO)
-    c_h.setFormatter(format)
+    c_h.setFormatter(log_format)
     log.addHandler(c_h)
 
     __logs.append(log)

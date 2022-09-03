@@ -4,7 +4,7 @@ from src.lib.constants import IMAGE_HOME
 from src.lib.utils import Settings
 
 
-def mainPage() -> None:
+def main_page() -> None:
     '''Landing page'''
     st.title("Welcome to Sammlung Toole")
     st.write("The Menu on the left has all the options")
@@ -16,4 +16,4 @@ state = get_state()
 dataHandler = get_handler()
 settings = Settings.get_settings()
 
-mainPage()
+main_page()
