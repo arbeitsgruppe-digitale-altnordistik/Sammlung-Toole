@@ -115,7 +115,7 @@ def __search_mss_by_person_step_save_results() -> None:
         st.experimental_rerun()
     with st.expander('view results as list', False):
         st.write(results)
-    metadatahandler.process_ms_results(state, results)
+    metadatahandler.process_ms_results(handler, results)
     with st.expander("Save results as group", False):
         with st.form("save_group"):
             name = st.text_input('Group Name', f'Search results for <{ppl}>')
@@ -304,7 +304,7 @@ def __search_mss_by_text_step_save_results() -> None:
                 handler.groups.set(grp)
                 state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                 st.experimental_rerun()
-    metadatahandler.process_ms_results(state, results)
+    metadatahandler.process_ms_results(handler, results)
     if handler.groups.manuscript_groups:
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
