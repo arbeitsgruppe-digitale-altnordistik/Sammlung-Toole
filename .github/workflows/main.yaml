@@ -22,6 +22,8 @@ jobs:
         run: make coverage-report
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
 
   test-unit:
     name: Unit Tests
