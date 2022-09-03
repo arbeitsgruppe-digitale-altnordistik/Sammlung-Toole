@@ -40,17 +40,15 @@ test: docs-build test-unit test-integration test-end-to-end ## run all tests
 
 .PHONY: test-unit
 test-unit: ## run unit tests
-	pipenv run coverage run -m pytest tests/unit
+	pipenv run coverage run -m pytest tests/unit/
 
 .PHONY: test-integration
-test-integration: ## run integration tests \
-	# TODO: implement
-	@echo "Not yet implemented"
+test-integration: ## run integration tests
+	pipenv run coverage run -m pytest tests/integration/
 
 .PHONY: test-end-to-end
-test-end-to-end: ## run end-to-end tests \
-	## TODO: implement
-	@echo "Not yet implemented"
+test-end-to-end: ## run end-to-end tests 
+	pipenv run coverage run -m pytest tests/e2e/
 
 .PHONY: coverage-report
 coverage-report: ## run end-to-end tests
