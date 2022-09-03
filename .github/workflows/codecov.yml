@@ -1,7 +1,10 @@
 name: CodeCov
+
 on: [push, pull_request]
+
 jobs:
-  run:
+  codecov:
+    name: CodeCov
     runs-on: ubuntu-latest
     env:
       OS: ubuntu-latest
