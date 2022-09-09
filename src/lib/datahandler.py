@@ -6,16 +6,15 @@ from __future__ import annotations
 
 import os
 import pickle
-import sys
 from pathlib import Path
 from typing import Optional, Tuple
 
 import pandas as pd
-from bs4 import BeautifulSoup
-
 import src.lib.tamer as tamer
-from src.lib import database, utils
+from bs4 import BeautifulSoup
+from src.lib import utils
 from src.lib.constants import *
+from src.lib.database import database, db_init
 from src.lib.groups import Groups
 from src.lib.utils import GitUtil, SearchOptions, Settings
 
@@ -43,24 +42,6 @@ class DataHandler:
     """Inverted name lookup dictionary
     
     Dictionary mapping person names to a list of IDs of persons with said name"""
-
-    text_matrix: pd.DataFrame
-    # """Text-Manuscript-Matrix
-
-    # Sparse matrix with a row per manuscript and a column per text name.
-    # True, if the manuscript contains the text.
-    # Allows for lookups, which manuscripts a particular text is connected to.
-    # """
-    # TODO: Document the type of ID used for MSs in index/row label
-
-    # person_matrix: pd.DataFrame
-    # """Person-Manuscript-Matrix
-
-    # Sparse matrix with a row per manuscript and a column per person ID.
-    # True, if the manuscript is connected to the person (i.e. the description has the person tagged).
-    # Allows for lookups, which manuscripts a particular person is connected to.
-    # """
-    # TODO: Still needed? Implemented as table in new backend. Delete?
 
     groups: Groups
     # CHORE: document
@@ -96,11 +77,8 @@ class DataHandler:
         pickle_path = Path(HANDLER_PATH_PICKLE)
         if pickle_path.exists():
             try:
-                prev = sys.getrecursionlimit()
                 with open(HANDLER_PATH_PICKLE, mode='rb') as file:
-                    sys.setrecursionlimit(prev * 100)
                     obj = pickle.load(file)
-                    sys.setrecursionlimit(prev)
                     if isinstance(obj, DataHandler):
                         obj.groups = Groups.from_cache() or Groups()
                         return obj
@@ -111,18 +89,18 @@ class DataHandler:
     @staticmethod
     def _load_ms_info() -> dict[str, list[str]]:
         """Load manuscript lookup dict from DB"""
-        res = database.ms_lookup_dict(conn=database.create_connection())
+        res = database.ms_lookup_dict(database.create_connection().cursor())
         return res
 
     @staticmethod
     def _load_txt_list() -> list[str]:
-        res = database.txt_lookup_list(conn=database.create_connection())
+        res = database.txt_lookup_list(database.create_connection().cursor())
         return res
 
     @staticmethod
     def _load_persons() -> Tuple[dict[str, str], dict[str, list[str]]]:
         """Load person data"""
-        person_names = database.persons_lookup_dict(conn=database.create_connection())
+        person_names = database.persons_lookup_dict(database.create_connection().cursor())
         return person_names, tamer.get_person_names_inverse(person_names)
 
     @staticmethod
@@ -133,9 +111,9 @@ class DataHandler:
     @staticmethod
     def _build_db() -> None:
         dbConn = database.create_connection()
-        database.db_set_up(dbConn)
+        db_init.db_set_up(dbConn)
         ppl = tamer.get_ppl_names()
-        database.populate_people_table(dbConn, ppl)
+        db_init.populate_people_table(dbConn, ppl)
         df = tamer.deliver_handler_data()
         df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
         msinfo = df['soup'].apply(lambda x: tamer.get_ms_info(x))
@@ -145,17 +123,15 @@ class DataHandler:
         txtXmss = tamer.get_text_mss_matrix(df)
         df = df.drop('soup', axis=1)
         df = df.drop('content', axis=1)
-        database.populate_ms_table(dbConn, df)
+        db_init.populate_ms_table(dbConn, df)
         log.debug("Populated MS Table")
-        database.populate_junctionPxM(dbConn, pplXmss)
-        report = database.PxM_integrity_check(dbConn, pplXmss)
+        db_init.populate_junctionPxM(dbConn, pplXmss)
+        report = db_init.PxM_integrity_check(dbConn, pplXmss)
         if report == True:
             log.debug("Populated People x Manuscripts junction table.")
-            print("Integrity check passed.")
         if report == False:
             log.error("Data integrity in ppl by MS matrix damaged. Duplicate entries or other types of corruption.")
-            print("Integrity check failed.")
-        database.populate_junctionTxM(conn=dbConn, incoming=txtXmss)
+        db_init.populate_junctionTxM(conn=dbConn, incoming=txtXmss)
         dbConn.commit()
         dbConn.close()
         return
@@ -190,12 +166,12 @@ class DataHandler:
     def _to_pickle(self) -> None:
         """Save the present DataHandler instance as pickle."""
         log.info("Saving handler to pickle")
-        prev = sys.getrecursionlimit()
+        path = Path(HANDLER_PATH_PICKLE)
+        if not path.parent.exists():
+            path.parent.mkdir()
         with open(HANDLER_PATH_PICKLE, mode='wb') as file:
             try:
-                sys.setrecursionlimit(prev * 100)
                 pickle.dump(self, file)
-                sys.setrecursionlimit(prev)
             except Exception:
                 log.exception("Failed to pickle the data handler.")
 
@@ -210,50 +186,12 @@ class DataHandler:
                 res.append(row)
         return res
 
-    def get_all_ppl_hrf(self) -> list[str]:
-        res: list[str] = []
-        with database.create_connection() as conn:
-            cur = conn.cursor()
-            for row in cur.execute('SELECT firstName, lastName FROM people ORDER BY firstName'):
-                res.append(row)
-        return res
-
-    # def get_all_manuscript_data(self) -> pd.DataFrame:  # TODO: not used, right? (BL)
-    #     """Get the manuscripts dataframe.
-
-    #     Returns:
-    #         A dataframe containing all manuscripts with their respective metadata.
-
-    #         The dataframe will have the following structure:
-
-    #         Per row, there will be metadata to one manuscript. The row indices are integers 0..n.
-
-    #         The dataframe contains the following columns:
-
-    #         - 'shelfmark'
-    #         - 'shorttitle'
-    #         - 'country'
-    #         - 'settlement'
-    #         - 'repository'
-    #         - 'origin'
-    #         - 'date'
-    #         - 'Terminus post quem'
-    #         - 'Terminus ante quem'
-    #         - 'meandate'
-    #         - 'yearrange'
-    #         - 'support'
-    #         - 'folio'
-    #         - 'height'
-    #         - 'width'
-    #         - 'extent'
-    #         - 'description'
-    #         - 'creator'
-    #         - 'id'
-    #         - 'full_id'
-    #         - 'filename'
-    #     """
+    # def get_all_ppl_hrf(self) -> list[str]:
+    #     res: list[str] = []
     #     with database.create_connection() as conn:
-    #         res = pd.read_sql('SELECT * FROM manuscripts ORDER BY shelfmark', con=conn)
+    #         cur = conn.cursor()
+    #         for row in cur.execute('SELECT firstName, lastName FROM people ORDER BY firstName'):
+    #             res.append(row)
     #     return res
 
     def search_manuscript_data(self, mssIDs: list[str]) -> pd.DataFrame:
@@ -284,10 +222,6 @@ class DataHandler:
         res = database.get_metadata(table_name="manuscripts", column_name="full_id", search_criteria=mssIDs, conn=db)
         return res
 
-    def get_all_texts(self) -> pd.DataFrame:
-        """return the text-manuscript-matrix"""
-        return self.text_matrix
-
     def search_manuscripts_containing_texts(self, texts: list[str], searchOption: SearchOptions) -> list[str]:
         """Search manuscripts containing certain texts
 
@@ -304,13 +238,13 @@ class DataHandler:
             log.debug('Searched texts are empty list')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ms_x_txts(conn=database.create_connection(), txts=texts)
+            res = database.ms_x_txts(curse=database.create_connection().cursor(), txts=texts)
             return res
         else:
             sets = []
             db = database.create_connection()
             for i in texts:
-                ii = database.ms_x_txts(db, [i])
+                ii = database.ms_x_txts(db.cursor(), [i])
                 sets.append(set(ii))
             if not sets:
                 log.info('no ms found')
@@ -339,7 +273,7 @@ class DataHandler:
             log.debug('Searched for empty list of mss')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.txts_x_ms(conn=database.create_connection(), mss=Inmss)
+            res = database.txts_x_ms(curse=database.create_connection().cursor(), mss=Inmss)
             return res
         else:
             sets: list[set[str]] = []
@@ -348,9 +282,8 @@ class DataHandler:
                 sets = []
                 db = database.create_connection()
                 for i in Inmss:
-                    ii = database.txts_x_ms(db, [i])
+                    ii = database.txts_x_ms(db.cursor(), [i])
                     sets.append(set(ii))
-                    print(ii)
             if not sets:
                 log.info("No Texts found.")
                 return []
@@ -358,14 +291,14 @@ class DataHandler:
             log.info(f'Search result: {res}')
             return res
 
-    def get_person_name(self, pers_id: str) -> str:  # TODO: Might be obsolete with new backend?
+    def get_person_name(self, pers_id: str) -> str:
         """Get a person's name, identified by the person's ID"""
-        res = database.simple_people_search(conn=database.create_connection(), persID=pers_id)
+        res = database.simple_people_search(curse=database.create_connection().cursor(), persID=pers_id)
         return res or ""
 
-    def get_person_ids(self, pers_name: str) -> list[str]:
-        """Get IDs of all persons with a certain name"""
-        return self.person_names_inverse[pers_name]
+    # def get_person_ids(self, pers_name: str) -> list[str]:
+    #     """Get IDs of all persons with a certain name"""
+    #     return self.person_names_inverse[pers_name]
 
     def search_persons_related_to_manuscripts(self, ms_full_ids: list[str], searchOption: SearchOptions) -> list[str]:
         # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround # TODO: the hacky-whack should live in its own function
@@ -374,13 +307,13 @@ class DataHandler:
             log.debug('Searched for empty list of mss')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ppl_x_mss(conn=database.create_connection(), msIDs=ms_full_ids)
+            res = database.ppl_x_mss(curse=database.create_connection().cursor(), msIDs=ms_full_ids)
             return res
         else:
             sets = []
             db = database.create_connection()
             for i in ms_full_ids:
-                ii = database.ppl_x_mss(db, [i])
+                ii = database.ppl_x_mss(db.cursor(), [i])
                 sets.append(set(ii))
             if not sets:
                 log.info('no ms found')
@@ -398,16 +331,14 @@ class DataHandler:
             log.debug('Searched for empty list of ppl')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ms_x_ppl(conn=database.create_connection(DATABASE_PATH), pplIDs=person_ids)
+            res = database.ms_x_ppl(curse=database.create_connection().cursor(), pplIDs=person_ids)
             return res
         else:
             sets = []
-            db = database.create_connection(DATABASE_PATH)
+            db = database.create_connection()
             for i in person_ids:
-                ii = database.ms_x_ppl(db, [i])
-                print(ii)
+                ii = database.ms_x_ppl(db.cursor(), [i])
                 sets.append(set(ii))
-            print(sets)
             if not sets:
                 log.info('no ms found')
                 return []
