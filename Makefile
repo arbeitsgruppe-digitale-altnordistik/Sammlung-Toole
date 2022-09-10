@@ -26,8 +26,8 @@ install-pipenv: ## install pipenv
 
 .PHONY: generate-requirements
 generate-requirements: ## generate requirements.txt and dev-requirements.txt
-	pipenv lock --requirements > requirements.txt
-	pipenv lock --requirements --dev-only > dev-requirements.txt
+	pipenv requirements > requirements.txt
+	pipenv requirements --dev-only > dev-requirements.txt
 
 .PHONY: outdated
 outdated: ## list all outdated dependencies
