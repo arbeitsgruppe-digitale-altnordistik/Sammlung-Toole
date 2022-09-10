@@ -87,9 +87,9 @@ jobs:
         with:
           python-version: 3.9
       - name: Install Requirements
-        run: make setup
+        run: make setup-ci
       - name: Build Docs
-        run: make docs-build
+        run: make docs-build-ci
 
   publish-docs:
     name: Publish Docs

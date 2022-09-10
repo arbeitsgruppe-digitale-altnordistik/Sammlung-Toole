@@ -13,6 +13,10 @@ clean: ## remove artifacts
 # Development Setup Targets
 ########################
 
+.PHONY: setup-ci
+setup-ci: ## install dev requirements for CI (no pipenv)
+	pip install -r dev-requirements.txt
+
 .PHONY: setup
 setup: install-pipenv install-requirements ## set up dev environment
 
@@ -70,6 +74,10 @@ coverage-report: ## run end-to-end tests
 .PHONY: docs-build
 docs-build: ## build the docs
 	@pipenv run mkdocs build
+
+.PHONY: docs-build-ci
+docs-build-ci: ## build the docs (CI = no pipenv)
+	mkdocs build
 
 .PHONY: docs-run
 docs-run: ## run the docs locally
