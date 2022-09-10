@@ -24,6 +24,9 @@ types-markdown = "*"
 types-requests = "*"
 mkdocs = "*"
 mkdocs-material = "*"
+pytest = "*"
+coverage = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3"
