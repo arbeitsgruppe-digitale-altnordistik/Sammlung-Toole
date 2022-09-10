@@ -1,19 +1,15 @@
-from typing import Any, Callable, Optional
-import numpy as np
-import streamlit as st
-import pandas as pd
 from datetime import datetime
+from typing import Any, Callable
+
 import markdown
-from src.lib import tamer
-from src.lib import utils
+import streamlit as st
+from src.gui.pgs import groups, search
+from src.lib import tamer, utils
 from src.lib.constants import IMAGE_HOME
+from src.lib.datahandler import DataHandler
+from src.lib.guiUtils import Texts
 from src.lib.stateHandler import StateHandler
 from src.lib.utils import Settings
-from src.lib.datahandler import DataHandler
-from src.gui.pgs import groups
-from src.gui.pgs import search
-from src.lib.guiUtils import Texts
-
 
 state: StateHandler
 dataHandler: DataHandler
