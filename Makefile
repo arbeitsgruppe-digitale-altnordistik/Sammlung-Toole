@@ -13,6 +13,10 @@ clean: ## remove artifacts
 # Development Setup Targets
 ########################
 
+.PHONY: setup-ci
+setup-ci: ## install dev requirements for CI (no pipenv)
+	pip install -r dev-requirements.txt
+
 .PHONY: setup
 setup: install-pipenv install-requirements ## set up dev environment
 
@@ -26,8 +30,8 @@ install-pipenv: ## install pipenv
 
 .PHONY: generate-requirements
 generate-requirements: ## generate requirements.txt and dev-requirements.txt
-	pipenv lock --requirements > requirements.txt
-	pipenv lock --requirements --dev-only > dev-requirements.txt
+	pipenv requirements > requirements.txt
+	pipenv requirements --dev-only > dev-requirements.txt
 
 .PHONY: outdated
 outdated: ## list all outdated dependencies
@@ -70,6 +74,10 @@ coverage-report: ## run end-to-end tests
 .PHONY: docs-build
 docs-build: ## build the docs
 	@pipenv run mkdocs build
+
+.PHONY: docs-build-ci
+docs-build-ci: ## build the docs (CI = no pipenv)
+	mkdocs build
 
 .PHONY: docs-run
 docs-run: ## run the docs locally
