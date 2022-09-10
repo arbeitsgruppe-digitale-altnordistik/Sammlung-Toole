@@ -12,7 +12,6 @@ plotly = "*"
 requests = "*"
 scipy = "*"
 streamlit = "*"
-Markdown = "*"
 streamlit-aggrid = "*"
 networkx = "*"
 colorama = "*"
@@ -24,9 +23,13 @@ types-markdown = "*"
 types-requests = "*"
 mkdocs = "*"
 mkdocs-material = "*"
+pytest = "*"
+coverage = "*"
+pytest-cov = "*"
+markdown = "~=3.3"
 
 [requires]
-python_version = "3.9"
+python_version = "3"
 
 [scripts]
 run = "python src/runner.py"

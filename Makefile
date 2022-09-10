@@ -13,6 +13,10 @@ clean: ## remove artifacts
 # Development Setup Targets
 ########################
 
+.PHONY: setup-ci
+setup-ci: ## install dev requirements for CI (no pipenv)
+	pip install -r dev-requirements.txt
+
 .PHONY: setup
 setup: install-pipenv install-requirements ## set up dev environment
 
@@ -23,7 +27,19 @@ install-requirements: ## install requirements
 .PHONY: install-pipenv
 install-pipenv: ## install pipenv
 	pip install pipenv
-# TODO: think about if it makes sense to have pipenv here
+
+.PHONY: generate-requirements
+generate-requirements: ## generate requirements.txt and dev-requirements.txt
+	pipenv requirements > requirements.txt
+	pipenv requirements --dev-only > dev-requirements.txt
+
+.PHONY: outdated
+outdated: ## list all outdated dependencies
+	pipenv update --outdated
+
+.PHONY: update
+update: ## update all outdated dependencies
+	pipenv update
 
 
 ########################
@@ -34,19 +50,20 @@ install-pipenv: ## install pipenv
 test: docs-build test-unit test-integration test-end-to-end ## run all tests
 
 .PHONY: test-unit
-test-unit: ## run unit tests \
-	# TODO: implement
-	@echo "Not yet implemented"
+test-unit: ## run unit tests
+	pipenv run coverage run -m pytest tests/unit/
 
 .PHONY: test-integration
-test-integration: ## run integration tests \
-	# TODO: implement
-	@echo "Not yet implemented"
+test-integration: ## run integration tests
+	pipenv run coverage run -m pytest tests/integration/
 
 .PHONY: test-end-to-end
-test-end-to-end: ## run end-to-end tests \
-	## TODO: implement
-	@echo "Not yet implemented"
+test-end-to-end: ## run end-to-end tests 
+	pipenv run coverage run -m pytest tests/e2e/
+
+.PHONY: coverage-report
+coverage-report: ## run end-to-end tests
+	pipenv run coverage run -m pytest --cov --cov-report=xml
 
 
 
@@ -57,6 +74,10 @@ test-end-to-end: ## run end-to-end tests \
 .PHONY: docs-build
 docs-build: ## build the docs
 	@pipenv run mkdocs build
+
+.PHONY: docs-build-ci
+docs-build-ci: ## build the docs (CI = no pipenv)
+	mkdocs build
 
 .PHONY: docs-run
 docs-run: ## run the docs locally
