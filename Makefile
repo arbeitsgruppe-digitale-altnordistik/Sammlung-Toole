@@ -23,12 +23,19 @@ install-requirements: ## install requirements
 .PHONY: install-pipenv
 install-pipenv: ## install pipenv
 	pip install pipenv
-# TODO: think about if it makes sense to have pipenv here
 
 .PHONY: generate-requirements
 generate-requirements: ## generate requirements.txt and dev-requirements.txt
 	pipenv lock --requirements > requirements.txt
 	pipenv lock --requirements --dev-only > dev-requirements.txt
+
+.PHONY: outdated
+outdated: ## list all outdated dependencies
+	pipenv update --outdated
+
+.PHONY: update
+update: ## update all outdated dependencies
+	pipenv update
 
 
 ########################

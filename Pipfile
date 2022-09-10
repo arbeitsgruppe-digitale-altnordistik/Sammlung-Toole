@@ -29,7 +29,7 @@ coverage = "*"
 pytest-cov = "*"
 
 [requires]
-python_version = "3.9"
+python_version = "3"
 
 [scripts]
 run = "python src/runner.py"
