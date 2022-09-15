@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone
 
 import sqlite3
 from typing import Any, Protocol
@@ -63,7 +63,7 @@ def _get_group(t: tuple[str, str, str, str, str]) -> Group:
         group_id=UUID(id_s),
         group_type=GroupType.from_string(type_s),
         name=name,
-        date=datetime.fromtimestamp(float(date_s)),
+        date=datetime.fromtimestamp(float(date_s), timezone.utc).astimezone(),
         items=set(items_s.split('|')))
 
 

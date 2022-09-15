@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -12,7 +12,7 @@ uuid = "a29f5597-d068-49c4-80f2-127024a06c28"
 grouptype = "msgroup"
 name = "some name"
 timestamp = "1663273115.786848"
-date = "2022-09-15 22:18:35.786848"
+date = "2022-09-15 22:18:35.786848+02:00"
 items = "a|b|c"
 
 
