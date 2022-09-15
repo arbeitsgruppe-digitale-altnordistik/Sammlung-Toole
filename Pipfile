@@ -27,6 +27,7 @@ pytest = "*"
 coverage = "*"
 pytest-cov = "*"
 markdown = "~=3.3"
+types-python-dateutil = "*"
 
 [requires]
 python_version = "3"
