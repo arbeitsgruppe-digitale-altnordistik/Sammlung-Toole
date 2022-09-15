@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import sqlite3
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 from src.lib.constants import DATABASE_GROUPS_PATH

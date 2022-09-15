@@ -23,12 +23,6 @@ class Cursor(Protocol):
     def executemany(self, __sql: str, __seq_of_parameters: Iterable[Any]) -> Cursor:
         ...
 
-    def fetchall(self) -> list[Any]:
-        ...
-
-    def close(self) -> None:
-        ...
-
 
 def db_set_up(curse: Cursor) -> None:
     '''This function creates all the tables for the SQLite DB and defines the schema.
