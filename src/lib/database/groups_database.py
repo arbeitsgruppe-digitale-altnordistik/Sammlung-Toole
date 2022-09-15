@@ -42,22 +42,22 @@ def create_connection(db_file: str = DATABASE_GROUPS_PATH) -> sqlite3.Connection
 
 
 def get_ms_groups(cur: Cursor) -> list[Group]:
-    return __query_groups(cur, 'SELECT * FROM groups WHERE group_type = "msgroup"')
+    return _query_groups(cur, 'SELECT * FROM groups WHERE group_type = "msgroup"')
 
 
 def get_txt_groups(cur: Cursor) -> list[Group]:
-    return __query_groups(cur, 'SELECT * FROM groups WHERE group_type = "txtgroup"')
+    return _query_groups(cur, 'SELECT * FROM groups WHERE group_type = "txtgroup"')
 
 
 def get_ppl_groups(cur: Cursor) -> list[Group]:
-    return __query_groups(cur, 'SELECT * FROM groups WHERE group_type = "persgroup"')
+    return _query_groups(cur, 'SELECT * FROM groups WHERE group_type = "persgroup"')
 
 
 def get_all_groups(cur: Cursor) -> list[Group]:
-    return __query_groups(cur, 'SELECT * FROM groups')
+    return _query_groups(cur, 'SELECT * FROM groups')
 
 
-def __get_group(t: tuple[str, str, str, str, str]) -> Group:
+def _get_group(t: tuple[str, str, str, str, str]) -> Group:
     id_s, type_s, name, date_s, items_s = t
     return Group(
         group_id=UUID(id_s),
@@ -67,10 +67,10 @@ def __get_group(t: tuple[str, str, str, str, str]) -> Group:
         items=set(items_s.split('|')))
 
 
-def __query_groups(cur: Cursor, query: str) -> list[Group]:
+def _query_groups(cur: Cursor, query: str) -> list[Group]:
     cur.execute(query)
     res = cur.fetchall()
-    groups = [__get_group(r) for r in res]
+    groups = [_get_group(r) for r in res]
     return groups
 
 
