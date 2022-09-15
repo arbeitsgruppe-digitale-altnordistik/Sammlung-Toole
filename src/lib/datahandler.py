@@ -14,7 +14,7 @@ import src.lib.tamer as tamer
 from bs4 import BeautifulSoup
 from src.lib import utils
 from src.lib.constants import *
-from src.lib.database import database, db_init
+from src.lib.database import database, db_init, groups_database, groups_db_init
 from src.lib.groups import Groups
 from src.lib.utils import GitUtil, SearchOptions, Settings
 
@@ -58,11 +58,8 @@ class DataHandler:
         log.info("Loaded Person Info")
         self.manuscripts = DataHandler._load_ms_info()
         log.info("Loaded MS Info")
-        # self.text_matrix = DataHandler._load_text_matrix(self.manuscripts)
         self.texts = DataHandler._load_txt_list()
         log.info("Loaded Text Info")
-        # self.person_matrix = DataHandler._load_person_matrix(self.manuscripts)
-        # log.info("Loaded Person-MSS-Matrix Info")
         self.groups = Groups.from_cache() or Groups()
         # self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
@@ -109,6 +106,15 @@ class DataHandler:
         return os.path.exists(HANDLER_PATH_PICKLE)
 
     @staticmethod
+    def _build_groups_db() -> None:
+        con = groups_database.create_connection()
+        cur = con.cursor()
+        groups_db_init.db_set_up(cur)
+        log.info("Built groups database")
+        con.commit()
+        con.close()
+
+    @staticmethod
     def _build_db() -> None:
         dbConn = database.create_connection()
         db_init.db_set_up(dbConn)
@@ -134,7 +140,6 @@ class DataHandler:
         db_init.populate_junctionTxM(conn=dbConn, incoming=txtXmss)
         dbConn.commit()
         dbConn.close()
-        return
 
     # Class Methods
     # =============
@@ -152,6 +157,8 @@ class DataHandler:
         res: Optional[DataHandler] = cls._from_pickle()
         if not Path(DATABASE_PATH).exists():
             cls._build_db()
+        if not Path(DATABASE_GROUPS_PATH).exists():
+            cls._build_groups_db()
         if res:
             return res
         log.info("Could not get DataHandler from pickle")

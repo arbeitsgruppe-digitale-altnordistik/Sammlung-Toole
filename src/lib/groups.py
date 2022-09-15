@@ -20,6 +20,17 @@ class GroupType(Enum):
     TextGroup = "txtgroup"
     PersonGroup = "persgroup"
 
+    @staticmethod
+    def from_string(s: str) -> GroupType:
+        if s == GroupType.ManuscriptGroup.value:
+            return GroupType.ManuscriptGroup
+        elif s == GroupType.TextGroup.value:
+            return GroupType.TextGroup
+        elif s == GroupType.PersonGroup.value:
+            return GroupType.PersonGroup
+        else:
+            raise ValueError(f"Invalid group type: {s}")
+
 
 @dataclass
 class Group:
@@ -67,7 +78,7 @@ class Groups:
                 if isinstance(g, Groups):
                     return g
                 return None
-        except:
+        except Exception:
             log.exception("Error while loading groups from pickle")
             return None
 
@@ -76,7 +87,7 @@ class Groups:
         try:
             with open(GROUPS_PATH_PICKLE, 'wb') as f:
                 pickle.dump(self, f)
-        except:
+        except Exception:
             log.exception("Failed to cache groups.")
             log.debug(f"Current Group state: {self}")
 

@@ -9,6 +9,7 @@ HANDLER_BACKUP_PATH_PERS_DICT = "data/backups/person-name-dict.json"
 HANDLER_BACKUP_PATH_PERS_DICT_INV = "data/backups/person-name-inverse-dict.json"
 HANDLER_PATH_PICKLE = "data/cache/handler_cache.pickle"
 DATABASE_PATH = "data/db/allthedata.db"
+DATABASE_GROUPS_PATH = "data/db/groups.db"
 
 GROUPS_PATH_PICKLE = "data/cache/groups.pickle"
 
