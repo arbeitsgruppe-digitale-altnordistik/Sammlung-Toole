@@ -4,7 +4,7 @@ import os
 import pickle
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Optional, Set, Union
 
@@ -46,7 +46,7 @@ class Group:
     group_type: GroupType
     name: str
     items: Set[str]
-    date: datetime = field(default_factory=datetime.now)
+    date: datetime = field(default_factory=lambda: datetime.now(timezone.utc).astimezone())
     group_id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
