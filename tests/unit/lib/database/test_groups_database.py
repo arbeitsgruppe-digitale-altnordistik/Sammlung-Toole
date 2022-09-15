@@ -94,7 +94,7 @@ def test__get_group_invalid() -> None:
     invalid_uuid = "a"
     invalid_grouptype = "mxgroup"
     invalid_timestamp_1 = date
-    invalid_timestamp_2 = "-1.2"
+    invalid_timestamp_2 = "-123456789123.456789"
     with pytest.raises(ValueError):
         groups_database._get_group((invalid_uuid, grouptype, name, timestamp, items))
     with pytest.raises(ValueError):
