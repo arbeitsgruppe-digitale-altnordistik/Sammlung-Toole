@@ -26,13 +26,15 @@ def browse_groups(state: StateHandler) -> None:
         state (StateHandler): The StateHandler object orchestrating the current session state.
     """
     handler: DataHandler = state.data_handler
-    groups = handler.groups
+    ms_groups = handler.get_ms_groups()
+    txt_groups = handler.get_txt_groups()
+    ppl_groups = handler.get_ppl_groups()
     # log.debug(f"Browsing Groups: {groups}")
     st.title("Groups")
     if state.steps.browseGroups == Step.Browse_Groups.Browse:
         # Manuscript Groups
         st.header("Manuscript Groups")
-        mss = [(b.name, f"{len(b.items)} Manuscripts", b.date.strftime('%c')) for _, b in groups.manuscript_groups.items()]
+        mss = [(b.name, f"{len(b.items)} Manuscripts", b.date.strftime('%c')) for b in ms_groups]
         st.table(mss)
         if len(mss) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_mss"):
             state.steps.browseGroups = Step.Browse_Groups.Combine_MSS
@@ -42,14 +44,14 @@ def browse_groups(state: StateHandler) -> None:
             st.experimental_rerun()
             # Text Groups
         st.header("Text Groups")
-        txt = [(b.name, f"{len(b.items)} Texts", b.date.strftime('%c')) for _, b in groups.text_groups.items()]
+        txt = [(b.name, f"{len(b.items)} Texts", b.date.strftime('%c')) for b in txt_groups]
         st.table(txt)
         if len(txt) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_txt"):
             state.steps.browseGroups = Step.Browse_Groups.Combine_TXT
             st.experimental_rerun()
         # Person Groups
         st.header("People Groups")
-        ppl = [(b.name, f"{len(b.items)} People", b.date.strftime('%c')) for _, b in groups.person_groups.items()]
+        ppl = [(b.name, f"{len(b.items)} People", b.date.strftime('%c')) for b in ppl_groups]
         st.table(ppl)
         if len(ppl) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_ppl"):
             state.steps.browseGroups = Step.Browse_Groups.Combine_PPL
@@ -88,13 +90,13 @@ def __meta_mss_groups(state: StateHandler) -> None:
 
 
 def __group_selector(state: StateHandler) -> list[Group]:
-    groups = state.data_handler.groups.manuscript_groups
+    groups = state.data_handler.get_ms_groups()
     st.write("Select the groups you want to combine.")
     selections: Set[UUID] = set()
-    for i, g in enumerate(groups.values()):
+    for i, g in enumerate(groups):
         if st.checkbox(f"{i}: Group name: '{g.name}'", key=str(g.group_id)):
             selections.add(g.group_id)
-    selected_groups = [groups[s] for s in selections]
+    selected_groups = [g for g in groups if g.group_id in selections]
     return selected_groups
 
 
@@ -125,7 +127,7 @@ def __save_merged_group(state: StateHandler, combo: set[str], mode: SearchOption
     name = st.text_input(label="Select a group name", value=new_name)
     if st.button("Save Combined Group"):
         new_group = Group(GroupType.ManuscriptGroup, name=name, items=combo)
-        state.data_handler.groups.set(new_group)
+        state.data_handler.put_group(new_group)
         state.steps.browseGroups = Step.Browse_Groups.Browse
         st.experimental_rerun()
 
@@ -196,7 +198,7 @@ def __combine_mss_groups(state: StateHandler) -> None:
 
 def __combine_txt_groups(state: StateHandler) -> None:
     """Page for combining Text groups"""
-    groups = state.data_handler.groups.text_groups
+    groups = state.data_handler.get_txt_groups()
     st.header("Combine Text Groups")
     if st.button("Back to Overview"):
         state.steps.browseGroups = Step.Browse_Groups.Browse
@@ -211,12 +213,12 @@ def __combine_txt_groups(state: StateHandler) -> None:
     st.write("---")
     st.write("Select the groups you want to combine.")
     selections: Set[UUID] = set()
-    for i, g in enumerate(groups.values()):
+    for i, g in enumerate(groups):
         if st.checkbox(f"{i}: Group name: '{g.name}'", key=str(g.group_id)):
             selections.add(g.group_id)
     st.write("---")
     if len(selections) > 1:
-        selected_groups = [groups[s] for s in selections]
+        selected_groups = [g for g in groups if g.group_id in selections]
         sets = [g.items for g in selected_groups]
         if mode == SearchOptions.CONTAINS_ONE:
             res = set.union(*sets)
@@ -232,14 +234,14 @@ def __combine_txt_groups(state: StateHandler) -> None:
             name = st.text_input(label="Select a group name", value=new_name)
             if st.button("Save Combined Group"):
                 new_group = Group(GroupType.TextGroup, name=name, items=res)
-                state.data_handler.groups.set(new_group)
+                state.data_handler.put_group(new_group)
                 state.steps.browseGroups = Step.Browse_Groups.Browse
                 st.experimental_rerun()
 
 
 def __combine_ppl_groups(state: StateHandler) -> None:
     """Page for combining Person groups"""
-    groups = state.data_handler.groups.person_groups
+    groups = state.data_handler.get_ppl_groups()
     st.header("Combine Person Groups")
     if st.button("Back to Overview"):
         state.steps.browseGroups = Step.Browse_Groups.Browse
@@ -254,12 +256,12 @@ def __combine_ppl_groups(state: StateHandler) -> None:
     st.write("---")
     st.write("Select the groups you want to combine.")
     selections: Set[UUID] = set()
-    for i, g in enumerate(groups.values()):
+    for i, g in enumerate(groups):
         if st.checkbox(f"{i}: Group name: '{g.name}'", key=str(g.group_id)):
             selections.add(g.group_id)
     st.write("---")
     if len(selections) > 1:
-        selected_groups = [groups[s] for s in selections]
+        selected_groups = [g for g in groups if g.group_id in selections]
         sets = [g.items for g in selected_groups]
         if mode == SearchOptions.CONTAINS_ONE:
             res = set.union(*sets)
@@ -275,6 +277,6 @@ def __combine_ppl_groups(state: StateHandler) -> None:
             name = st.text_input(label="Select a group name", value=new_name)
             if st.button("Save Combined Group"):
                 new_group = Group(GroupType.PersonGroup, name=name, items=res)
-                state.data_handler.groups.set(new_group)
+                state.data_handler.put_group(new_group)
                 state.steps.browseGroups = Step.Browse_Groups.Browse
                 st.experimental_rerun()

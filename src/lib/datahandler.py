@@ -4,8 +4,6 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 
-import os
-import pickle
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -15,7 +13,7 @@ from bs4 import BeautifulSoup
 from src.lib import utils
 from src.lib.constants import *
 from src.lib.database import database, db_init, groups_database, groups_db_init
-from src.lib.groups import Groups
+from src.lib.groups import Group, GroupType
 from src.lib.utils import GitUtil, SearchOptions, Settings
 
 log = utils.get_logger(__name__)
@@ -43,9 +41,6 @@ class DataHandler:
     
     Dictionary mapping person names to a list of IDs of persons with said name"""
 
-    groups: Groups
-    # CHORE: document
-
     def __init__(self) -> None:
         """DataHandler constructor.
 
@@ -53,14 +48,19 @@ class DataHandler:
 
         Should not be called directly, but rather through the factory method `DataHandler.get_handler()`.
         """
+
+        if not Path(DATABASE_PATH).exists():
+            DataHandler._build_db()
+        if not Path(DATABASE_GROUPS_PATH).exists():
+            DataHandler._build_groups_db()
+
         log.info("Creating new handler")
         self.person_names, self.person_names_inverse = DataHandler._load_persons()
         log.info("Loaded Person Info")
-        self.manuscripts = DataHandler._load_ms_info()
+        self.manuscripts = database.ms_lookup_dict(database.create_connection().cursor())
         log.info("Loaded MS Info")
-        self.texts = DataHandler._load_txt_list()
+        self.texts = database.txt_lookup_list(database.create_connection().cursor())
         log.info("Loaded Text Info")
-        self.groups = Groups.from_cache() or Groups()
         # self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
@@ -69,41 +69,10 @@ class DataHandler:
     # ==============
 
     @staticmethod
-    def _from_pickle() -> Optional[DataHandler]:
-        """Load datahandler from pickle, if available. Returns None otherwise."""
-        pickle_path = Path(HANDLER_PATH_PICKLE)
-        if pickle_path.exists():
-            try:
-                with open(HANDLER_PATH_PICKLE, mode='rb') as file:
-                    obj = pickle.load(file)
-                    if isinstance(obj, DataHandler):
-                        obj.groups = Groups.from_cache() or Groups()
-                        return obj
-            except Exception:
-                log.exception("Cound not load handler from pickle")
-        return None
-
-    @staticmethod
-    def _load_ms_info() -> dict[str, list[str]]:
-        """Load manuscript lookup dict from DB"""
-        res = database.ms_lookup_dict(database.create_connection().cursor())
-        return res
-
-    @staticmethod
-    def _load_txt_list() -> list[str]:
-        res = database.txt_lookup_list(database.create_connection().cursor())
-        return res
-
-    @staticmethod
     def _load_persons() -> Tuple[dict[str, str], dict[str, list[str]]]:
         """Load person data"""
         person_names = database.persons_lookup_dict(database.create_connection().cursor())
         return person_names, tamer.get_person_names_inverse(person_names)
-
-    @staticmethod
-    def is_cached() -> bool:
-        """Check if the data handler should be available from cache."""
-        return os.path.exists(HANDLER_PATH_PICKLE)
 
     @staticmethod
     def _build_groups_db() -> None:
@@ -141,46 +110,8 @@ class DataHandler:
         dbConn.commit()
         dbConn.close()
 
-    # Class Methods
-    # =============
-
-    @classmethod
-    def get_handler(cls) -> DataHandler:
-        """Get a DataHandler
-
-        Factory method to get a DataHandler object.
-
-        Returns:
-            DataHandler: A DataHandler, either loaded from cache or created anew.
-        """
-        log.info("Getting DataHandler")
-        res: Optional[DataHandler] = cls._from_pickle()
-        if not Path(DATABASE_PATH).exists():
-            cls._build_db()
-        if not Path(DATABASE_GROUPS_PATH).exists():
-            cls._build_groups_db()
-        if res:
-            return res
-        log.info("Could not get DataHandler from pickle")
-        res = cls()
-        res._to_pickle()
-        log.info("DataHandler ready.")
-        return res
-
     # Instance Methods
     # ================
-
-    def _to_pickle(self) -> None:
-        """Save the present DataHandler instance as pickle."""
-        log.info("Saving handler to pickle")
-        path = Path(HANDLER_PATH_PICKLE)
-        if not path.parent.exists():
-            path.parent.mkdir()
-        with open(HANDLER_PATH_PICKLE, mode='wb') as file:
-            try:
-                pickle.dump(self, file)
-            except Exception:
-                log.exception("Failed to pickle the data handler.")
 
     # API Methods
     # -----------
@@ -193,6 +124,7 @@ class DataHandler:
                 res.append(row)
         return res
 
+    # TODO-BL: can this be removed?
     # def get_all_ppl_hrf(self) -> list[str]:
     #     res: list[str] = []
     #     with database.create_connection() as conn:
@@ -287,7 +219,7 @@ class DataHandler:
             db = database.create_connection()
             for i in Inmss:
                 sets = []
-                db = database.create_connection()
+                # db = database.create_connection()
                 for i in Inmss:
                     ii = database.txts_x_ms(db.cursor(), [i])
                     sets.append(set(ii))
@@ -352,3 +284,35 @@ class DataHandler:
             res = list(set.intersection(*sets))
             log.info(f'Search result: {res}')
             return res
+
+    def get_all_groups(self) -> list[Group]:
+        with groups_database.create_connection() as con:
+            cur = con.cursor()
+            return groups_database.get_all_groups(cur)
+
+    def get_ms_groups(self) -> list[Group]:
+        with groups_database.create_connection() as con:
+            cur = con.cursor()
+            return groups_database.get_ms_groups(cur)
+
+    def get_ppl_groups(self) -> list[Group]:
+        with groups_database.create_connection() as con:
+            cur = con.cursor()
+            return groups_database.get_ppl_groups(cur)
+
+    def get_txt_groups(self) -> list[Group]:
+        with groups_database.create_connection() as con:
+            cur = con.cursor()
+            return groups_database.get_txt_groups(cur)
+
+    def put_group(self, group: Group) -> None:
+        with groups_database.create_connection() as con:
+            groups_database.put_group(con, group)
+
+    # def get_group_names(self, gtype: Optional[GroupType] = None) -> list[str]:
+    #     with groups_database.create_connection() as con:
+    #         return groups_database.get_group_names(con, gtype)
+
+    # def get_group_by_name(self, name: str, gtype: Optional[GroupType] = None) -> Optional[Group]:
+    #     with groups_database.create_connection() as con:
+    #         return groups_database.get_group_by_name(con, name, gtype)

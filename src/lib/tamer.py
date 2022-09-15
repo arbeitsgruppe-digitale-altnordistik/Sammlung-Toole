@@ -1,15 +1,13 @@
-import os
 import time
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List,  Tuple
 
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
-from lxml import etree
-
 import src.lib.metadata as metadata
 import src.lib.utils as utils
+from bs4 import BeautifulSoup
+from lxml import etree
 from src.lib.constants import *
 
 log = utils.get_logger(__name__)
@@ -301,20 +299,3 @@ def get_person_names_inverse(person_names: Dict[str, str]) -> Dict[str, List[str
     for k, v in person_names.items():
         res[v] = res.get(v, []) + [k]
     return res
-
-
-# cache functions
-
-
-def _wipe_cache() -> None:
-    """Remove all cached files"""
-    log.info("Wiping cache.")
-    for i in PURGELIST:
-        if os.path.exists(i):
-            os.remove(i)
-    log.info("Cache wiped successfully")
-
-
-def _ensure_directories() -> None:
-    """Ensure all caching directories exist"""
-    os.makedirs(PREFIX_BACKUPS, exist_ok=True)
