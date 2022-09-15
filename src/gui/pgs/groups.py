@@ -57,19 +57,52 @@ def browse_groups(state: StateHandler) -> None:
             state.steps.browseGroups = Step.Browse_Groups.Combine_PPL
             st.experimental_rerun()
     elif state.steps.browseGroups == Step.Browse_Groups.Combine_MSS:
-        __combine_mss_groups(state)
+        __combine_groups(
+            state=state,
+            header="Combine Manuscript Groups",
+            groups=handler.get_ms_groups()
+        )
     elif state.steps.browseGroups == Step.Browse_Groups.Combine_TXT:
-        __combine_txt_groups(state)
+        __combine_groups(
+            state=state,
+            header="Combine Text Groups",
+            groups=handler.get_txt_groups()
+        )
     elif state.steps.browseGroups == Step.Browse_Groups.Combine_PPL:
-        __combine_ppl_groups(state)
+        __combine_groups(
+            state=state,
+            header="Combine Person Groups",
+            groups=handler.get_ppl_groups()
+        )
     elif state.steps.browseGroups == Step.Browse_Groups.Meta_MSS:
         __meta_mss_groups(state)
+
+
+def __combine_groups(state: StateHandler, header: str, groups: list[Group]) -> None:
+    st.header(header)
+    if st.button("Back to Overview"):
+        state.steps.browseGroups = Step.Browse_Groups.Browse
+        st.experimental_rerun()
+    st.write("---")
+    sel = __group_selector(groups)
+    if len(sel) > 1:
+        combMode = __union_selector()
+        selComb = __group_combinator(sel, combMode)
+        if not selComb:
+            st.write("0 results for selected criteria. Tip: Try OR instead of AND")
+        else:
+            res = selComb
+            st.write(f"Found {len(res)} items to combine to a new group")
+            with st.expander("Create new group"):
+                __save_merged_group(state=state, combo=res, mode=combMode, selected_groups=sel)
+    else:
+        st.write("Select two or more groups you want to combine")
 
 
 def __meta_mss_groups(state: StateHandler) -> None:
     """Page for getting metadata and playground for MSS group(s)"""
     st.header("Get metadata for group(s)")
-    sel = __group_selector(state)
+    sel = __group_selector(state.data_handler.get_ms_groups())
     if sel:
         res = None
         if len(sel) > 1:
@@ -89,8 +122,7 @@ def __meta_mss_groups(state: StateHandler) -> None:
         st.write("Select one or more groups you want to work with")
 
 
-def __group_selector(state: StateHandler) -> list[Group]:
-    groups = state.data_handler.get_ms_groups()
+def __group_selector(groups: list[Group]) -> list[Group]:
     st.write("Select the groups you want to combine.")
     selections: Set[UUID] = set()
     for i, g in enumerate(groups):
@@ -121,162 +153,13 @@ def __union_selector() -> SearchOptions:
 
 
 def __save_merged_group(state: StateHandler, combo: set[str], mode: SearchOptions, selected_groups: list[Group]) -> None:
+    group_type = selected_groups[0].group_type
     previous_queries = ['(' + prev.name.removeprefix("Search results for <").removesuffix(">") + ')' for prev in selected_groups]
     new_query = f" {mode.value} ".join(previous_queries)
     new_name = f'Search results for <{new_query}>'
     name = st.text_input(label="Select a group name", value=new_name)
     if st.button("Save Combined Group"):
-        new_group = Group(GroupType.ManuscriptGroup, name=name, items=combo)
+        new_group = Group(group_type=group_type, name=name, items=combo)
         state.data_handler.put_group(new_group)
         state.steps.browseGroups = Step.Browse_Groups.Browse
         st.experimental_rerun()
-
-
-def __combine_mss_groups(state: StateHandler) -> None:
-    """Page for combining Manuscript groups"""
-    st.header("Combine Manuscript Groups")
-    if st.button("Back to Overview"):
-        state.steps.browseGroups = Step.Browse_Groups.Browse
-        st.experimental_rerun()
-    st.write("---")
-    sel = __group_selector(state)
-    if len(sel) > 1:
-        combMode = __union_selector()
-        selComb = __group_combinator(sel, combMode)
-        if not selComb:
-            st.write("No manuscripts for selected criteria. Tip: Try OR instead of AND")
-        else:
-            res = selComb
-            st.write(f"Found {len(res)} manuscripts")
-            if st.button("Create new group"):
-                st.write("---")
-                __save_merged_group(state=state, combo=res, mode=combMode, selected_groups=sel)
-    else:
-        st.write("Select two or more groups you want to combine")
-
-    # combo, mode, selected_groups = __group_selector(state)
-    # if not combo:
-    #     st.write("No Manuscripts fitting the criteria. (Maybe consider using OR instead of AND for combination logic.)")
-    # else:
-    #     st.write(f"Your selection contains {len(combo)} manuscripts")
-    #     __save_merged_group(state, combo, mode, selected_groups)
-
-    # modes = {
-    #     'OR  (union - pick items that appear in at least one selected group)': SearchOptions.CONTAINS_ONE,
-    #     'AND (intersection - pick items that appear in all selected groups)': SearchOptions.CONTAINS_ALL,
-    # }
-    # mode_selection = st.radio('Combination mode', modes.keys())
-    # mode = modes[mode_selection]
-    # st.write("---")
-    # st.write("Select the groups you want to combine.")
-    # selections: Set[UUID] = set()
-    # for i, g in enumerate(groups.values()):
-    #     if st.checkbox(f"{i}: Group name: '{g.name}'", key=str(g.group_id)):
-    #         selections.add(g.group_id)
-    # st.write("---")
-    # if len(selections) > 1:
-    #     selected_groups = [groups[s] for s in selections]
-    #     sets = [g.items for g in selected_groups]
-    #     if mode == SearchOptions.CONTAINS_ONE:
-    #         res = set.union(*sets)
-    #     else:
-    #         res = set.intersection(*sets)
-    #     if not res:
-    #         st.write("No Manuscripts fitting the criteria. (Maybe consider using OR instead of AND for combination logic.)")
-    #     else:
-    #         st.write(f"The combination contains {len(res)} Manuscripts.")
-    #         previous_queries = ['(' + prev.name.removeprefix("Search results for <").removesuffix(">") + ')' for prev in selected_groups]
-    #         new_query = f" {mode.value} ".join(previous_queries)
-    #         new_name = f'Search results for <{new_query}>'
-    #         name = st.text_input(label="Select a group name", value=new_name)
-    #         if st.button("Save Combined Group"):
-    #             new_group = Group(GroupType.ManuscriptGroup, name=name, items=res)
-    #             state.data_handler.groups.set(new_group)
-    #             state.steps.browseGroups = Step.Browse_Groups.Browse
-    #             st.experimental_rerun()
-
-
-def __combine_txt_groups(state: StateHandler) -> None:
-    """Page for combining Text groups"""
-    groups = state.data_handler.get_txt_groups()
-    st.header("Combine Text Groups")
-    if st.button("Back to Overview"):
-        state.steps.browseGroups = Step.Browse_Groups.Browse
-        st.experimental_rerun()
-    st.write("---")
-    modes = {
-        'OR  (union - pick items that appear in at least one selected group)': SearchOptions.CONTAINS_ONE,
-        'AND (intersection - pick items that appear in all selected groups)': SearchOptions.CONTAINS_ALL,
-    }
-    mode_selection = st.radio('Combination mode', list(modes.keys()))
-    mode = modes[mode_selection]
-    st.write("---")
-    st.write("Select the groups you want to combine.")
-    selections: Set[UUID] = set()
-    for i, g in enumerate(groups):
-        if st.checkbox(f"{i}: Group name: '{g.name}'", key=str(g.group_id)):
-            selections.add(g.group_id)
-    st.write("---")
-    if len(selections) > 1:
-        selected_groups = [g for g in groups if g.group_id in selections]
-        sets = [g.items for g in selected_groups]
-        if mode == SearchOptions.CONTAINS_ONE:
-            res = set.union(*sets)
-        else:
-            res = set.intersection(*sets)
-        if not res:
-            st.write("No Texts fitting the criteria. (Maybe consider using OR instead of AND for combination logic.)")
-        else:
-            st.write(f"The combination contains {len(res)} Texts.")
-            previous_queries = ['(' + prev.name.removeprefix("Search results for <").removesuffix(">") + ')' for prev in selected_groups]
-            new_query = f" {mode.value} ".join(previous_queries)
-            new_name = f'Search results for <{new_query}>'
-            name = st.text_input(label="Select a group name", value=new_name)
-            if st.button("Save Combined Group"):
-                new_group = Group(GroupType.TextGroup, name=name, items=res)
-                state.data_handler.put_group(new_group)
-                state.steps.browseGroups = Step.Browse_Groups.Browse
-                st.experimental_rerun()
-
-
-def __combine_ppl_groups(state: StateHandler) -> None:
-    """Page for combining Person groups"""
-    groups = state.data_handler.get_ppl_groups()
-    st.header("Combine Person Groups")
-    if st.button("Back to Overview"):
-        state.steps.browseGroups = Step.Browse_Groups.Browse
-        st.experimental_rerun()
-    st.write("---")
-    modes = {
-        'OR  (union - pick items that appear in at least one selected group)': SearchOptions.CONTAINS_ONE,
-        'AND (intersection - pick items that appear in all selected groups)': SearchOptions.CONTAINS_ALL,
-    }
-    mode_selection = st.radio('Combination mode', list(modes.keys()))
-    mode = modes[mode_selection]
-    st.write("---")
-    st.write("Select the groups you want to combine.")
-    selections: Set[UUID] = set()
-    for i, g in enumerate(groups):
-        if st.checkbox(f"{i}: Group name: '{g.name}'", key=str(g.group_id)):
-            selections.add(g.group_id)
-    st.write("---")
-    if len(selections) > 1:
-        selected_groups = [g for g in groups if g.group_id in selections]
-        sets = [g.items for g in selected_groups]
-        if mode == SearchOptions.CONTAINS_ONE:
-            res = set.union(*sets)
-        else:
-            res = set.intersection(*sets)
-        if not res:
-            st.write("No person fitting the criteria. (Maybe consider using OR instead of AND for combination logic.)")
-        else:
-            st.write(f"The combination contains {len(res)} people.")
-            previous_queries = ['(' + prev.name.removeprefix("Search results for <").removesuffix(">") + ')' for prev in selected_groups]
-            new_query = f" {mode.value} ".join(previous_queries)
-            new_name = f'Search results for <{new_query}>'
-            name = st.text_input(label="Select a group name", value=new_name)
-            if st.button("Save Combined Group"):
-                new_group = Group(GroupType.PersonGroup, name=name, items=res)
-                state.data_handler.put_group(new_group)
-                state.steps.browseGroups = Step.Browse_Groups.Browse
-                st.experimental_rerun()
