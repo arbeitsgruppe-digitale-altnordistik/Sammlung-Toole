@@ -1,10 +1,9 @@
 import subprocess
 import sys
 
-from lib import utils
-from lib.utils import GitUtil
+from lib.utils import GitUtil, get_logger
 
-log = utils.get_logger(__name__)
+log = get_logger(__name__)
 
 
 def initialize() -> None:
