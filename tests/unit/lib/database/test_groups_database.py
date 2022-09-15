@@ -81,6 +81,15 @@ def test_get_ppl_groups(cursor: CursorMock) -> None:
     assert query == 'SELECT * FROM groups WHERE group_type = "persgroup"'
 
 
+def test_get_all_groups(cursor: CursorMock) -> None:
+    res = groups_database.get_all_groups(cur=cursor)
+    assert res == []
+    assert len(cursor.execute_res) == 1
+    query, params = cursor.execute_res[0]
+    assert params == ...
+    assert query == 'SELECT * FROM groups'
+
+
 def test__get_group() -> None:
     g = groups_database._get_group((uuid, grouptype, name, timestamp, items))
     assert g.group_id == UUID(uuid)
