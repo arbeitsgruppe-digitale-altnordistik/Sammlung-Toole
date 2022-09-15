@@ -33,7 +33,7 @@ python_version = "3"
 
 [scripts]
 run = "python src/runner.py"
-quick = "python -m streamlit run interface.py"
+quick = "python -m streamlit run src/gui/interface.py"
 init = "git submodule update --init --remote --recursive"
 update = "git submodule update --remote --recursive"
 docs-serve = "mkdocs serve"
