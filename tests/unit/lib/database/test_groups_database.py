@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
+from dateutil.parser import parse
 from typing import Any
 from uuid import UUID
 
@@ -85,7 +86,7 @@ def test__get_group() -> None:
     assert g.group_id == UUID(uuid)
     assert g.group_type.value == grouptype
     assert g.name == name
-    assert str(g.date) == date
+    assert g.date == parse(date)
     assert g.items == {"b", "a", "c"}
 
 
@@ -112,7 +113,7 @@ def test__query_groups(cursor: CursorMock) -> None:
     assert g.group_id == UUID(uuid)
     assert g.group_type.value == grouptype
     assert g.name == name
-    assert str(g.date) == date
+    assert g.date == parse(date)
     assert g.items == {"b", "a", "c"}
     assert len(cursor.execute_res) == 1
     q, params = cursor.execute_res[0]
