@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Iterable
-from src.lib.database import groups_db_init
+
 import pytest
+from src.lib.database import groups_db_init
 
 
 @dataclass
