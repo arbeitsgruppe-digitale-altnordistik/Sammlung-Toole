@@ -18,20 +18,11 @@ settings = Settings.get_settings()
 
 
 def get_handler() -> None:
-    if DataHandler.is_cached():
-        with st.spinner('Grabbing data handler...'):
-            rebuild_handler()
-    else:
-        st.sidebar.text("No data at hand. Needs loading first.")
-        adv_options(None)
-
-
-def rebuild_handler() -> None:
-    st.write(f'Start: {datetime.now()}')
-    state.data_handler = DataHandler.get_handler()
-    st.write(f'Finished: {datetime.now()}')
-    st.experimental_rerun()
-    # full_menu()
+    with st.spinner('Grabbing data handler...'):
+        st.write(f'Start: {datetime.now()}')
+        state.data_handler = DataHandler()
+        st.write(f'Finished: {datetime.now()}')
+        st.experimental_rerun()
 
 
 # Functions which create sub pages
@@ -52,13 +43,8 @@ def adv_options(a: Any) -> None:
     st.write("Careful! Some of these options can take a long time to complete! Like, a loooong time!")
     st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
 
-    if st.button("Wipe cache"):
-        tamer._wipe_cache()
-        st.success("Cache is wiped entirely. Please reload the data handler.")
     if st.button("Reload Data Handler"):
-        with st.spinner("This may take a while..."):
-            state.data_handler = DataHandler.get_handler()
-        st.experimental_rerun()
+        get_handler()
 
 
 def search_page(a: Any) -> None:

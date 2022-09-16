@@ -82,8 +82,8 @@ def ms_x_ppl(curse: Cursor, pplIDs: list[str]) -> list[str]:
     """
     sqlQ = f"SELECT msID FROM junctionPxM WHERE persID in ({', '.join('?' for _ in pplIDs)})"
     curse.execute(sqlQ, pplIDs)
-    res = [x[0] for x in curse.fetchall()]
-    return res
+    res = {x[0] for x in curse.fetchall()}
+    return list(res)
 
 
 def ppl_x_mss(curse: Cursor, msIDs: list[str]) -> list[str]:
@@ -93,8 +93,8 @@ def ppl_x_mss(curse: Cursor, msIDs: list[str]) -> list[str]:
     """
     sqlQ = f"SELECT persID FROM junctionPxM WHERE msID in ({', '.join('?' for _ in msIDs)})"
     curse.execute(sqlQ, msIDs)
-    res = [x[0] for x in curse.fetchall()]
-    return res
+    res = {x[0] for x in curse.fetchall()}
+    return list(res)
 
 
 def ms_x_txts(curse: Cursor, txts: list[str]) -> list[str]:
@@ -104,8 +104,8 @@ def ms_x_txts(curse: Cursor, txts: list[str]) -> list[str]:
     """  # TODO: clarify text definition
     sqlQ = f"SELECT msID FROM junctionTxM WHERE txtName in ({', '.join('?' for _ in txts)})"
     curse.execute(sqlQ, txts)
-    res = [x[0] for x in curse.fetchall()]
-    return res
+    res = {x[0] for x in curse.fetchall()}
+    return list(res)
 
 
 def txts_x_ms(curse: Cursor, mss: list[str]) -> list[str]:
@@ -115,8 +115,8 @@ def txts_x_ms(curse: Cursor, mss: list[str]) -> list[str]:
     """  # TODO: clarify text definition
     sqlQ = f"SELECT txtName FROM junctionTxM WHERE msID in ({', '.join('?' for _ in mss)})"
     curse.execute(sqlQ, mss)
-    res = [x[0] for x in curse.fetchall()]
-    return res
+    res = {x[0] for x in curse.fetchall()}
+    return list(res)
 
 
 def persons_lookup_dict(curse: Cursor) -> dict[str, str]:

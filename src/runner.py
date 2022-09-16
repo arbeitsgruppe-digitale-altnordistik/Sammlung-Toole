@@ -1,10 +1,9 @@
 import subprocess
 import sys
 
-from lib import utils
-from lib.utils import GitUtil
+from lib.utils import GitUtil, get_logger
 
-log = utils.get_logger(__name__)
+log = get_logger(__name__)
 
 
 def initialize() -> None:
@@ -21,7 +20,7 @@ def update() -> None:
     # LATER: could determin which files changed so that only those need to be re-parsed
 
 
-def isUpToDate() -> bool:
+def is_up_to_date() -> bool:
     args = "git -C data/handrit diff HEAD origin/master --shortstat".split()
     process = subprocess.run(args, capture_output=True, check=True)
     output = str(process.stdout, 'utf-8').strip()
@@ -37,9 +36,9 @@ def main() -> None:
     log.info("Runner started... checking submodule status")
     try:
         initialize()
-        if not isUpToDate():
+        if not is_up_to_date():
             update()
-        if not isUpToDate():
+        if not is_up_to_date():
             log.warning("Data is not up to date despite trying to update")
     except Exception:
         log.exception("Failed to load Handrit.is data from github")
@@ -50,7 +49,7 @@ def main() -> None:
         # The following try-except is a very inelegant solution to the problem of pipenv not being on path
         try:
             process = subprocess.run("pipenv run python -m streamlit run src/gui/interface.py".split())
-        except:
+        except Exception:
             log.debug("pipenv not on path?")
             process = subprocess.run("python3 -m pipenv run python -m streamlit run src/gui/interface.py".split(), shell=True)
         log.info(f"Process terminated with status code: {process.returncode}")
