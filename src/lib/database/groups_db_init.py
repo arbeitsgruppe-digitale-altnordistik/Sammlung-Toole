@@ -16,6 +16,14 @@ def get_log() -> Logger:
 log: Logger = get_log()
 
 
+class Connection(Protocol):
+    def cursor(self) -> Cursor:
+        ...
+
+    def commit(self) -> None:
+        ...
+
+
 class Cursor(Protocol):
     def execute(self, __sql: str, __parameters: Any = ...) -> Cursor:
         ...
@@ -24,7 +32,7 @@ class Cursor(Protocol):
         ...
 
 
-def db_set_up(curse: Cursor) -> None:
+def db_set_up(con: Connection) -> None:
     '''This function creates all the tables for the SQLite DB and defines the schema.
 
     Args:
@@ -34,7 +42,8 @@ def db_set_up(curse: Cursor) -> None:
         None
     '''
     log.info("Setting up database tables...")
-    curse.execute(
+    cur = con.cursor()
+    cur.execute(
         '''
         CREATE TABLE IF NOT EXISTS groups (
             group_id TEXT PRIMARY KEY,
@@ -45,11 +54,14 @@ def db_set_up(curse: Cursor) -> None:
         )
         '''
     )
+    con.commit()
     log.info("Successfully created database tables.")
     # TODO: figure out how to solve items
 
 
-def populate_table(curse: Cursor, incoming: list[tuple[str, str, str, str, str]]) -> None:
-    '''This function will populate the 'groups' table with sample data.
+def populate_table(con: Connection, incoming: list[tuple[str, str, str, str, str]]) -> None:
+    '''This function will populate the 'groups' table with data.
     '''
-    curse.executemany('''INSERT OR IGNORE INTO groups VALUES (?, ?, ?, ?, ?)''', incoming)
+    cur = con.cursor()
+    cur.executemany('''INSERT OR IGNORE INTO groups VALUES (?, ?, ?, ?, ?)''', incoming)
+    con.commit()

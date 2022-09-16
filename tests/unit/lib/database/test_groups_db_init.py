@@ -19,16 +19,27 @@ class CursorMock:
         return self
 
 
+@dataclass
+class ConnectionMock:
+    c: CursorMock = field(default_factory=CursorMock)
+
+    def cursor(self) -> groups_db_init.Cursor:
+        return self.c
+
+    def commit(self) -> None:
+        ...
+
+
 @pytest.fixture
-def cursor() -> CursorMock:
-    return CursorMock()
+def connection() -> ConnectionMock:
+    return ConnectionMock()
 
 
-def test_create_db(cursor: CursorMock) -> None:
-    groups_db_init.db_set_up(cursor)
-    assert cursor.execute_many_res == []
-    assert len(cursor.execute_res) == 1
-    query, params = cursor.execute_res[0]
+def test_create_db(connection: ConnectionMock) -> None:
+    groups_db_init.db_set_up(connection)
+    assert connection.c.execute_many_res == []
+    assert len(connection.c.execute_res) == 1
+    query, params = connection.c.execute_res[0]
     assert params == ...
     expected_case_sensitive = [
         "groups",
@@ -52,15 +63,15 @@ def test_create_db(cursor: CursorMock) -> None:
         assert expected.lower() in query.lower()
 
 
-def test_populate_table(cursor: CursorMock) -> None:
+def test_populate_table(connection: ConnectionMock) -> None:
     data = [
         ("881bdb2b-ed5e-48bc-9c8c-4dcdd1d4d7d9", "msgroup", "some name", "1663268015.0499065", "a|b|c"),
         ("64a9dffa-1cef-4948-ba7b-eeffc1edc993", "msgroup", "other name", "1663268016.0499065", "a|b|d")
     ]
-    groups_db_init.populate_table(cursor, data)
-    assert cursor.execute_res == []
-    assert len(cursor.execute_many_res) == 1
-    query, params = cursor.execute_many_res[0]
+    groups_db_init.populate_table(connection, data)
+    assert connection.c.execute_res == []
+    assert len(connection.c.execute_many_res) == 1
+    query, params = connection.c.execute_many_res[0]
     assert params == data
     assert "(?, ?, ?, ?, ?)" in query
     assert "groups" in query
