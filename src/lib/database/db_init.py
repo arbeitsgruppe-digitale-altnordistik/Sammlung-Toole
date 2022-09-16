@@ -1,5 +1,6 @@
 import sqlite3
 from logging import Logger
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -26,9 +27,10 @@ def db_set_up(conn: sqlite3.Connection) -> None:
     '''
     log.info("Setting up database tables...")
     curse = conn.cursor()
-    curse.execute('''CREATE TABLE IF NOT EXISTS people (firstName,
-                                                        lastName,
-                                                        persID PRIMARY KEY)''')  # TODO: put primary keys in their rightful places
+    curse.execute('''CREATE TABLE IF NOT EXISTS people (persID PRIMARY KEY
+                                                        firstName,
+                                                        lastName
+                                                        )''')
     curse.execute('''CREATE TABLE IF NOT EXISTS manuscripts (shelfmark,
                                                             shorttitle,
                                                             country,
@@ -77,7 +79,7 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
     return
 
 
-def populate_ms_table(conn: sqlite3.Connection, incoming: pd.DataFrame) -> None:
+def populate_ms_table(conn: sqlite3.Connection, incoming: list[tuple[Any]]) -> None:
     '''Function to populate the manuscripts table with data.
 
     Args:
@@ -88,17 +90,18 @@ def populate_ms_table(conn: sqlite3.Connection, incoming: pd.DataFrame) -> None:
     Returns:
         None
     '''
-    incoming2 = incoming[~incoming.duplicated(["full_id"])]
-    # dupl = incoming[incoming.duplicated(["full_id"])]  # QUESTION-BL: this is unused, should it come back or can it be removed?
-    incoming2.to_sql("manuscripts", conn, if_exists='append', index=False)
-    return
+    curse = conn.cursor()
+    sql_query = '''INSERT OR IGNORE INTO people VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'''
+    curse.executemany(sql_query, incoming)
+    conn.commit()
+    curse.close()
 
 
 def populate_junctionPxM(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> None:
     curse = conn.cursor()
     curse.executemany('''INSERT OR IGNORE INTO junctionPxM VALUES (?, ?, ?)''', incoming)
+    conn.commit()
     curse.close()
-    return
 
 
 def populate_junctionTxM(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:

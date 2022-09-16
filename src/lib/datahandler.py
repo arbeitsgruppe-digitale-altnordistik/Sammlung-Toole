@@ -81,7 +81,7 @@ class DataHandler:
             log.info("Built groups database")
 
     @staticmethod
-    def _build_db() -> None:
+    def __build_db() -> None:
         dbConn = database.create_connection()
         db_init.db_set_up(dbConn)
         ppl = tamer.get_ppl_names()
@@ -106,6 +106,22 @@ class DataHandler:
         db_init.populate_junctionTxM(conn=dbConn, incoming=txtXmss)
         dbConn.commit()
         dbConn.close()
+
+    @staticmethod
+    # TODO: Refactor / move to own module (XML-parsing module?)
+    def _build_db() -> None:
+        with database.create_connection(":memory:") as db_conn:
+            db_init.db_set_up(db_conn)
+            ppl = tamer.get_ppl_names()
+            db_init.populate_people_table(db_conn, ppl)
+            files = Path(XML_BASE_PATH).rglob('*.xml')
+            ms_meta, msppl, mstxts = tamer.unpack_work(files)
+            db_init.populate_ms_table(db_conn, ms_meta)
+            db_init.populate_junctionPxM(db_conn, msppl)
+            db_init.populate_junctionTxM(db_conn, mstxts)
+            # TODO: Finish implementation
+
+        return
 
     # Instance Methods
     # ================

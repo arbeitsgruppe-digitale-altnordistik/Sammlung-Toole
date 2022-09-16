@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Dict, List,  Tuple
+from typing import Any, Dict, Iterable, Iterator, List,  Tuple
 
 import pandas as pd
 import requests
@@ -17,9 +17,11 @@ nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998
 # ----------------
 """These functions are used to load relevant data into the data handler. All data the handler uses on 
 initialization should come from here."""
+# TODO: Update doc string
 
 
-def load_xml_contents() -> pd.DataFrame:
+def __load_xml_contents() -> pd.DataFrame:
+    # Deprecated
     outDF = pd.DataFrame(columns=['shelfmark', 'content'])
     for individual_xml_file in Path(XML_BASE_PATH).rglob('*.xml'):
         log.debug(f'Loading: {str(individual_xml_file)}')
@@ -27,6 +29,37 @@ def load_xml_contents() -> pd.DataFrame:
         shelfmark = _get_shelfmark(file_contents)
         outDF = outDF.append({'shelfmark': shelfmark, 'content': file_contents}, ignore_index=True)
     return outDF
+
+
+def load_xml_contents(path: Path) -> etree._Element:
+    tree: etree._ElementTree = etree.parse(path)
+    root = tree.getroot()
+    return root
+
+
+def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], set[str], set[str]]:  # TODO: Metatype for first tuple (Metadata)
+    # TODO: Do.
+    pass
+
+
+def make_work(files: Iterable[Path]) -> Iterator[tuple[tuple[Any], set[str], set[str]]]:
+    for f in files:
+        ele = load_xml_contents(f)
+        data = parse_xml_content(ele)
+        yield data
+
+
+def unpack_work(files: Iterable[Path]) -> tuple[list[tuple[Any]], list[set[str]], list[set[str]]]:
+    x = make_work(files)
+    meta_data: list[tuple[Any]] = []
+    ppl: list[set[str]] = []
+    txts: list[set[str]] = []
+    for y in x:
+        m, p, t = y
+        meta_data.append(m)
+        ppl.append(p)
+        txts.append(t)
+    return meta_data, ppl, txts
 
 
 def _load_xml_file(xml_file: str) -> str:
@@ -51,14 +84,16 @@ def _get_shelfmark(content: str) -> str:
         return ""
 
 
-def deliver_handler_data() -> pd.DataFrame:
-    """Will check if data is available and return a dataframe to the data handler.
-    DataFrame has the following columns:
-    'shelfmark': Shelfmark of the individual MS
-    'content': The XML of the file as string
-    """
-    outDF = load_xml_contents()
-    return outDF
+# def deliver_handler_data() -> pd.DataFrame:
+#     # Deprecated
+#     """Will check if data is available and return a dataframe to the data handler.
+#     DataFrame has the following columns:
+#     'shelfmark': Shelfmark of the individual MS
+#     'content': The XML of the file as string
+#     """
+#     outDF = load_xml_contents()
+#     return outDF
+# TODO: Clean up
 
 
 def get_ppl_names() -> List[Tuple[str, str, str]]:
