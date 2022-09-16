@@ -5,7 +5,7 @@ This module handles data and provides convenient and efficient access to it.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
 import pandas as pd
 import src.lib.tamer as tamer
@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 from src.lib import utils
 from src.lib.constants import *
 from src.lib.database import database, db_init, groups_database, groups_db_init
-from src.lib.groups import Group, GroupType
+from src.lib.groups import Group
 from src.lib.utils import GitUtil, SearchOptions, Settings
 
 log = utils.get_logger(__name__)
@@ -76,12 +76,9 @@ class DataHandler:
 
     @staticmethod
     def _build_groups_db() -> None:
-        con = groups_database.create_connection()
-        cur = con.cursor()
-        groups_db_init.db_set_up(cur)
-        log.info("Built groups database")
-        con.commit()
-        con.close()
+        with groups_database.create_connection() as con:
+            groups_db_init.db_set_up(con)
+            log.info("Built groups database")
 
     @staticmethod
     def _build_db() -> None:
@@ -123,15 +120,6 @@ class DataHandler:
             for row in cur.execute('SELECT * FROM people ORDER BY persID'):
                 res.append(row)
         return res
-
-    # TODO-BL: can this be removed?
-    # def get_all_ppl_hrf(self) -> list[str]:
-    #     res: list[str] = []
-    #     with database.create_connection() as conn:
-    #         cur = conn.cursor()
-    #         for row in cur.execute('SELECT firstName, lastName FROM people ORDER BY firstName'):
-    #             res.append(row)
-    #     return res
 
     def search_manuscript_data(self, mssIDs: list[str]) -> pd.DataFrame:
         """Search manuscript metadata for certain manuscripts.
@@ -219,7 +207,6 @@ class DataHandler:
             db = database.create_connection()
             for i in Inmss:
                 sets = []
-                # db = database.create_connection()
                 for i in Inmss:
                     ii = database.txts_x_ms(db.cursor(), [i])
                     sets.append(set(ii))
@@ -234,10 +221,6 @@ class DataHandler:
         """Get a person's name, identified by the person's ID"""
         res = database.simple_people_search(curse=database.create_connection().cursor(), persID=pers_id)
         return res or ""
-
-    # def get_person_ids(self, pers_name: str) -> list[str]:
-    #     """Get IDs of all persons with a certain name"""
-    #     return self.person_names_inverse[pers_name]
 
     def search_persons_related_to_manuscripts(self, ms_full_ids: list[str], searchOption: SearchOptions) -> list[str]:
         # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround # TODO: the hacky-whack should live in its own function
