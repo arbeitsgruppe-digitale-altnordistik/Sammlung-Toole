@@ -8,9 +8,11 @@ import copy
 import re
 import statistics
 from src.lib import utils
+from lxml import etree
 
 
 log = utils.get_logger(__name__)
+nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
 
 
 # Utlity Functions
@@ -86,7 +88,7 @@ def _get_digits(text: str) -> int:
 # ---------------
 
 
-def _get_key(leek: Tag) -> Optional[str]:
+def _get_key(leek: etree._Element) -> Optional[str]:
     """Find key identifying the country and return country name.
 
     Args:
@@ -95,7 +97,7 @@ def _get_key(leek: Tag) -> Optional[str]:
     Returns:
         str: country name
     """
-    key = leek.get('key')
+    key = leek.attrib['key']
     if key:
         if key == "IS" or key == "is":
             pretty_key = "Iceland"
@@ -118,21 +120,21 @@ def _get_key(leek: Tag) -> Optional[str]:
     return pretty_key
 
 
-def get_origin(soup: BeautifulSoup) -> str:
+def get_origin(root: etree._Element) -> str:
     """Get manuscript's place of origin.
 
     Args:
-        soup (bs4.BeautifulSoup): BeautifulSoup object
+        root: 
 
     Returns:
         str: country name
     """
-    origPlace = soup.origPlace
+    origPlace = root.find("origPlace", nsmap)
 
     try:
         pretty_origPlace = _get_key(origPlace)
         if not pretty_origPlace:
-            pretty_origPlace = get_cleaned_text(origPlace)
+            pretty_origPlace = origPlace.text
     except:
         pretty_origPlace = "Origin unknown"
 
@@ -257,7 +259,7 @@ def get_shorttitle(soup: BeautifulSoup) -> str:
     return pretty_shorttitle
 
 
-def get_support(soup: BeautifulSoup) -> str:
+def get_support(root: etree._Element) -> str:
     """Get supporting material (paper or parchment).
 
     Args:
@@ -266,9 +268,9 @@ def get_support(soup: BeautifulSoup) -> str:
     Returns:
         str: supporting material
     """
-    supportDesc = soup.find('supportDesc')
+    supportDesc = root.find('supportDesc', nsmap)
     if supportDesc:
-        support = supportDesc.get('material')
+        support = supportDesc.attrib['material']
         if support == "chart":
             pretty_support = "Paper"
         elif support == "perg":
@@ -276,7 +278,7 @@ def get_support(soup: BeautifulSoup) -> str:
         else:
             pretty_support = support
             try:
-                pretty_support = get_cleaned_text(support)
+                pretty_support = support.text
             except:
                 pretty_support = ""
     else:
@@ -285,7 +287,8 @@ def get_support(soup: BeautifulSoup) -> str:
     return pretty_support
 
 
-def get_folio(soup: BeautifulSoup) -> int:
+def get_folio(root: etree._Element) -> int:
+    # TODO: Update docstring! /SK
     """Returns: total of folios.
 
     Find <extent> and make copy.
@@ -309,12 +312,12 @@ def get_folio(soup: BeautifulSoup) -> int:
         int: total of folios
     """
     # TODO: look into this method... can this be streamlined?
-    extent = soup.find('extent')
+    extent = root.find('extent', nsmap)
     if not extent:
         return 0
     extent_copy = copy.copy(extent)
 
-    dimensions = extent_copy.find('dimensions')
+    dimensions = extent_copy.find('dimensions', nsmap)
 
     while dimensions:
         dimensions.decompose()
@@ -552,8 +555,9 @@ def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str, str]:  #
     return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature
 
 
-def get_date(soup: BeautifulSoup) -> Tuple[str, int, int, int, int]:
-    tag = soup.origDate
+def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
+    # TODO: Redesign /SK
+    tag = root.find("origDate", nsmap)
     date = ""
     ta = 0
     tp = 0
@@ -562,9 +566,9 @@ def get_date(soup: BeautifulSoup) -> Tuple[str, int, int, int, int]:
     if not tag:
         return date, tp, ta, meandate, yearrange
 
-    if tag.get("notBefore") and tag.get("notAfter"):
-        notBefore = str(tag["notBefore"])
-        notAfter = str(tag["notAfter"])
+    if tag.attrib["notBefore"] and tag.attrib["notAfter"]:
+        notBefore = str(tag.attrib["notBefore"])
+        notAfter = str(tag.attrib["notAfter"])
 
         # TODO: give indication why this happened
         # Snibbel Snibbel
@@ -581,8 +585,8 @@ def get_date(soup: BeautifulSoup) -> Tuple[str, int, int, int, int]:
         meandate = int(statistics.mean([int(tp), int(ta)]))
         yearrange = int(ta) - int(tp)
 
-    elif tag.get("when"):
-        date = str(tag["when"])
+    elif tag.attrib["when"]:
+        date = str(tag.attrib["when"])
         normalized_date = date
         if len(normalized_date) > 4:
             normalized_date = normalized_date[:4]
@@ -591,9 +595,9 @@ def get_date(soup: BeautifulSoup) -> Tuple[str, int, int, int, int]:
         meandate = tp
         yearrange = 0
 
-    elif tag.get("from") and tag.get("to"):
-        fr = str(tag["from"])
-        to = str(tag["to"])
+    elif tag.attrib["from"] and tag.attrib["to"]:
+        fr = str(tag.attrib["from"])
+        to = str(tag.attrib["to"])
         date = f"{fr}-{to}"
         n = fr
         if len(n) > 4:
@@ -609,20 +613,18 @@ def get_date(soup: BeautifulSoup) -> Tuple[str, int, int, int, int]:
     return date, tp, ta, meandate, yearrange
 
 
-def get_msID(soup: BeautifulSoup) -> Tuple[str, str, str, str]:
-    msID = soup.find("msIdentifier")
+def get_msID(root: etree._Element) -> Tuple[str, str, str]:
+    msID = root.find("msIdentifier", nsmap)
     if not msID:
-        return "", "", "", ""
+        return "", "", ""
     else:
-        c = msID.find("country")
+        c = msID.find("country", nsmap)
         country: str = c.get_text() if c else ""
-        s = msID.find("settlement")
+        s = msID.find("settlement", nsmap)
         settlement: str = s.get_text() if s else ""
-        r = msID.find("repository")
+        r = msID.find("repository", nsmap)
         repository: str = r.get_text() if r else ""
-        si = msID.find("idno")
-        signature: str = si.get_text() if si else ""
-    return signature, country, settlement, repository
+    return country, settlement, repository
 
 
 def check_graphic(soup: BeautifulSoup) -> bool:

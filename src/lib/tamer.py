@@ -38,8 +38,44 @@ def load_xml_contents(path: Path) -> etree._Element:
 
 
 def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], set[str], set[str]]:  # TODO: Metatype for first tuple (Metadata)
-    # TODO: Do.
+    shelfmark = _get_shelfmark(root)
+    ppl_raw = root.findall(".//name", nsmap)
+    ppl: list[str] = []
+    for pers in ppl_raw:
+        persID = pers.attrib['key']
+        ppl.append(persID)
+    txts_raw = root.find(".//msItem")
+    txts: list[str] = []
+    for txt in txts_raw:
+        lvl = txt.attrib["n"]
+        if not "." in lvl:
+            title_raw = txt.find("title", nsmap)  # TODO: Streamline, should be able to select tags directly /SK
+            title = title_raw.text
+            txts.append(title)
+    ms_nickname = _get_shorttitle(root)
+    country, settlement, repository = metadata.get_msID(root)
+    origin = metadata.get_origin(root)
+    date, tp, ta, meandate, yearrange = metadata.get_date(root)
+    support = metadata.get_support(root)
+    # TODO: Continue here. Think about "get_extent" func
+    # -> streamline and adapt to get number of folios right /SK
     pass
+
+
+def _get_shorttitle(root: etree._Element) -> str:
+    head = root.find(".//head", nsmap)
+    summary = root.find(".//summary", nsmap)
+    if head:
+        title = head.title
+    else:
+        title = summary.title
+    try:
+        res = title.replace('\n', ' ')
+        res = res.replace('\t', ' ')
+        res = ' '.join(res.split())
+        return str(res)
+    except:
+        return str(title)
 
 
 def make_work(files: Iterable[Path]) -> Iterator[tuple[tuple[Any], set[str], set[str]]]:
@@ -71,16 +107,15 @@ def _load_xml_file(xml_file: str) -> str:
             return ""
 
 
-def _get_shelfmark(content: str) -> str:
+def _get_shelfmark(root: etree._Element) -> str:
     try:
-        root = etree.fromstring(content.encode())
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
         if idno is not None:
             return str(idno.text)
         else:
             return ""
     except Exception:
-        log.exception(f"Faild to load Shelfmark XML:\n\n{content}\n\n")
+        log.exception(f"Faild to load Shelfmark XML:\n\n{root}\n\n")
         return ""
 
 
@@ -202,6 +237,9 @@ def _find_full_id(soup: BeautifulSoup) -> str:
 def get_ms_info(soup: BeautifulSoup) -> pd.Series:
     '''Will deliver a data frame to be crunched into SQL
     '''
+    # DEPRECATED! This should pretty much all be broken now /SK
+    # TODO: Cleanup/purge /SK
+
     shorttitle = metadata.get_shorttitle(soup)
     _, country, settlement, repository = metadata.get_msID(soup)
     origin = metadata.get_origin(soup)
