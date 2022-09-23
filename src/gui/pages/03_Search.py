@@ -103,8 +103,6 @@ def __search_mss_by_person_step_save_results() -> None:
         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
         st.experimental_rerun()
     __show_as_list(results)
-    # LATER: metadatahandler is currently a mix of util and UI... should probably be divided and put in the right place
-    metadatahandler.process_ms_results(handler, results)
     def next_step() -> None: state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
     __save_group(
         ids=results,
@@ -112,28 +110,14 @@ def __search_mss_by_person_step_save_results() -> None:
         grouptype=GroupType.ManuscriptGroup,
         step_func=next_step
     )
-    groups = handler.get_ms_groups()
-    if groups:
-        with st.expander("Add results to existing group", False):
-            with st.form("add_to_group"):
-                group_lookup = {g.name: g for g in groups}
-                group_names = list(group_lookup.keys())
-                previous_name: str = st.radio("Select a group", group_names)
-                mode = __ask_for_search_mode()
-                name = st.text_input('Group Name', f'Search results for <{ppl} AND/OR ([PREVIOUS_QUERY])>')
-                if st.form_submit_button("Save"):
-                    previous_group = group_lookup[previous_name]
-                    if previous_group:
-                        previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
-                        new_name = f'Search results for <{ppl} {mode.value} ({previous_query})>'
-                        if mode == SearchOptions.CONTAINS_ALL:
-                            new_items = previous_group.items.intersection(set(results))
-                        else:
-                            new_items = previous_group.items.union(set(results))
-                        new_group = Group(previous_group.group_type,  new_name, new_items)
-                        handler.put_group(new_group)
-                        state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
-                        st.experimental_rerun()
+    __add_to_group(
+        ids=results,
+        searchterms=ppl,
+        groups=handler.get_ms_groups(),
+        step_func=next_step
+    )
+    # LATER: metadatahandler is currently a mix of util and UI... should probably be divided and put in the right place
+    metadatahandler.process_ms_results(handler, results)
 
 
 # Search for people by manuscript
@@ -186,29 +170,12 @@ def __search_person_by_mss_step_save_results() -> None:
         grouptype=GroupType.PersonGroup,
         step_func=next_step
     )
-    groups = handler.get_ppl_groups()
-    if groups:
-        with st.expander("Add results to existing group", False):
-            with st.form("add_to_group"):
-                group_lookup = {g.name: g for g in groups}
-                group_names = list(group_lookup.keys())
-                previous_name = st.radio("Select a group", group_names)
-                mode = __ask_for_search_mode()
-                name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
-                if st.form_submit_button("Save"):
-                    previous_group = group_lookup[previous_name]
-                    if previous_group:
-                        previous_query = previous_name.removeprefix("Search results for<").removesuffix(">")
-                        new_name = f'Search results for <{mss} {mode.value} ({previous_query})>'
-                        if mode == SearchOptions.CONTAINS_ALL:
-                            new_items = previous_group.items.intersection(set(results))
-                        else:
-                            new_items = previous_group.items.union(set(results))
-                        new_group = Group(previous_group.group_type,  new_name, new_items)
-                        handler.put_group(new_group)
-                        state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
-                        st.experimental_rerun()
-    # TODO: What now?
+    __add_to_group(
+        ids=results,
+        searchterms=mss,
+        groups=handler.get_ppl_groups(),
+        step_func=next_step
+    )
 
 
 # Search for manuscripts by text
@@ -253,7 +220,6 @@ def __search_mss_by_text_step_save_results() -> None:
         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
         st.experimental_rerun()
     __show_as_list([handler.manuscripts[x] for x in results])
-    metadatahandler.process_ms_results(handler, results)
     def next_step() -> None: state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
     __save_group(
         ids=results,
@@ -261,28 +227,13 @@ def __search_mss_by_text_step_save_results() -> None:
         grouptype=GroupType.ManuscriptGroup,
         step_func=next_step
     )
-    groups = handler.get_ms_groups()
-    if groups:
-        with st.expander("Add results to existing group", False):
-            with st.form("add_to_group"):
-                group_lookup = {g.name: g for g in groups}
-                group_names = list(group_lookup.keys())
-                previous_name = st.radio("Select a group", group_names)
-                mode = __ask_for_search_mode()
-                name = st.text_input('Group Name', f'Search results for <{txt} AND/OR ([PREVIOUS_QUERY])>')
-                if st.form_submit_button("Save"):
-                    previous_group = group_lookup[previous_name]
-                    if previous_group:
-                        previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
-                        new_name = f'Search results for <{txt} {mode.value} ({previous_query})>'
-                        if mode == SearchOptions.CONTAINS_ALL:
-                            new_items = previous_group.items.intersection(set(results))
-                        else:
-                            new_items = previous_group.items.union(set(results))
-                        new_group = Group(previous_group.group_type,  new_name, new_items)
-                        handler.put_group(new_group)
-                        state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
-                        st.experimental_rerun()
+    __add_to_group(
+        ids=results,
+        searchterms=txt,
+        groups=handler.get_ms_groups(),
+        step_func=next_step
+    )
+    metadatahandler.process_ms_results(handler, results)
 
 
 # Search for texts by manuscript
@@ -338,29 +289,12 @@ def __search_text_by_mss_step_save_results() -> None:
         grouptype=GroupType.TextGroup,
         step_func=next_step
     )
-    groups = handler.get_txt_groups()
-    if groups:
-        with st.expander("Add results to existing group", False):
-            with st.form("add_to_group"):
-                group_lookup = {g.name: g for g in groups}
-                group_names = list(group_lookup.keys())
-                previous_name = st.radio("Select a group", group_names)
-                mode = __ask_for_search_mode()
-                name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
-                if st.form_submit_button("Save"):
-                    previous_group = group_lookup[previous_name]
-                    if previous_group:
-                        previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
-                        new_name = f'Search results for <{mss} {mode.value} ({previous_query})>'
-                        if mode == SearchOptions.CONTAINS_ALL:
-                            new_items = previous_group.items.intersection(set(results))
-                        else:
-                            new_items = previous_group.items.union(set(results))
-                        new_group = Group(previous_group.group_type,  new_name, new_items)
-                        handler.put_group(new_group)
-                        state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
-                        st.experimental_rerun()
-    # TODO: visualization/citavi-export of result
+    __add_to_group(
+        ids=results,
+        searchterms=mss,
+        groups=handler.get_txt_groups(),
+        step_func=next_step
+    )
 
 
 # helper functions
@@ -372,7 +306,7 @@ def __search_step(
     search_func: Callable[[list[str], SearchOptions], list[str]],
     state_func: Callable[[list[str], list[str], SearchOptions], None],
     format_func: Callable[[str], str] = str,
-):
+) -> None:
     # TODO: document!
     with st.form(f"search_ms_by_{what_sg}"):
         st.subheader(f"Select {what_sg}(s)")
@@ -392,7 +326,7 @@ def __save_group(
     searchterms: list[str],
     grouptype: GroupType,
     step_func: Callable[[], None]
-):
+) -> None:
     # TODO: document
     with st.expander("Save results as group", False):
         with st.form("save_group"):
@@ -400,6 +334,37 @@ def __save_group(
             if st.form_submit_button("Save"):
                 grp = Group(grouptype, name, set(ids))
                 handler.put_group(grp)
+                step_func()
+                st.experimental_rerun()
+
+
+def __add_to_group(
+    ids: list[str],
+    searchterms: list[str],
+    groups: list[Group],
+    step_func: Callable[[], None]
+) -> None:
+    # TODO: document
+    if not groups:
+        return
+    with st.expander("Add results to existing group", False):
+        with st.form("add_to_group"):
+            group_lookup = {g.name: g for g in groups}
+            group_names = list(group_lookup.keys())
+            previous_name: str = st.radio("Select a group", group_names)
+            mode = __ask_for_search_mode()
+            previous_group = group_lookup[previous_name]
+            previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
+            name = st.text_input('Group Name', f'Search results for <{searchterms} {mode.value} ({previous_query})>')
+            if st.form_submit_button("Save"):
+                if not previous_group:
+                    return
+                if mode == SearchOptions.CONTAINS_ALL:
+                    new_items = previous_group.items.intersection(set(ids))
+                else:
+                    new_items = previous_group.items.union(set(ids))
+                new_group = Group(previous_group.group_type,  name, new_items)
+                handler.put_group(new_group)
                 step_func()
                 st.experimental_rerun()
 
