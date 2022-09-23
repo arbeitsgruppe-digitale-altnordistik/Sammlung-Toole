@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable
 
 import streamlit as st
 from src.gui.gui_utils import get_handler, get_log, get_state
@@ -102,18 +102,16 @@ def __search_mss_by_person_step_save_results() -> None:
     if st.button("Back"):
         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
         st.experimental_rerun()
-    with st.expander('view results as list', False):
-        st.write(results)
+    __show_as_list(results)
+    # LATER: metadatahandler is currently a mix of util and UI... should probably be divided and put in the right place
     metadatahandler.process_ms_results(handler, results)
-    with st.expander("Save results as group", False):
-        with st.form("save_group"):
-            name = st.text_input('Group Name', f'Search results for <{ppl}>')
-            if st.form_submit_button("Save"):
-                grp = Group(GroupType.ManuscriptGroup, name, set(results))
-                # log.debug(f"Should be saving group: {grp}")
-                handler.put_group(grp)
-                state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
-                st.experimental_rerun()
+    def next_step() -> None: state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
+    __save_group(
+        ids=results,
+        searchterms=ppl,
+        grouptype=GroupType.ManuscriptGroup,
+        step_func=next_step
+    )
     groups = handler.get_ms_groups()
     if groups:
         with st.expander("Add results to existing group", False):
@@ -180,18 +178,14 @@ def __search_person_by_mss_step_save_results() -> None:
     if st.button("Back"):
         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
         st.experimental_rerun()
-    with st.expander('view results as list', False):
-        resList = [handler.person_names[x] for x in results]
-        st.write(resList)
-    with st.expander("Save results as group", False):
-        with st.form("save_group"):
-            name = st.text_input('Group Name', f'Search results for <{mss}>')
-            if st.form_submit_button("Save"):
-                grp = Group(GroupType.PersonGroup, name, set(results))
-                # log.debug(f"Should be saving group: {grp}")
-                handler.put_group(grp)
-                state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
-                st.experimental_rerun()
+    __show_as_list([handler.person_names[x] for x in results])
+    def next_step() -> None: state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
+    __save_group(
+        ids=results,
+        searchterms=mss,
+        grouptype=GroupType.PersonGroup,
+        step_func=next_step
+    )
     groups = handler.get_ppl_groups()
     if groups:
         with st.expander("Add results to existing group", False):
@@ -258,18 +252,15 @@ def __search_mss_by_text_step_save_results() -> None:
     if st.button("Back"):
         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
         st.experimental_rerun()
-    with st.expander('view results as list', False):
-        st.write([handler.manuscripts[x] for x in results])
-    with st.expander("Save results as group", False):
-        with st.form("save_group"):
-            name = st.text_input('Group Name', f'Search results for <{txt}>')
-            if st.form_submit_button("Save"):
-                grp = Group(GroupType.ManuscriptGroup, name, set(results))
-                # log.debug(f"Should be saving group: {grp}")
-                handler.put_group(grp)
-                state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
-                st.experimental_rerun()
+    __show_as_list([handler.manuscripts[x] for x in results])
     metadatahandler.process_ms_results(handler, results)
+    def next_step() -> None: state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
+    __save_group(
+        ids=results,
+        searchterms=txt,
+        grouptype=GroupType.ManuscriptGroup,
+        step_func=next_step
+    )
     groups = handler.get_ms_groups()
     if groups:
         with st.expander("Add results to existing group", False):
@@ -339,17 +330,14 @@ def __search_text_by_mss_step_save_results() -> None:
     if st.button("Back"):
         state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
         st.experimental_rerun()
-    with st.expander('view results as list', False):
-        st.write(results)
-    with st.expander("Save results as group", False):
-        with st.form("save_group"):
-            name = st.text_input('Group Name', f'Search results for manuscript search <{mss}>')
-            if st.form_submit_button("Save"):
-                grp = Group(GroupType.TextGroup, name, set(results))
-                # log.debug(f"Should be saving group: {grp}")
-                handler.put_group(grp)
-                state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
-                st.experimental_rerun()
+    __show_as_list(results)
+    def next_step() -> None: state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
+    __save_group(
+        ids=results,
+        searchterms=mss,
+        grouptype=GroupType.TextGroup,
+        step_func=next_step
+    )
     groups = handler.get_txt_groups()
     if groups:
         with st.expander("Add results to existing group", False):
@@ -399,11 +387,33 @@ def __search_step(
             st.experimental_rerun()
 
 
+def __save_group(
+    ids: list[str],
+    searchterms: list[str],
+    grouptype: GroupType,
+    step_func: Callable[[], None]
+):
+    # TODO: document
+    with st.expander("Save results as group", False):
+        with st.form("save_group"):
+            name = st.text_input('Group Name', f'Search results for <{searchterms}>')
+            if st.form_submit_button("Save"):
+                grp = Group(grouptype, name, set(ids))
+                handler.put_group(grp)
+                step_func()
+                st.experimental_rerun()
+
+
 def __ask_for_search_mode() -> SearchOptions:
     modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
              'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
     mode_selection = st.radio('Search mode', list(modes.keys()), 1)
     return modes[mode_selection]
+
+
+def __show_as_list(res: list[Any]) -> None:
+    with st.expander('view results as list', False):
+        st.write(res)
 
 
 search_page()
