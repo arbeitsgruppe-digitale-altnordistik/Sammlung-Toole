@@ -5,6 +5,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 from src.lib import utils
+import collections
 
 
 @st.experimental_singleton   # type: ignore
@@ -27,7 +28,7 @@ def db_set_up(conn: sqlite3.Connection) -> None:
     '''
     log.info("Setting up database tables...")
     curse = conn.cursor()
-    curse.execute('''CREATE TABLE IF NOT EXISTS people (persID PRIMARY KEY
+    curse.execute('''CREATE TABLE IF NOT EXISTS people (persID PRIMARY KEY,
                                                         firstName,
                                                         lastName
                                                         )''')
@@ -52,17 +53,18 @@ def db_set_up(conn: sqlite3.Connection) -> None:
                                                             id,
                                                             full_id PRIMARY KEY,
                                                             filename)''')
-    curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer PRIMARY KEY DEFAULT 0 NOT NULL,
+    curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer auto_increment PRIMARY KEY,
                                                                 persID,
                                                                 msID,
                                                                 FOREIGN KEY(persID) REFERENCES people(persID) ON DELETE CASCADE ON UPDATE CASCADE,
                                                                 FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
-    curse.execute('''CREATE TABLE IF NOT EXISTS junctionTxM (locID integer PRIMARY KEY,
+    curse.execute('''CREATE TABLE IF NOT EXISTS junctionTxM (locID integer auto_increment PRIMARY KEY,
                                                                 msID,
                                                                 txtName,
                                                                 FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
     log.info("Successfully created database tables.")
-    return
+    conn.commit()
+    curse.close()
 
 
 def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, str, str]]) -> None:
@@ -76,7 +78,8 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
     '''
     curse = conn.cursor()
     curse.executemany('''INSERT OR IGNORE INTO people VALUES (?, ?, ?)''', incoming)
-    return
+    conn.commit()
+    curse.close()
 
 
 def populate_ms_table(conn: sqlite3.Connection, incoming: list[tuple[Any]]) -> None:
@@ -91,15 +94,15 @@ def populate_ms_table(conn: sqlite3.Connection, incoming: list[tuple[Any]]) -> N
         None
     '''
     curse = conn.cursor()
-    sql_query = '''INSERT OR IGNORE INTO people VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'''
+    sql_query = '''INSERT OR IGNORE INTO manuscripts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'''
     curse.executemany(sql_query, incoming)
     conn.commit()
     curse.close()
 
 
-def populate_junctionPxM(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> None:
+def populate_junctionPxM(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
     curse = conn.cursor()
-    curse.executemany('''INSERT OR IGNORE INTO junctionPxM VALUES (?, ?, ?)''', incoming)
+    curse.executemany('''INSERT OR IGNORE INTO junctionPxM(persID, msID) VALUES (?, ?)''', incoming)
     conn.commit()
     curse.close()
 
@@ -107,8 +110,8 @@ def populate_junctionPxM(conn: sqlite3.Connection, incoming: list[tuple[int, str
 def populate_junctionTxM(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
     curse = conn.cursor()
     curse.executemany("INSERT OR IGNORE INTO junctionTxM(msID, txtName) VALUES (?,?)", incoming)
+    conn.commit()
     curse.close()
-    return
 
 
 def PxM_integrity_check(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> bool:

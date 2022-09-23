@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from turtle import width
 from typing import Any, Dict, Iterable, Iterator, List,  Tuple
 
 import pandas as pd
@@ -15,7 +16,7 @@ nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998
 
 # Data preparation
 # ----------------
-"""These functions are used to load relevant data into the data handler. All data the handler uses on 
+"""These functions are used to load relevant data into the data handler. All data the handler uses on
 initialization should come from here."""
 # TODO: Update doc string
 
@@ -32,43 +33,124 @@ def __load_xml_contents() -> pd.DataFrame:
 
 
 def load_xml_contents(path: Path) -> etree._Element:
-    tree: etree._ElementTree = etree.parse(path)
-    root = tree.getroot()
-    return root
+    try:
+        tree: etree._ElementTree = etree.parse(path)
+        root = tree.getroot()
+        return root
+    except:
+        log.error(f"{path}: Broken XML!")
 
 
-def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], set[str], set[str]]:  # TODO: Metatype for first tuple (Metadata)
+def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], list[tuple[str, str]], list[tuple[str, str]]]:  # TODO: Metatype for first tuple (Metadata)
     shelfmark = _get_shelfmark(root)
-    ppl_raw = root.findall(".//name", nsmap)
-    ppl: list[str] = []
-    for pers in ppl_raw:
-        persID = pers.attrib['key']
-        ppl.append(persID)
-    txts_raw = root.find(".//msItem")
-    txts: list[str] = []
-    for txt in txts_raw:
-        lvl = txt.attrib["n"]
-        if not "." in lvl:
-            title_raw = txt.find("title", nsmap)  # TODO: Streamline, should be able to select tags directly /SK
-            title = title_raw.text
-            txts.append(title)
-    ms_nickname = _get_shorttitle(root)
+    full_id = _find_full_id(root)
+    ms_nickname = _get_shorttitle(root, full_id)
     country, settlement, repository = metadata.get_msID(root)
     origin = metadata.get_origin(root)
     date, tp, ta, meandate, yearrange = metadata.get_date(root)
     support = metadata.get_support(root)
-    # TODO: Continue here. Think about "get_extent" func
-    # -> streamline and adapt to get number of folios right /SK
-    pass
-
-
-def _get_shorttitle(root: etree._Element) -> str:
-    head = root.find(".//head", nsmap)
-    summary = root.find(".//summary", nsmap)
-    if head:
-        title = head.title
+    folio = metadata.get_folio(root)
+    height, width, extent, description = metadata.get_description(root)
+    id = _find_id(root)
+    filename = _find_filename(root)
+    creator = metadata.get_creators(root)
+    txts = get_txt_list_from_ms(root, full_id)
+    ppl_raw = root.findall(".//name", nsmap)
+    ppl: list[str] = []
+    if ppl_raw is not None:  # TODO: Refactor
+        for pers in ppl_raw:
+            try:
+                persID = pers.attrib['key']
+                ppl.append(persID)
+            except:
+                pass
     else:
-        title = summary.title
+        log.info(f"{full_id} doesn't have any people living in it. Check!")
+        ppl.append("N/A")
+    ms_x_ppl = [(x, full_id) for x in list(dict.fromkeys(ppl))]
+    ms_x_txts = [(full_id, x) for x in list(dict.fromkeys(txts))]
+    if len(ppl) == 0:
+        log.info(f"{full_id} doesn't have any people living in it. Check!")
+        ppl.append("N/A")
+    log.debug(f"Sucessfully processed {shelfmark}/{full_id}")
+    # if folio > 250:
+    #     print(f"Something is weird with ms {full_id}: Apparently has {folio} folios.")
+    res = (
+        (
+            shelfmark,
+            ms_nickname,
+            country,
+            settlement,
+            repository,
+            origin,
+            date,
+            str(tp),
+            str(ta),
+            str(meandate),
+            str(yearrange),
+            support,
+            str(folio),
+            height,
+            width,
+            extent,
+            description,
+            creator,
+            id,
+            full_id,
+            filename
+        ),
+        ms_x_ppl,
+        ms_x_txts,
+    )
+    if not creator == 'NULL':
+        print(creator)
+    return res
+
+
+def get_txt_list_from_ms(root: etree.Element, msID: str) -> list[str]:
+    txts_raw = root.findall(".//msItem", nsmap)
+    txts: list[str] = []
+    if txts_raw is not None:
+        for txt in txts_raw:
+            good = True
+            try:
+                lvl = txt.attrib["n"]
+                if "." in lvl:
+                    good = False
+            except:
+                pass
+            if good:
+                title_raw = txt.find("title", nsmap)  # TODO: Streamline, should be able to select tags directly /SK
+                if title_raw is not None:
+                    title: str = title_raw.text
+                    if title is not None:
+                        if "\n" in title:
+                            title = "".join(title.splitlines())
+                        title = " ".join(title.split())  # There are excessive spaces in the XML. This gets rid of them /SK
+                        txts.append(title)
+    else:
+        log.info(f"{msID} apparently has no texts. Check if this is correct!")
+        txts.append("N/A")
+    if len(txts) == 0:
+        txts.append("N/A")
+    return txts
+
+
+def _get_shorttitle(root: etree._Element, msID: str) -> str:
+    head = root.find(".//head", root.nsmap)
+    summary = root.find(".//summary", root.nsmap)
+    try:
+        if head is not None:
+            title_raw = head.find("title", root.nsmap)
+            if title_raw is None and summary is not None:
+                title_raw = summary.find("title", root.nsmap)
+        elif summary is not None:
+            title_raw = summary.find("title", root.nsmap)
+        title = title_raw.text
+    except:
+        log.info(f"{msID} has no nickname or it is stored in a weird way")
+        # TODO: Catch weird XML better.
+        title = "N/A"
     try:
         res = title.replace('\n', ' ')
         res = res.replace('\t', ' ')
@@ -78,18 +160,21 @@ def _get_shorttitle(root: etree._Element) -> str:
         return str(title)
 
 
-def make_work(files: Iterable[Path]) -> Iterator[tuple[tuple[Any], set[str], set[str]]]:
+def make_work(files: Iterable[Path]) -> Iterator[tuple[tuple[Any], list[tuple[str, str]], list[tuple[str, str]]]]:
     for f in files:
         ele = load_xml_contents(f)
-        data = parse_xml_content(ele)
-        yield data
+        if ele:
+            data = parse_xml_content(ele)
+            yield data
+        else:
+            pass
 
 
-def unpack_work(files: Iterable[Path]) -> tuple[list[tuple[Any]], list[set[str]], list[set[str]]]:
+def unpack_work(files: Iterable[Path]) -> tuple[list[tuple[Any]], list[list[tuple[str, str]]], list[list[tuple[str, str]]]]:
     x = make_work(files)
     meta_data: list[tuple[Any]] = []
-    ppl: list[set[str]] = []
-    txts: list[set[str]] = []
+    ppl: list[list[tuple[str, str]]] = []
+    txts: list[list[tuple[str, str]]] = []
     for y in x:
         m, p, t = y
         meta_data.append(m)
@@ -117,18 +202,6 @@ def _get_shelfmark(root: etree._Element) -> str:
     except Exception:
         log.exception(f"Faild to load Shelfmark XML:\n\n{root}\n\n")
         return ""
-
-
-# def deliver_handler_data() -> pd.DataFrame:
-#     # Deprecated
-#     """Will check if data is available and return a dataframe to the data handler.
-#     DataFrame has the following columns:
-#     'shelfmark': Shelfmark of the individual MS
-#     'content': The XML of the file as string
-#     """
-#     outDF = load_xml_contents()
-#     return outDF
-# TODO: Clean up
 
 
 def get_ppl_names() -> List[Tuple[str, str, str]]:
@@ -159,78 +232,30 @@ def get_ppl_names() -> List[Tuple[str, str, str]]:
     return res
 
 
-def get_person_mss_matrix(df: pd.DataFrame) -> List[Tuple[int, str, str]]:
-    # CHORE: document
-    res: List[Tuple[int, str, str]] = []
-    idgen = 1
-    for _, row in df.iterrows():
-        ms_id = row['full_id']
-        soup = row['soup']
-        persons = soup.find_all('name', {'type': 'person'})
-        # LATER: note that <handNote scribe="XYZ"/> won't be found like this (see e.g. Steph01-a-da.xml)
-        if persons:
-            for person in persons:
-                pers_id = person.get('key')
-                if pers_id:
-                    curT = (idgen, pers_id, ms_id)
-                    res.append(curT)
-                    idgen += 1  # TODO: idgen not needed, adjust SQL to use autincrement on primary key column
-    return res
-
-
-def get_text_mss_matrix(df: pd.DataFrame) -> List[Tuple[str, str]]:
-    # CHORE: document
-    res: List[Tuple[str, str]] = []
-    for _, row in df.iterrows():
-        ms_id = row['full_id']
-        soup = row['soup']
-        texts = [t[1] for t in metadata._title_from_soup(soup) if t[1]]
-        if texts:
-            for text in texts:
-                if text:
-                    curT = (ms_id, text)
-                    res.append(curT)
-    return res
-
-
-# Helpers
-# -------
-
-
-def _get_mstexts(soup: BeautifulSoup) -> List[str]:
-    msItems = soup.find_all('msContents')
-    curr_titles = []
-    for i in msItems:
-        title = i.title.get_text()
-        curr_titles.append(title)
-
-    return curr_titles
-
-
 # Data extraction
 # ---------------
 
 
-def _find_filename(soup: BeautifulSoup) -> str:
-    id = _find_full_id(soup)
+def _find_filename(root: etree._Element) -> str:
+    id = _find_full_id(root)
     return f"{id}.xml"
 
 
-def _find_id(soup: BeautifulSoup) -> str:
-    id = _find_full_id(soup)
+def _find_id(root: etree._Element) -> str:
+    id = _find_full_id(root)
     if 'da' in id or 'en' in id or 'is' in id:
         id1 = id.rsplit('-', 1)
         id = id1[0]
     return str(id)
 
 
-def _find_full_id(soup: BeautifulSoup) -> str:
-    id_raw = soup.find('msDesc')
+def _find_full_id(root: etree._Element) -> str:
+    id_raw = root.find('.//msDesc', root.nsmap)
     try:
-        id = id_raw.get('xml:id')
+        id = id_raw.attrib['{http://www.w3.org/XML/1998/namespace}id']
     except:
         id = 'ID-ERR-01'
-        log.error("Some soups are to salty. An unkown error occured and an unknown MS could not be souped or strained.")
+        log.error("Some soups are to salty. An unkown error occured.")
     return str(id)
 
 
@@ -240,41 +265,41 @@ def get_ms_info(soup: BeautifulSoup) -> pd.Series:
     # DEPRECATED! This should pretty much all be broken now /SK
     # TODO: Cleanup/purge /SK
 
-    shorttitle = metadata.get_shorttitle(soup)
-    _, country, settlement, repository = metadata.get_msID(soup)
-    origin = metadata.get_origin(soup)
-    date, tp, ta, meandate, yearrange = metadata.get_date(soup)
-    support = metadata.get_support(soup)
-    folio = metadata.get_folio(soup)
-    height, width = metadata.get_dimensions(soup)
-    creator = metadata.get_creators(soup)
-    extent = metadata.get_extent(soup)
-    description = metadata.get_description(soup)
-    id = _find_id(soup)
-    full_id = _find_full_id(soup)
-    filename = _find_filename(soup)
-    log.debug(f"Sucessfully souped and strained {full_id}")
+    # shorttitle = metadata.get_shorttitle(soup)
+    # _, country, settlement, repository = metadata.get_msID(soup)
+    # origin = metadata.get_origin(soup)
+    # date, tp, ta, meandate, yearrange = metadata.get_date(soup)
+    # support = metadata.get_support(soup)
+    # folio = metadata.get_folio(soup)
+    # height, width = metadata.get_dimensions(soup)
+    # creator = metadata.get_creators(soup)
+    # extent = metadata.get_extent(soup)
+    # description = metadata.get_description(soup)
+    # id = _find_id(soup)
+    # full_id = _find_full_id(soup)
+    # filename = _find_filename(soup)
+    # log.debug(f"Sucessfully souped and strained {full_id}")
 
-    return pd.Series({"shorttitle": shorttitle,
-                      "country": country,
-                      "settlement": settlement,
-                      "repository": repository,
-                      "origin": origin,
-                      "date": date,
-                      "terminusPostQuem": tp,
-                      "terminusAnteQuem": ta,
-                      "meandate": meandate,
-                      "yearrange": yearrange,
-                      "support": support,
-                      "folio": folio,
-                      "height": height,
-                      "width": width,
-                      "extent": extent,
-                      "description": description,
-                      "creator": creator,
-                      "id": id,
-                      "full_id": full_id,
-                      "filename": filename})
+    # return pd.Series({"shorttitle": shorttitle,
+    #                   "country": country,
+    #                   "settlement": settlement,
+    #                   "repository": repository,
+    #                   "origin": origin,
+    #                   "date": date,
+    #                   "terminusPostQuem": tp,
+    #                   "terminusAnteQuem": ta,
+    #                   "meandate": meandate,
+    #                   "yearrange": yearrange,
+    #                   "support": support,
+    #                   "folio": folio,
+    #                   "height": height,
+    #                   "width": width,
+    #                   "extent": extent,
+    #                   "description": description,
+    #                   "creator": creator,
+    #                   "id": id,
+    #                   "full_id": full_id,
+    #                   "filename": filename})
 
 
 def efnisordResult(inURL: str) -> List[str]:

@@ -5,6 +5,7 @@ This module handles data and provides convenient and efficient access to it.
 from __future__ import annotations
 
 from pathlib import Path
+import sqlite3
 from typing import Tuple
 
 import pandas as pd
@@ -81,34 +82,6 @@ class DataHandler:
             log.info("Built groups database")
 
     @staticmethod
-    def __build_db() -> None:
-        dbConn = database.create_connection()
-        db_init.db_set_up(dbConn)
-        ppl = tamer.get_ppl_names()
-        db_init.populate_people_table(dbConn, ppl)
-        df = tamer.deliver_handler_data()
-        df['soup'] = df['content'].apply(lambda x: BeautifulSoup(x, 'xml', from_encoding='utf-8'))
-        msinfo = df['soup'].apply(lambda x: tamer.get_ms_info(x))
-        df = df.join(msinfo)
-        log.info("Loaded MS Info for new backend.")
-        pplXmss = tamer.get_person_mss_matrix(df)
-        txtXmss = tamer.get_text_mss_matrix(df)
-        df = df.drop('soup', axis=1)
-        df = df.drop('content', axis=1)
-        db_init.populate_ms_table(dbConn, df)
-        log.debug("Populated MS Table")
-        db_init.populate_junctionPxM(dbConn, pplXmss)
-        report = db_init.PxM_integrity_check(dbConn, pplXmss)
-        if report == True:
-            log.debug("Populated People x Manuscripts junction table.")
-        if report == False:
-            log.error("Data integrity in ppl by MS matrix damaged. Duplicate entries or other types of corruption.")
-        db_init.populate_junctionTxM(conn=dbConn, incoming=txtXmss)
-        dbConn.commit()
-        dbConn.close()
-
-    @staticmethod
-    # TODO: Refactor / move to own module (XML-parsing module?)
     def _build_db() -> None:
         with database.create_connection(":memory:") as db_conn:
             db_init.db_set_up(db_conn)
@@ -117,11 +90,12 @@ class DataHandler:
             files = Path(XML_BASE_PATH).rglob('*.xml')
             ms_meta, msppl, mstxts = tamer.unpack_work(files)
             db_init.populate_ms_table(db_conn, ms_meta)
-            db_init.populate_junctionPxM(db_conn, msppl)
-            db_init.populate_junctionTxM(db_conn, mstxts)
-            # TODO: Finish implementation
-
-        return
+            ms_ppl = [x for y in msppl for x in y if not x[0] == 'N/A']
+            ms_txts = [x for y in mstxts for x in y if not x[1] == "N/A"]
+            db_init.populate_junctionPxM(db_conn, ms_ppl)
+            db_init.populate_junctionTxM(db_conn, ms_txts)
+            with database.create_connection(DATABASE_PATH) as dest_conn:
+                db_conn.backup(dest_conn)
 
     # Instance Methods
     # ================

@@ -9,6 +9,7 @@ import re
 import statistics
 from src.lib import utils
 from lxml import etree
+import src.lib.tamer as tamer
 
 
 log = utils.get_logger(__name__)
@@ -97,8 +98,9 @@ def _get_key(leek: etree._Element) -> Optional[str]:
     Returns:
         str: country name
     """
-    key = leek.attrib['key']
-    if key:
+
+    if leek.attrib['key']:
+        key = leek.attrib['key']
         if key == "IS" or key == "is":
             pretty_key = "Iceland"
         elif key == "DK" or key == "dk":
@@ -129,15 +131,15 @@ def get_origin(root: etree._Element) -> str:
     Returns:
         str: country name
     """
-    origPlace = root.find("origPlace", nsmap)
+    origPlace = root.find(".//origPlace", root.nsmap)
 
     try:
-        pretty_origPlace = _get_key(origPlace)
-        if not pretty_origPlace:
+        try:
+            pretty_origPlace = _get_key(origPlace)
+        except:
             pretty_origPlace = origPlace.text
     except:
         pretty_origPlace = "Origin unknown"
-
     return pretty_origPlace
 
 
@@ -180,7 +182,8 @@ def get_creator(soup: BeautifulSoup, persons: Dict[str, str]) -> str:  # TODO: K
     return pretty_creators
 
 
-def get_creators(soup: BeautifulSoup) -> str:  # TODO: Implement a method that works with foreign keys
+def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that works with foreign keys
+    # TODO: Update docstring /SK
     """Get creator(s). Function for new SQLite backend.
 
     Args:
@@ -190,21 +193,20 @@ def get_creators(soup: BeautifulSoup) -> str:  # TODO: Implement a method that w
     Returns:
         str: creator name(s)
     """
-    hands = soup.handDesc
+    hands = root.findall(".//handDesc", root.nsmap)
     pplIDs: List[str] = []
 
-    if hands:
+    if hands is not None:
         try:
-            creators = hands.find_all('name', {'type': 'person'})
-
-            if not creators:
-                fKey = "NULL"
-                pplIDs.append(fKey)
-            else:
-                for creator in creators:
-                    key = creator.get('key')
-                    if key:
-                        pplIDs.append(key)
+            for hand in hands:
+                potentials = hand.findall(".//name", root.nsmap)
+                for p in potentials:
+                    scribe = p.text
+                    if scribe is not None:
+                        scribe = "".join(scribe.splitlines())
+                        scribe = " ".join(scribe.split())
+                        if scribe is not None:  # Somehow, a few None values made their way into the final db...? /SK
+                            pplIDs.append(scribe)
         except:
             # LATER: find out why, if that happens
             fKey = "NULL"
@@ -213,7 +215,10 @@ def get_creators(soup: BeautifulSoup) -> str:  # TODO: Implement a method that w
         # LATER: find out why, if that happens
         fKey = "NULL"
         pplIDs.append(fKey)
-    res = "; ".join(pplIDs)
+    if len(pplIDs) == 0:
+        fKey = "NULL"
+        pplIDs.append(fKey)
+    res = "; ".join(set(pplIDs))
     return res
 
 
@@ -268,7 +273,7 @@ def get_support(root: etree._Element) -> str:
     Returns:
         str: supporting material
     """
-    supportDesc = root.find('supportDesc', nsmap)
+    supportDesc = root.find('.//supportDesc', root.nsmap)
     if supportDesc:
         support = supportDesc.attrib['material']
         if support == "chart":
@@ -312,24 +317,26 @@ def get_folio(root: etree._Element) -> int:
         int: total of folios
     """
     # TODO: look into this method... can this be streamlined?
-    extent = root.find('extent', nsmap)
+    extent = root.find('.//extent', root.nsmap)
+
     if not extent:
         return 0
     extent_copy = copy.copy(extent)
 
-    dimensions = extent_copy.find('dimensions', nsmap)
+    dimensions = extent_copy.findall('dimensions', root.nsmap)
 
     while dimensions:
-        dimensions.decompose()
+        for d in dimensions:
+            extent_copy.remove(d)
         dimensions = extent_copy.find('dimensions')
 
     locus = extent_copy.find('locus')
 
     while locus:
-        locus.decompose()
+        extent_copy.remove(locus)
         locus = extent_copy.find('locus')
 
-    clean_extent_copy: str = get_cleaned_text(extent_copy)
+    clean_extent_copy: str = extent_copy.text
 
     try:
         copy_no_period = clean_extent_copy.replace('.', '')
@@ -377,7 +384,7 @@ def get_folio(root: etree._Element) -> int:
 
             folio_check: str = str(folio_total)
             if len(folio_check) > 3:
-                name: str = get_tag(soup)  # TODO: Is this acutally still needed?
+                name: str = tamer._find_full_id(root)  # TODO: Is this acutally still needed?
                 log.warning(f"{name}: Attention. Check number of folios.")
             elif folio_total == 0:
                 folio_total = 0
@@ -462,8 +469,9 @@ def _get_length(txt: str) -> int:
     return pretty_length
 
 
-def get_extent(soup: BeautifulSoup) -> str:
+def get_extent(root: etree._Element) -> tuple[int, int, str]:
     """Get extent of manuscript. For qualitative usage.
+        NB! The 'extent' is the measurements of the leaves!
 
     Args:
         soup (BeautifulSoup): BeautifulSoup
@@ -471,42 +479,59 @@ def get_extent(soup: BeautifulSoup) -> str:
     Returns:
         str: qualitative description of manuscript's extent
     """
-    extent: Tag = soup.find('extent')
+    extent = root.find('.//extent', root.nsmap)
 
-    if not extent:
-        return "no dimensions given"
+    if extent is None:
+        return 0, 0, "no dimensions given"
 
     extent_copy = copy.copy(extent)
 
-    dimensions: Tag = extent_copy.find('dimensions')
+    dimensions = extent_copy.find('dimensions', root.nsmap)
+    if dimensions is not None:
+        try:
+            height = dimensions.find("height", root.nsmap)
+            width = dimensions.find("width", root.nsmap)
 
-    try:
-        while dimensions:
+            if height is not None:
+                try:
+                    height_measurements = int(height.text)
+                except:
+                    height_measurements = 0
+            if width is not None:
+                try:
+                    width_measurements = int(width.text)
+                except:
+                    width_measurements = 0
+            try:
+                unit = dimensions.attrib['unit']
+            except:
+                pass
+            try:
+                unit0 = height.attrib['unit']
+                unit1 = width.attrib['unit']
+                if unit0 == unit1:
+                    unit = "mm"
+            except:
+                unit = "mm?"
 
-            height: Tag = dimensions.height
-            width: Tag = dimensions.width
-
-            unit: str = dimensions.get('unit')
-            if not unit:
-                unit = "[mm?]"
-            height.string = height.string + " x"
-            width.string = width.string + " " + unit
-
-            extent_copy.dimensions.unwrap()
-            dimensions = extent_copy.find('dimensions')
-    except Exception:
+            if width_measurements + height_measurements > 0:
+                pretty_extent = f"{height_measurements} x {width_measurements} {unit}"
+            else:
+                pretty_extent = "No dimensions given"
+        except Exception:
+            log.exception("failed building manuscript extent description")
+            return 0, 0, "N/A"
+        if not height:
+            height = 0
+        if not width:
+            width = 0
+        return height_measurements, width_measurements, pretty_extent
+    else:
         log.exception("failed building manuscript extent description")
-        return "N/A"
-
-    pretty_extent: str = get_cleaned_text(extent_copy)
-
-    if not pretty_extent:
-        pretty_extent = "no dimensions given"
-
-    return pretty_extent
+        return 0, 0, "N/A"
 
 
-def get_description(soup: BeautifulSoup) -> str:
+def get_description(root: etree._Element) -> tuple[str, str, str, str]:
     """Summarizes support and dimensions for usage in citavi.
 
     Args:
@@ -515,12 +540,12 @@ def get_description(soup: BeautifulSoup) -> str:
     Returns:
         str: support / dimensions
     """
-    pretty_support = get_support(soup)
-    pretty_extent = get_extent(soup)
+    pretty_support = get_support(root)
+    height, width, pretty_extent = get_extent(root)
 
     pretty_description = pretty_support + " / " + pretty_extent
 
-    return pretty_description
+    return str(height), str(width), pretty_extent, pretty_description
 
 
 def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str, str]:  # TODO: does that make some of the other funtions obsolete?
@@ -557,16 +582,16 @@ def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str, str]:  #
 
 def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
     # TODO: Redesign /SK
-    tag = root.find("origDate", nsmap)
+    tag = root.find(".//origDate", root.nsmap)
     date = ""
     ta = 0
     tp = 0
     meandate = 0
     yearrange = 0
-    if not tag:
+    if tag is None:
         return date, tp, ta, meandate, yearrange
 
-    if tag.attrib["notBefore"] and tag.attrib["notAfter"]:
+    if tag.get("notBefore") is not None and tag.get("notAfter") is not None:
         notBefore = str(tag.attrib["notBefore"])
         notAfter = str(tag.attrib["notAfter"])
 
@@ -585,7 +610,7 @@ def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
         meandate = int(statistics.mean([int(tp), int(ta)]))
         yearrange = int(ta) - int(tp)
 
-    elif tag.attrib["when"]:
+    elif tag.get("when"):
         date = str(tag.attrib["when"])
         normalized_date = date
         if len(normalized_date) > 4:
@@ -595,7 +620,7 @@ def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
         meandate = tp
         yearrange = 0
 
-    elif tag.attrib["from"] and tag.attrib["to"]:
+    elif tag.get("from") and tag.get("to"):
         fr = str(tag.attrib["from"])
         to = str(tag.attrib["to"])
         date = f"{fr}-{to}"
@@ -614,16 +639,29 @@ def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
 
 
 def get_msID(root: etree._Element) -> Tuple[str, str, str]:
-    msID = root.find("msIdentifier", nsmap)
+    msID = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
+
     if not msID:
         return "", "", ""
     else:
-        c = msID.find("country", nsmap)
-        country: str = c.get_text() if c else ""
-        s = msID.find("settlement", nsmap)
-        settlement: str = s.get_text() if s else ""
-        r = msID.find("repository", nsmap)
-        repository: str = r.get_text() if r else ""
+        co = msID.find("country", nsmap)
+        try:
+            country = co.text
+        except:
+            country = ""
+        se = msID.find("settlement", nsmap)
+        # settlement = se.text if se else ""
+        # This should be working. This should result in settlement = se.text. But it doesnt. It ALWAYS fucking results in settlement = ""
+        # WHY? /SK
+        try:
+            settlement = se.text
+        except:
+            settlement = ""
+        re = msID.find("repository", nsmap)
+        try:
+            repository = re.text
+        except:
+            repository = ""
     return country, settlement, repository
 
 
