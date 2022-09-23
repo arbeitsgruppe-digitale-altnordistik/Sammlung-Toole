@@ -1,5 +1,4 @@
 import streamlit as st
-from src.lib import tamer
 from streamlit.components.v1 import html
 
 
@@ -30,14 +29,10 @@ def nav_page(page_name: str, timeout_secs: int = 3) -> None:
     html(nav_script)
 
 
-# LATER: At some point we should consider changing crawling into a background task
-st.title("Advanced Options Menu")
-st.write("Careful! Some of these options can take a long time to complete! Like, a loooong time!")
-st.warning("There will be no confirmation on any of these! Clicking any of the option without thinking first is baaad juju!")
+st.title("Advanced Options")
 
-if st.button("Wipe cache"):
-    tamer._wipe_cache()
-    st.success("Cache is wiped entirely. Please reload the data handler.")
-if st.button("Reload Data Handler"):
+st.warning("You may have to wait for a bit...")
+
+if st.button("Clear Streamlit Cache"):
     st.experimental_singleton.clear()  # type: ignore
     nav_page("")
