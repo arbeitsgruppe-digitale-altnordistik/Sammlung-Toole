@@ -1,9 +1,10 @@
 from uuid import UUID
-from src.gui.gui_utils import get_log, get_handler, get_state
+
+import streamlit as st
+from src.gui.gui_utils import get_handler, get_log, get_state
+from src.lib import metadatahandler
 from src.lib.groups import Group
 from src.lib.stateHandler import Step
-import streamlit as st
-from src.lib import metadatahandler
 from src.lib.utils import SearchOptions
 
 log = get_log()

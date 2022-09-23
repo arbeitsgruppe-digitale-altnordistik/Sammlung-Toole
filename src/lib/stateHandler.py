@@ -1,16 +1,10 @@
 from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Any
+from enum import Enum
 
-import pandas as pd
 from src.lib.utils import SearchOptions
 
 
 class Step:
-    class Handrit_URL(Enum):
-        Preprocessing = auto()
-        Processing = auto()
-        Postprocessing = auto()
 
     class MS_by_Pers(Enum):
         Search_person = 1
@@ -34,15 +28,6 @@ class Step:
         Combine_TXT = 3
         Combine_PPL = 4
         Meta_MSS = 5
-
-    class Work_Groups(Enum):
-        meta_MSS = 1
-
-    def reset(self) -> None:
-        self.browseGroups = Step.Browse_Groups.Browse
-        self.search_mss_by_persons = Step.MS_by_Pers.Search_person
-        self.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
-        self.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
 
     browseGroups: Browse_Groups = Browse_Groups.Browse
     search_mss_by_persons: MS_by_Pers = MS_by_Pers.Search_person
@@ -85,16 +70,6 @@ class SearchState:
 class StateHandler:
 
     def __init__(self) -> None:
-        # TODO: what of that is still in use?
-        self.currentData = pd.DataFrame()
-        self.currentURLs_str: str = ''
-        self.currentURL_list: list[str] = []
-        self.joinMode = 'All'
-        self.didRun = 'dnr'
-        self.CitaviSelect: Any = []
-        self.handrit_step: Step.Handrit_URL = Step.Handrit_URL.Preprocessing
-        self.postStep = ''
-        self.currentCitaviData = pd.DataFrame()
         self.searchState = SearchState()
         self.steps: Step = Step()
 
