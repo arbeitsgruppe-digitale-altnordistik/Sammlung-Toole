@@ -28,29 +28,29 @@ def browse_groups() -> None:
     elif state.steps.browseGroups == Step.Browse_Groups.Combine_MSS:
         __combine_groups(
             header="Combine Manuscript Groups",
-            groups=handler.groups.manuscript_groups
+            groups=handler.get_ms_groups()
         )
     elif state.steps.browseGroups == Step.Browse_Groups.Combine_TXT:
         __combine_groups(
             header="Combine Text Groups",
-            groups=handler.groups.text_groups
+            groups=handler.get_txt_groups()
         )
     elif state.steps.browseGroups == Step.Browse_Groups.Combine_PPL:
         __combine_groups(
             header="Combine Person Groups",
-            groups=handler.groups.person_groups
+            groups=handler.get_ppl_groups()
         )
     elif step == Step.Browse_Groups.Meta_MSS:
         __meta_mss_groups()
 
 
-def __combine_groups(header: str, groups: dict[UUID, Group]) -> None:
+def __combine_groups(header: str, groups: list[Group]) -> None:
     st.header(header)
     if st.button("Back to Overview"):
         state.steps.browseGroups = Step.Browse_Groups.Browse
         st.experimental_rerun()
     st.write("---")
-    sel = __group_selector(groups)
+    sel = __group_selector()
     if len(sel) > 1:
         combMode = __union_selector()
         selComb = __group_combinator(sel, combMode)
@@ -66,28 +66,31 @@ def __combine_groups(header: str, groups: dict[UUID, Group]) -> None:
 
 
 def __step_browse_groups() -> None:
-    groups = handler.groups
+    ms_groups = handler.get_ms_groups()
+    txt_groups = handler.get_txt_groups()
+    ppl_groups = handler.get_ppl_groups()
+
     st.header("Manuscript Groups")
-    mss = [(b.name, f"{len(b.items)} Manuscripts", b.date.strftime('%c')) for _, b in groups.manuscript_groups.items()]
+    mss = [(b.name, f"{len(b.items)} Manuscripts", b.date.strftime('%c')) for b in ms_groups]
     st.table(mss)
-    if len(mss) >= 2 and st.button(COMBINE_GROUPS, key="btn_combine_mss"):
+    if len(mss) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_mss"):
         state.steps.browseGroups = Step.Browse_Groups.Combine_MSS
         st.experimental_rerun()
     if mss and st.button("Get metadata for group(s)"):
         state.steps.browseGroups = Step.Browse_Groups.Meta_MSS
         st.experimental_rerun()
-        # Text Groups
+
     st.header("Text Groups")
-    txt = [(b.name, f"{len(b.items)} Texts", b.date.strftime('%c')) for _, b in groups.text_groups.items()]
+    txt = [(b.name, f"{len(b.items)} Texts", b.date.strftime('%c')) for b in txt_groups]
     st.table(txt)
-    if len(txt) >= 2 and st.button(COMBINE_GROUPS, key="btn_combine_txt"):
+    if len(txt) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_txt"):
         state.steps.browseGroups = Step.Browse_Groups.Combine_TXT
         st.experimental_rerun()
-    # Person Groups
+
     st.header("People Groups")
-    ppl = [(b.name, f"{len(b.items)} People", b.date.strftime('%c')) for _, b in groups.person_groups.items()]
+    ppl = [(b.name, f"{len(b.items)} People", b.date.strftime('%c')) for b in ppl_groups]
     st.table(ppl)
-    if len(ppl) >= 2 and st.button(COMBINE_GROUPS, key="btn_combine_ppl"):
+    if len(ppl) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_ppl"):
         state.steps.browseGroups = Step.Browse_Groups.Combine_PPL
         st.experimental_rerun()
 
@@ -115,13 +118,13 @@ def __meta_mss_groups() -> None:
         st.write("Select one or more groups you want to work with")
 
 
-def __group_selector(groups: dict[UUID, Group] = handler.groups.manuscript_groups) -> list[Group]:
+def __group_selector(groups: list[Group] = handler.get_ms_groups()) -> list[Group]:
     st.write("Select the groups you want to combine.")
     selections: set[UUID] = set()
-    for i, g in enumerate(groups.values()):
+    for i, g in enumerate(groups):
         if st.checkbox(f"{i}: Group name: '{g.name}'", key=str(g.group_id)):
             selections.add(g.group_id)
-    selected_groups = [groups[s] for s in selections]
+    selected_groups = [g for g in groups if g.group_id in selections]
     return selected_groups
 
 
@@ -153,7 +156,7 @@ def __save_merged_group(combo: set[str], mode: SearchOptions, selected_groups: l
     name = st.text_input(label="Select a group name", value=new_name)
     if st.button("Save Combined Group"):
         new_group = Group(group_type=group_type, name=name, items=combo)
-        handler.groups.set(new_group)
+        handler.put_group(new_group)
         state.steps.browseGroups = Step.Browse_Groups.Browse
         st.experimental_rerun()
 
