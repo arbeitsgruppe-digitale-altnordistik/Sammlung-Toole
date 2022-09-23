@@ -1,12 +1,7 @@
-class Texts:
-    class SearchPage:
-        instructions = """
-How to use this function:
-Insert any handrit result URLs in the box below, separated by __comma__.
-Processing can take several seconds.
-"""
-    class HowToPage:
-        info = """
+import markdown
+import streamlit as st
+
+how_to = """
 # Welcome to Ultima Toole!
 
 ## Contents
@@ -55,3 +50,9 @@ license terms.
 
 
 """
+
+st.markdown(how_to)
+if st.button("Show detailed help on Citavi import/export"):
+    with open('docs/CITAVI-README.md', 'r', encoding='utf-8') as citread:
+        helpme = markdown.markdown(citread.read())
+    st.markdown(helpme, unsafe_allow_html=True)
