@@ -6,7 +6,6 @@ import streamlit as st
 from src.lib import metadatahandler
 from src.lib.utils import SearchOptions
 
-COMBINE_GROUPS = "Combine existing groups to a new group"
 
 log = get_log()
 state = get_state()
