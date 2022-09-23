@@ -50,7 +50,7 @@ def __combine_groups(header: str, groups: list[Group]) -> None:
         state.steps.browseGroups = Step.Browse_Groups.Browse
         st.experimental_rerun()
     st.write("---")
-    sel = __group_selector()
+    sel = __group_selector(groups)
     if len(sel) > 1:
         combMode = __union_selector()
         selComb = __group_combinator(sel, combMode)
