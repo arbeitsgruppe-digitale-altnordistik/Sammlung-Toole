@@ -5,7 +5,7 @@ import streamlit as st
 from st_aggrid import AgGrid as ag
 
 from src.lib import utils
-from src.lib.stateHandler import StateHandler
+from src.lib.datahandler import DataHandler
 
 
 def citavi_export(metadata: pd.DataFrame) -> None:
@@ -19,15 +19,14 @@ def plot_date_scatter(metadata: pd.DataFrame) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-def process_ms_results(state: StateHandler, mss: list[str]) -> None:
-    handler = state.data_handler
+def process_ms_results(handler: DataHandler, mss: list[str]) -> None:
     try:
         meta = handler.search_manuscript_data(mss).reset_index(drop=True)
         with st.expander("Show results as table"):
             ag(meta)
-    except:
+    except Exception as e:
         meta = None
-        print('Uh-oh')  # TODO: Proper handling of empty results from AND queries.
+        print('Uh-oh:', e)  # TODO: Proper handling of empty results from AND queries.
     if isinstance(meta, pd.DataFrame):
         with st.expander("Export results to Citavi"):
             citavi_export(meta)

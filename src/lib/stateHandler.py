@@ -1,18 +1,10 @@
 from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Any
+from enum import Enum
 
-import pandas as pd
-
-from src.lib.datahandler import DataHandler
 from src.lib.utils import SearchOptions
 
 
 class Step:
-    class Handrit_URL(Enum):
-        Preprocessing = auto()
-        Processing = auto()
-        Postprocessing = auto()
 
     class MS_by_Pers(Enum):
         Search_person = 1
@@ -36,15 +28,6 @@ class Step:
         Combine_TXT = 3
         Combine_PPL = 4
         Meta_MSS = 5
-
-    class Work_Groups(Enum):
-        meta_MSS = 1
-
-    def reset(self) -> None:
-        self.browseGroups = Step.Browse_Groups.Browse
-        self.search_mss_by_persons = Step.MS_by_Pers.Search_person
-        self.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
-        self.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
 
     browseGroups: Browse_Groups = Browse_Groups.Browse
     search_mss_by_persons: MS_by_Pers = MS_by_Pers.Search_person
@@ -87,15 +70,33 @@ class SearchState:
 class StateHandler:
 
     def __init__(self) -> None:
-        self.currentData = pd.DataFrame()
-        self.currentURLs_str: str = ''
-        self.currentURL_list: list[str] = []
-        self.joinMode = 'All'
-        self.didRun = 'dnr'
-        self.CitaviSelect: Any = []
-        self.handrit_step: Step.Handrit_URL = Step.Handrit_URL.Preprocessing
-        self.postStep = ''
-        self.currentCitaviData = pd.DataFrame()
         self.searchState = SearchState()
         self.steps: Step = Step()
-        self.data_handler: DataHandler = None  # type: ignore
+
+    def store_ms_by_person_search_state(self, mss: list[str], ppl: list[str], mode: SearchOptions) -> None:
+        """Update the state after searching manuscripts by people"""
+        self.searchState.ms_by_pers.mss = mss
+        self.searchState.ms_by_pers.ppl = ppl
+        self.searchState.ms_by_pers.mode = mode
+        self.steps.search_mss_by_persons = Step.MS_by_Pers.Store_Results
+
+    def store_ppl_by_ms_search_state(self, ppl: list[str], mss: list[str], mode: SearchOptions) -> None:
+        """Update the state after searching people by manuscripts"""
+        self.searchState.pers_by_ms.ppl = ppl
+        self.searchState.pers_by_ms.mss = mss
+        self.searchState.pers_by_ms.mode = mode
+        self.steps.search_ppl_by_mss = Step.Pers_by_Ms.Store_Results
+
+    def store_ms_by_txt_search_state(self, mss: list[str], txt: list[str], mode: SearchOptions) -> None:
+        """Update the state after searching manuscripts by texts"""
+        self.searchState.ms_by_txt.mss = mss
+        self.searchState.ms_by_txt.txt = txt
+        self.searchState.ms_by_txt.mode = mode
+        self.steps.search_mss_by_txt = Step.MS_by_Txt.Store_Results
+
+    def store_txt_by_ms_search_state(self, txt: list[str], mss: list[str], mode: SearchOptions) -> None:
+        """Update the state after searching texts by manuscripts"""
+        self.searchState.txt_by_ms.txt = txt
+        self.searchState.txt_by_ms.mss = mss
+        self.searchState.txt_by_ms.mode = mode
+        self.steps.search_txt_by_mss = Step.Txt_by_Ms.Store_Results
