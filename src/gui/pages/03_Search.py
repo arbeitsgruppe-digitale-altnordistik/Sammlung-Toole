@@ -122,13 +122,16 @@ def __search_mss_by_person_step_save_results() -> None:
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.ManuscriptGroup, name, set(results))
                 # log.debug(f"Should be saving group: {grp}")
-                handler.groups.set(grp)
+                handler.put_group(grp)
                 state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                 st.experimental_rerun()
-    if handler.groups.manuscript_groups:
+    groups = handler.get_ms_groups()
+    if groups:
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
-                previous_name = st.radio("Select a group", handler.groups.get_names(GroupType.ManuscriptGroup))
+                group_lookup = {g.name: g for g in groups}
+                group_names = list(group_lookup.keys())
+                previous_name: str = st.radio("Select a group", group_names)
                 modes = {
                     'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
                     'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
@@ -137,7 +140,7 @@ def __search_mss_by_person_step_save_results() -> None:
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for <{ppl} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
-                    previous_group = handler.groups.get_group_by_name(previous_name, GroupType.ManuscriptGroup)
+                    previous_group = group_lookup[previous_name]
                     if previous_group:
                         previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
                         new_name = f'Search results for <{ppl} {mode.value} ({previous_query})>'
@@ -146,7 +149,7 @@ def __search_mss_by_person_step_save_results() -> None:
                         else:
                             new_items = previous_group.items.union(set(results))
                         new_group = Group(previous_group.group_type,  new_name, new_items)
-                        handler.groups.set(new_group)
+                        handler.put_group(new_group)
                         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
                         st.experimental_rerun()
 
@@ -211,13 +214,16 @@ def __search_person_by_mss_step_save_results() -> None:
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.PersonGroup, name, set(results))
                 # log.debug(f"Should be saving group: {grp}")
-                handler.groups.set(grp)
+                handler.put_group(grp)
                 state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
                 st.experimental_rerun()
-    if handler.groups.person_groups:
+    groups = handler.get_ppl_groups()
+    if groups:
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
-                previous_name = st.radio("Select a group", handler.groups.get_names(GroupType.PersonGroup))
+                group_lookup = {g.name: g for g in groups}
+                group_names = list(group_lookup.keys())
+                previous_name = st.radio("Select a group", group_names)
                 modes = {
                     'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
                     'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
@@ -226,7 +232,7 @@ def __search_person_by_mss_step_save_results() -> None:
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
-                    previous_group = handler.groups.get_group_by_name(previous_name, GroupType.PersonGroup)
+                    previous_group = group_lookup[previous_name]
                     if previous_group:
                         previous_query = previous_name.removeprefix("Search results for<").removesuffix(">")
                         new_name = f'Search results for <{mss} {mode.value} ({previous_query})>'
@@ -235,7 +241,7 @@ def __search_person_by_mss_step_save_results() -> None:
                         else:
                             new_items = previous_group.items.union(set(results))
                         new_group = Group(previous_group.group_type,  new_name, new_items)
-                        handler.groups.set(new_group)
+                        handler.put_group(new_group)
                         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
                         st.experimental_rerun()
     # TODO: What now?
@@ -301,14 +307,17 @@ def __search_mss_by_text_step_save_results() -> None:
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.ManuscriptGroup, name, set(results))
                 # log.debug(f"Should be saving group: {grp}")
-                handler.groups.set(grp)
+                handler.put_group(grp)
                 state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                 st.experimental_rerun()
     metadatahandler.process_ms_results(handler, results)
-    if handler.groups.manuscript_groups:
+    groups = handler.get_ms_groups()
+    if groups:
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
-                previous_name = st.radio("Select a group", handler.groups.get_names(GroupType.ManuscriptGroup))
+                group_lookup = {g.name: g for g in groups}
+                group_names = list(group_lookup.keys())
+                previous_name = st.radio("Select a group", group_names)
                 modes = {
                     'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
                     'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
@@ -317,7 +326,7 @@ def __search_mss_by_text_step_save_results() -> None:
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for <{txt} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
-                    previous_group = handler.groups.get_group_by_name(previous_name, GroupType.ManuscriptGroup)
+                    previous_group = group_lookup[previous_name]
                     if previous_group:
                         previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
                         new_name = f'Search results for <{txt} {mode.value} ({previous_query})>'
@@ -326,7 +335,7 @@ def __search_mss_by_text_step_save_results() -> None:
                         else:
                             new_items = previous_group.items.union(set(results))
                         new_group = Group(previous_group.group_type,  new_name, new_items)
-                        handler.groups.set(new_group)
+                        handler.put_group(new_group)
                         state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
                         st.experimental_rerun()
 
@@ -393,13 +402,16 @@ def __search_text_by_mss_step_save_results() -> None:
             if st.form_submit_button("Save"):
                 grp = Group(GroupType.TextGroup, name, set(results))
                 # log.debug(f"Should be saving group: {grp}")
-                handler.groups.set(grp)
+                handler.put_group(grp)
                 state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
                 st.experimental_rerun()
-    if handler.groups.text_groups:
+    groups = handler.get_txt_groups()
+    if groups:
         with st.expander("Add results to existing group", False):
             with st.form("add_to_group"):
-                previous_name = st.radio("Select a group", handler.groups.get_names(GroupType.TextGroup))
+                group_lookup = {g.name: g for g in groups}
+                group_names = list(group_lookup.keys())
+                previous_name = st.radio("Select a group", group_names)
                 modes = {
                     'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
                     'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
@@ -408,7 +420,7 @@ def __search_text_by_mss_step_save_results() -> None:
                 mode = modes[mode_selection]
                 name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
-                    previous_group = handler.groups.get_group_by_name(previous_name, GroupType.PersonGroup)
+                    previous_group = group_lookup[previous_name]
                     if previous_group:
                         previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
                         new_name = f'Search results for <{mss} {mode.value} ({previous_query})>'
@@ -417,7 +429,7 @@ def __search_text_by_mss_step_save_results() -> None:
                         else:
                             new_items = previous_group.items.union(set(results))
                         new_group = Group(previous_group.group_type,  new_name, new_items)
-                        handler.groups.set(new_group)
+                        handler.put_group(new_group)
                         state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
                         st.experimental_rerun()
     # TODO: visualization/citavi-export of result

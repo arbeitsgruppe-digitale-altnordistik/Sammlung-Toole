@@ -146,3 +146,5 @@ data/funnel/Manuscripts-master.zip
 .handlerstate.json
 activate/
 *.DS_Store
+
+groups.db
