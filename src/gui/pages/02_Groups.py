@@ -6,7 +6,6 @@ import streamlit as st
 from src.lib import metadatahandler
 from src.lib.utils import SearchOptions
 
-
 log = get_log()
 state = get_state()
 handler = get_handler()
@@ -65,6 +64,7 @@ def __combine_groups(header: str, groups: list[Group]) -> None:
 
 
 def __step_browse_groups() -> None:
+    combine_groups_str = "Combine existing groups to a new group"
     ms_groups = handler.get_ms_groups()
     txt_groups = handler.get_txt_groups()
     ppl_groups = handler.get_ppl_groups()
@@ -72,7 +72,7 @@ def __step_browse_groups() -> None:
     st.header("Manuscript Groups")
     mss = [(b.name, f"{len(b.items)} Manuscripts", b.date.strftime('%c')) for b in ms_groups]
     st.table(mss)
-    if len(mss) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_mss"):
+    if len(mss) >= 2 and st.button(combine_groups_str, key="btn_combine_mss"):
         state.steps.browseGroups = Step.Browse_Groups.Combine_MSS
         st.experimental_rerun()
     if mss and st.button("Get metadata for group(s)"):
@@ -82,14 +82,14 @@ def __step_browse_groups() -> None:
     st.header("Text Groups")
     txt = [(b.name, f"{len(b.items)} Texts", b.date.strftime('%c')) for b in txt_groups]
     st.table(txt)
-    if len(txt) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_txt"):
+    if len(txt) >= 2 and st.button(combine_groups_str, key="btn_combine_txt"):
         state.steps.browseGroups = Step.Browse_Groups.Combine_TXT
         st.experimental_rerun()
 
     st.header("People Groups")
     ppl = [(b.name, f"{len(b.items)} People", b.date.strftime('%c')) for b in ppl_groups]
     st.table(ppl)
-    if len(ppl) >= 2 and st.button("Combine existing groups to a new group", key="btn_combine_ppl"):
+    if len(ppl) >= 2 and st.button(combine_groups_str, key="btn_combine_ppl"):
         state.steps.browseGroups = Step.Browse_Groups.Combine_PPL
         st.experimental_rerun()
 

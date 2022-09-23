@@ -71,9 +71,7 @@ def manuscripts_by_persons() -> None:
     """
     if state.steps.search_mss_by_persons == Step.MS_by_Pers.Search_person:
         __search_mss_by_person_step_search()
-        print("Initial search step")
     else:
-        print("Got some results, trying to display them:")
         __search_mss_by_person_step_save_results()
 
 
@@ -81,23 +79,20 @@ def __search_mss_by_person_step_search() -> None:
     """
     Step 1 of this search: Select person(s).
     """
-    with st.form("search_ms_by_person"):
-        st.subheader("Select Person(s)")
-        modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                 'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', list(modes.keys()), 1)
-        mode = modes[mode_selection]
-        ppl = st.multiselect('Select Person', list(handler.person_names.keys()), format_func=lambda x: f"{handler.person_names[x]} ({x})")
-        if st.form_submit_button("Search Manuscripts"):
-            log.debug(f'Search Mode: {mode}')
-            log.debug(f'selected people: {ppl}')
-            with st.spinner('Searching...'):
-                res = handler.search_manuscripts_related_to_persons(ppl, mode)
-                state.searchState.ms_by_pers.mss = res
-                state.searchState.ms_by_pers.ppl = ppl
-                state.searchState.ms_by_pers.mode = mode
-            state.steps.search_mss_by_persons = Step.MS_by_Pers.Store_Results
-            st.experimental_rerun()
+    def search(ppl: list[str], mode: SearchOptions) -> None:
+        with st.spinner('Searching...'):
+            res = handler.search_manuscripts_related_to_persons(ppl, mode)
+            state.searchState.ms_by_pers.mss = res
+            state.searchState.ms_by_pers.ppl = ppl
+            state.searchState.ms_by_pers.mode = mode
+        state.steps.search_mss_by_persons = Step.MS_by_Pers.Store_Results
+    __search_step(
+        what_sg="Person",
+        what_pl="People",
+        selection_keys=list(handler.person_names.keys()),
+        search_func=search,
+        format_func=lambda x: f"{handler.person_names[x]} ({x})",
+    )
 
 
 def __search_mss_by_person_step_save_results() -> None:
@@ -132,12 +127,7 @@ def __search_mss_by_person_step_save_results() -> None:
                 group_lookup = {g.name: g for g in groups}
                 group_names = list(group_lookup.keys())
                 previous_name: str = st.radio("Select a group", group_names)
-                modes = {
-                    'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
-                    'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                }
-                mode_selection = st.radio('Search mode', list(modes.keys()))
-                mode = modes[mode_selection]
+                mode = __ask_for_search_mode()
                 name = st.text_input('Group Name', f'Search results for <{ppl} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
                     previous_group = group_lookup[previous_name]
@@ -173,23 +163,20 @@ def __search_person_by_mss_step_search() -> None:
     """
     Step 1 of this search: Select manuscript(s).
     """
-    with st.form("search_person_by_ms"):
-        st.subheader("Select Manuscript(s)")
-        modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                 'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', list(modes.keys()), index=1)
-        mode = modes[mode_selection]
-        mss = st.multiselect('Select Manuscript', list(handler.manuscripts.keys()), format_func=lambda x: f"{' / '.join(handler.manuscripts[x])} ({x})")
-        if st.form_submit_button("Search People"):
-            log.debug(f'Search Mode: {mode}')
-            log.debug(f'selected manuscripts: {mss}')
-            with st.spinner('Searching...'):
-                res = handler.search_persons_related_to_manuscripts(mss, mode)
-                state.searchState.pers_by_ms.ppl = res
-                state.searchState.pers_by_ms.mss = mss
-                state.searchState.pers_by_ms.mode = mode
-            state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Store_Results
-            st.experimental_rerun()
+    def search(mss: list[str], mode: SearchOptions) -> None:
+        with st.spinner('Searching...'):
+            res = handler.search_persons_related_to_manuscripts(mss, mode)
+            state.searchState.pers_by_ms.ppl = res
+            state.searchState.pers_by_ms.mss = mss
+            state.searchState.pers_by_ms.mode = mode
+        state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Store_Results
+    __search_step(
+        what_sg="Manuscript",
+        what_pl="Manuscripts",
+        selection_keys=list(handler.manuscripts.keys()),
+        search_func=search,
+        format_func=lambda x: f"{' / '.join(handler.manuscripts[x])} ({x})",
+    )
 
 
 def __search_person_by_mss_step_save_results() -> None:
@@ -224,12 +211,7 @@ def __search_person_by_mss_step_save_results() -> None:
                 group_lookup = {g.name: g for g in groups}
                 group_names = list(group_lookup.keys())
                 previous_name = st.radio("Select a group", group_names)
-                modes = {
-                    'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
-                    'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                }
-                mode_selection = st.radio('Search mode', list(modes.keys()))
-                mode = modes[mode_selection]
+                mode = __ask_for_search_mode()
                 name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
                     previous_group = group_lookup[previous_name]
@@ -266,24 +248,19 @@ def __search_mss_by_text_step_search() -> None:
     """
     Step 1 of this search: Select text(s).
     """
-    with st.form("search_ms_by_text"):
-        st.subheader("Select Text(s)")
-        modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                 'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', list(modes.keys()), 1)
-        mode = modes[mode_selection]
-        txt = st.multiselect('Select Text', handler.texts)
-        # LATER: find format function to make it pretty
-        if st.form_submit_button("Search Manuscripts"):
-            log.debug(f'Search Mode: {mode}')
-            log.debug(f'selected people: {txt}')
-            with st.spinner('Searching...'):
-                res = handler.search_manuscripts_containing_texts(txt, mode)
-                state.searchState.ms_by_txt.mss = res
-                state.searchState.ms_by_txt.txt = txt
-                state.searchState.ms_by_txt.mode = mode
-            state.steps.search_mss_by_txt = Step.MS_by_Txt.Store_Results
-            st.experimental_rerun()
+    def search(txt: list[str], mode: SearchOptions) -> None:
+        with st.spinner('Searching...'):
+            res = handler.search_manuscripts_containing_texts(txt, mode)
+            state.searchState.ms_by_txt.mss = res
+            state.searchState.ms_by_txt.txt = txt
+            state.searchState.ms_by_txt.mode = mode
+        state.steps.search_mss_by_txt = Step.MS_by_Txt.Store_Results
+    __search_step(
+        what_sg="Text",
+        what_pl="Texts",
+        selection_keys=list(handler.texts),
+        search_func=search
+    )
 
 
 def __search_mss_by_text_step_save_results() -> None:
@@ -318,12 +295,7 @@ def __search_mss_by_text_step_save_results() -> None:
                 group_lookup = {g.name: g for g in groups}
                 group_names = list(group_lookup.keys())
                 previous_name = st.radio("Select a group", group_names)
-                modes = {
-                    'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
-                    'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                }
-                mode_selection = st.radio('Search mode', list(modes.keys()))
-                mode = modes[mode_selection]
+                mode = __ask_for_search_mode()
                 name = st.text_input('Group Name', f'Search results for <{txt} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
                     previous_group = group_lookup[previous_name]
@@ -359,23 +331,20 @@ def __search_text_by_mss_step_search() -> None:
     """
     Step 1 of this search: Select manuscript(s).
     """
-    with st.form("search_text_by_ms"):
-        st.subheader("Select Manuscript(s)")
-        modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                 'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-        mode_selection = st.radio('Search mode', list(modes.keys()), 1)
-        mode = modes[mode_selection]
-        mss = st.multiselect('Select Manuscript', list(handler.manuscripts.keys()), format_func=lambda x: f"{' / '.join(handler.manuscripts[x])} ({x})")
-        if st.form_submit_button("Search Texts"):
-            log.debug(f'Search Mode: {mode}')
-            log.debug(f'selected manuscripts: {mss}')
-            with st.spinner('Searching...'):
-                res = handler.search_texts_contained_by_manuscripts(mss, mode)
-                state.searchState.txt_by_ms.txt = res
-                state.searchState.txt_by_ms.mss = mss
-                state.searchState.txt_by_ms.mode = mode
-            state.steps.search_txt_by_mss = Step.Txt_by_Ms.Store_Results
-            st.experimental_rerun()
+    def search(mss: list[str], mode: SearchOptions) -> None:
+        with st.spinner('Searching...'):
+            res = handler.search_texts_contained_by_manuscripts(mss, mode)
+            state.searchState.txt_by_ms.txt = res
+            state.searchState.txt_by_ms.mss = mss
+            state.searchState.txt_by_ms.mode = mode
+        state.steps.search_txt_by_mss = Step.Txt_by_Ms.Store_Results
+    __search_step(
+        what_sg="Text",
+        what_pl="Texts",
+        selection_keys=list(handler.manuscripts.keys()),
+        search_func=search,
+        format_func=lambda x: f"{' / '.join(handler.manuscripts[x])} ({x})",
+    )
 
 
 def __search_text_by_mss_step_save_results() -> None:
@@ -412,12 +381,7 @@ def __search_text_by_mss_step_save_results() -> None:
                 group_lookup = {g.name: g for g in groups}
                 group_names = list(group_lookup.keys())
                 previous_name = st.radio("Select a group", group_names)
-                modes = {
-                    'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE,
-                    'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-                }
-                mode_selection = st.radio('Search mode', list(modes.keys()))
-                mode = modes[mode_selection]
+                mode = __ask_for_search_mode()
                 name = st.text_input('Group Name', f'Search results for <{mss} AND/OR ([PREVIOUS_QUERY])>')
                 if st.form_submit_button("Save"):
                     previous_group = group_lookup[previous_name]
@@ -433,6 +397,34 @@ def __search_text_by_mss_step_save_results() -> None:
                         state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
                         st.experimental_rerun()
     # TODO: visualization/citavi-export of result
+
+
+# helper functions
+
+def __search_step(
+    what_sg: str,
+    what_pl: str,
+    selection_keys: list[str],
+    search_func: Callable[[list[str], SearchOptions], None],
+    format_func: Callable[[str], str] = str,
+):
+    # TODO: document!
+    with st.form(f"search_ms_by_{what_sg}"):
+        st.subheader(f"Select {what_sg}(s)")
+        mode = __ask_for_search_mode()
+        selection = st.multiselect(f'Select {what_sg}', selection_keys, format_func=format_func)
+        if st.form_submit_button(f"Search {what_pl}"):
+            log.debug(f'Search Mode: {mode}')
+            log.debug(f'selection: {selection}')
+            search_func(selection, mode)
+            st.experimental_rerun()
+
+
+def __ask_for_search_mode() -> SearchOptions:
+    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
+             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', list(modes.keys()), 1)
+    return modes[mode_selection]
 
 
 search_page()
