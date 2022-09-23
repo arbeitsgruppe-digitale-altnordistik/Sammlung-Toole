@@ -82,7 +82,7 @@ def __search_mss_by_person_step_search() -> None:
     def search(ppl: list[str], mode: SearchOptions) -> None:
         with st.spinner('Searching...'):
             res = handler.search_manuscripts_related_to_persons(ppl, mode)
-            state.searchState.ms_by_pers.mss = res
+            state.searchState.ms_by_pers.mss = res  # TODO: extract to method in state
             state.searchState.ms_by_pers.ppl = ppl
             state.searchState.ms_by_pers.mode = mode
         state.steps.search_mss_by_persons = Step.MS_by_Pers.Store_Results

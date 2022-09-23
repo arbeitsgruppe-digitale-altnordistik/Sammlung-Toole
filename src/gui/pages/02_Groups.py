@@ -50,15 +50,15 @@ def __combine_groups(header: str, groups: list[Group]) -> None:
     st.write("---")
     sel = __group_selector(groups)
     if len(sel) > 1:
-        combMode = __union_selector()
-        selComb = __group_combinator(sel, combMode)
-        if not selComb:
+        combination_mode = __union_selector()
+        selected_combinator = __group_combinator(sel, combination_mode)
+        if not selected_combinator:
             st.write("0 results for selected criteria. Tip: Try OR instead of AND")
         else:
-            res = selComb
+            res = selected_combinator
             st.write(f"Found {len(res)} items to combine to a new group")
             with st.expander("Create new group"):
-                __save_merged_group(combo=res, mode=combMode, selected_groups=sel)
+                __save_merged_group(combo=res, mode=combination_mode, selected_groups=sel)
     else:
         st.write("Select two or more groups you want to combine")
 
@@ -101,12 +101,12 @@ def __meta_mss_groups() -> None:
     if sel:
         res = None
         if len(sel) > 1:
-            combMode = __union_selector()
-            selComb = __group_combinator(sel, combMode)
-            if not selComb:
+            combination_mode = __union_selector()
+            selected_combinator = __group_combinator(sel, combination_mode)
+            if not selected_combinator:
                 st.write("No manuscripts for selected criteria. Tip: Try OR instead of AND")
             else:
-                res = list(selComb)
+                res = list(selected_combinator)
         elif len(sel) == 1:
             res = list(sel[0].items)
         if res:
