@@ -85,6 +85,7 @@ class SearchState:
 class StateHandler:
 
     def __init__(self) -> None:
+        # TODO: what of that is still in use?
         self.currentData = pd.DataFrame()
         self.currentURLs_str: str = ''
         self.currentURL_list: list[str] = []
@@ -96,3 +97,31 @@ class StateHandler:
         self.currentCitaviData = pd.DataFrame()
         self.searchState = SearchState()
         self.steps: Step = Step()
+
+    def store_ms_by_person_search_state(self, mss: list[str], ppl: list[str], mode: SearchOptions) -> None:
+        """Update the state after searching manuscripts by people"""
+        self.searchState.ms_by_pers.mss = mss
+        self.searchState.ms_by_pers.ppl = ppl
+        self.searchState.ms_by_pers.mode = mode
+        self.steps.search_mss_by_persons = Step.MS_by_Pers.Store_Results
+
+    def store_ppl_by_ms_search_state(self, ppl: list[str], mss: list[str], mode: SearchOptions) -> None:
+        """Update the state after searching people by manuscripts"""
+        self.searchState.pers_by_ms.ppl = ppl
+        self.searchState.pers_by_ms.mss = mss
+        self.searchState.pers_by_ms.mode = mode
+        self.steps.search_ppl_by_mss = Step.Pers_by_Ms.Store_Results
+
+    def store_ms_by_txt_search_state(self, mss: list[str], txt: list[str], mode: SearchOptions) -> None:
+        """Update the state after searching manuscripts by texts"""
+        self.searchState.ms_by_txt.mss = mss
+        self.searchState.ms_by_txt.txt = txt
+        self.searchState.ms_by_txt.mode = mode
+        self.steps.search_mss_by_txt = Step.MS_by_Txt.Store_Results
+
+    def store_txt_by_ms_search_state(self, txt: list[str], mss: list[str], mode: SearchOptions) -> None:
+        """Update the state after searching texts by manuscripts"""
+        self.searchState.txt_by_ms.txt = txt
+        self.searchState.txt_by_ms.mss = mss
+        self.searchState.txt_by_ms.mode = mode
+        self.steps.search_txt_by_mss = Step.Txt_by_Ms.Store_Results
