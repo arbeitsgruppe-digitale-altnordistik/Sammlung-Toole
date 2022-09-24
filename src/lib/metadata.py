@@ -101,17 +101,18 @@ def _get_key(leek: etree._Element) -> Optional[str]:
 
     if leek.attrib['key']:
         key = leek.attrib['key']
-        if key == "IS" or key == "is":
+        key = key.lower()
+        if key == "is":
             pretty_key = "Iceland"
-        elif key == "DK" or key == "dk":
+        elif key == "dk":
             pretty_key = "Denmark"
-        elif key == "FO" or key == "fo":
+        elif key == "fo":
             pretty_key = "Faroe Islands"
-        elif key == "NO" or key == "no":
+        elif key == "no":
             pretty_key = "Norway"
-        elif key == "SE" or key == "se":
+        elif key == "se":
             pretty_key = "Sweden"
-        elif key == "KA" or key == "ka":
+        elif key == "ka":
             pretty_key = "Canada"
         else:
             pretty_key = "!! unknown country key"

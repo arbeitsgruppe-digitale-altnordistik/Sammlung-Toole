@@ -74,7 +74,7 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
 
     Args:
         conn (sqlite.Connection): DB connection object
-        incoming (List[Tuple[str, str, str]]): First name, last name, and ID of persons to be stored
+        incoming (List[Tuple[str, str, str]]): handritID, first name, last name of persons to be stored
     '''
     curse = conn.cursor()
     curse.executemany('''INSERT OR IGNORE INTO people VALUES (?, ?, ?)''', incoming)

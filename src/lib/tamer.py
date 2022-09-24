@@ -227,7 +227,7 @@ def get_ppl_names() -> List[Tuple[str, str, str]]:
         if not firstName and not lastName:
             if name_tag.text:
                 lastName = name_tag.text
-        currPers = (firstName, lastName, id_)
+        currPers = (id_, firstName, lastName)
         res.append(currPers)
     return res
 
