@@ -557,18 +557,18 @@ def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
     return date, tp, ta, meandate, yearrange
 
 
-def get_msID(root: etree._Element) -> Tuple[str, str, str]:
-    msID = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
+def get_ms_id(root: etree._Element) -> Tuple[str, str, str]:
+    ms_id = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
 
-    if not msID:
+    if not ms_id:
         return "", "", ""
     else:
-        co = msID.find("country", nsmap)
+        co = ms_id.find("country", nsmap)
         try:
             country = co.text
         except:
             country = ""
-        se = msID.find("settlement", nsmap)
+        se = ms_id.find("settlement", nsmap)
         # settlement = se.text if se else ""
         # This should be working. This should result in settlement = se.text. But it doesnt. It ALWAYS fucking results in settlement = ""
         # WHY? /SK
@@ -576,7 +576,7 @@ def get_msID(root: etree._Element) -> Tuple[str, str, str]:
             settlement = se.text
         except:
             settlement = ""
-        re = msID.find("repository", nsmap)
+        re = ms_id.find("repository", nsmap)
         try:
             repository = re.text
         except:

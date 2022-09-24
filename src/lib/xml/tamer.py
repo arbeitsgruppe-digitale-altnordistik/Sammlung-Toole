@@ -16,20 +16,7 @@ nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998
 
 # Data preparation
 # ----------------
-"""These functions are used to load relevant data into the data handler. All data the handler uses on
-initialization should come from here."""
-# TODO: Update doc string
-
-
-def __load_xml_contents() -> pd.DataFrame:
-    # Deprecated
-    outDF = pd.DataFrame(columns=['shelfmark', 'content'])
-    for individual_xml_file in Path(XML_BASE_PATH).rglob('*.xml'):
-        log.debug(f'Loading: {str(individual_xml_file)}')
-        file_contents = _load_xml_file(str(individual_xml_file))
-        shelfmark = _get_shelfmark(file_contents)
-        outDF = outDF.append({'shelfmark': shelfmark, 'content': file_contents}, ignore_index=True)
-    return outDF
+"""These functions are used to load relevant data into the SQLite database."""
 
 
 def load_xml_contents(path: Path) -> etree._Element:
@@ -37,7 +24,7 @@ def load_xml_contents(path: Path) -> etree._Element:
         tree: etree._ElementTree = etree.parse(path)
         root = tree.getroot()
         return root
-    except:
+    except Exception:
         log.error(f"{path}: Broken XML!")
 
 
@@ -45,7 +32,7 @@ def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], list[tuple[str,
     shelfmark = _get_shelfmark(root)
     full_id = _find_full_id(root)
     ms_nickname = _get_shorttitle(root, full_id)
-    country, settlement, repository = metadata.get_msID(root)
+    country, settlement, repository = metadata.get_ms_id(root)
     origin = metadata.get_origin(root)
     date, tp, ta, meandate, yearrange = metadata.get_date(root)
     support = metadata.get_support(root)
@@ -55,18 +42,7 @@ def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], list[tuple[str,
     filename = _find_filename(root)
     creator = metadata.get_creators(root)
     txts = get_txt_list_from_ms(root, full_id)
-    ppl_raw = root.findall(".//name", nsmap)
-    ppl: list[str] = []
-    if ppl_raw is not None:  # TODO: Refactor
-        for pers in ppl_raw:
-            try:
-                pers_id = pers.attrib['key']
-                ppl.append(pers_id)
-            except:
-                pass
-    else:
-        log.info(f"{full_id} doesn't have any people living in it. Check!")
-        ppl.append("N/A")
+    ppl = get_ppl_from_ms(root, full_id)
     ms_x_ppl = [(x, full_id) for x in list(dict.fromkeys(ppl))]
     ms_x_txts = [(full_id, x) for x in list(dict.fromkeys(txts))]
     if len(ppl) == 0:
@@ -105,20 +81,28 @@ def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], list[tuple[str,
     return res
 
 
+def get_ppl_from_ms(root: etree._Element, full_id: str) -> list[str]:
+    ppl_raw = root.findall(".//name", nsmap)
+    ppl: list[str] = []
+    if ppl_raw is not None:
+        for pers in ppl_raw:
+            pers_id = pers.get('key')
+            if pers_id is not None:
+                ppl.append(pers_id)
+    else:
+        log.info(f"{full_id} doesn't have any people living in it. Check!")
+        ppl.append("N/A")
+    return ppl
+
+
 def get_txt_list_from_ms(root: etree.Element, ms_id: str) -> list[str]:
     txts_raw = root.findall(".//msItem", nsmap)
     txts: list[str] = []
     if txts_raw is not None:
         for txt in txts_raw:
-            good = True
-            try:
-                lvl = txt.attrib["n"]
-                if "." in lvl:
-                    good = False
-            except:
-                pass
-            if good:
-                title_raw = txt.find("title", nsmap)  # TODO: Streamline, should be able to select tags directly /SK
+            lvl = txt.get('n')
+            if lvl is None:
+                title_raw = txt.find("title", nsmap)
                 if title_raw is not None:
                     title: str = title_raw.text
                     if title is not None:
