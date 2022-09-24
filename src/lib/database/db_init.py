@@ -63,6 +63,7 @@ def db_set_up(conn: sqlite3.Connection) -> None:
     log.info("Successfully created database tables.")
     conn.commit()
     curse.close()
+    log.info("Successfully created all database tables.")
 
 
 def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, str, str]]) -> None:
@@ -78,6 +79,7 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
     curse.executemany('''INSERT OR IGNORE INTO people VALUES (?, ?, ?)''', incoming)
     conn.commit()
     curse.close()
+    log.info(f"Successfully added people to people database table: {len(incoming)} entries.")
 
 
 def populate_ms_table(conn: sqlite3.Connection, incoming: list[MetadataRowType]) -> None:
@@ -96,6 +98,7 @@ def populate_ms_table(conn: sqlite3.Connection, incoming: list[MetadataRowType])
     curse.executemany(sql_query, incoming)
     conn.commit()
     curse.close()
+    log.info(f"Successfully added manuscripts to manuscript database table: {len(incoming)} entries.")
 
 
 def populate_junction_pxm(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
@@ -103,6 +106,7 @@ def populate_junction_pxm(conn: sqlite3.Connection, incoming: list[tuple[str, st
     curse.executemany('''INSERT OR IGNORE INTO junctionPxM(persID, msID) VALUES (?, ?)''', incoming)
     conn.commit()
     curse.close()
+    log.info("Successfully populated PxM junction table.")
 
 
 def populate_junction_txm(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
@@ -110,6 +114,7 @@ def populate_junction_txm(conn: sqlite3.Connection, incoming: list[tuple[str, st
     curse.executemany("INSERT OR IGNORE INTO junctionTxM(msID, txtName) VALUES (?,?)", incoming)
     conn.commit()
     curse.close()
+    log.info("Successfully populated TxM junction table.")
 
 
 def pxm_integrity_check(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> bool:
@@ -122,6 +127,6 @@ def pxm_integrity_check(conn: sqlite3.Connection, incoming: list[tuple[int, str,
     l2 = [x for x in l0 if x not in l1]
     l0.sort()
     l2.sort()
-    print("Performing integrity check")
+    log.info("Performing integrity check")
     check = l0 == l2
     return check

@@ -89,28 +89,26 @@ def _get_key(leek: etree._Element) -> Optional[str]:
     Returns:
         str: country name
     """
-
-    if leek.attrib['key']:
-        key = leek.attrib['key']
-        key = key.lower()
-        if key == "is":
-            pretty_key = "Iceland"
-        elif key == "dk":
-            pretty_key = "Denmark"
-        elif key == "fo":
-            pretty_key = "Faroe Islands"
-        elif key == "no":
-            pretty_key = "Norway"
-        elif key == "se":
-            pretty_key = "Sweden"
-        elif key == "ka":
-            pretty_key = "Canada"
-        else:
-            pretty_key = "!! unknown country key"
-            log.warning(f"unknown country key: {key}. (Fix function get_key)")
-    else:
+    key = leek.get('key', None)
+    if not key:
         return None
-
+    key = leek.attrib['key']
+    key = key.lower()
+    if key == "is":
+        pretty_key = "Iceland"
+    elif key == "dk":
+        pretty_key = "Denmark"
+    elif key == "fo":
+        pretty_key = "Faroe Islands"
+    elif key == "no":
+        pretty_key = "Norway"
+    elif key == "se":
+        pretty_key = "Sweden"
+    elif key == "ka":
+        pretty_key = "Canada"
+    else:
+        log.warning(f"unknown country key: {key}. (Fix function get_key)")
+        return None
     return pretty_key
 
 
@@ -123,18 +121,20 @@ def get_origin(root: etree._Element) -> str:
     Returns:
         str: country name
     """
-    origPlace = root.find(".//origPlace", root.nsmap)
     # TODO-BL: tidy up
+    origPlace = root.find(".//origPlace", root.nsmap)
+    if origPlace is None:
+        return "Origin unknown"
     try:
         try:
             pretty_origPlace = _get_key(origPlace)
             if not pretty_origPlace:
                 return "Origin unknown"
         except Exception:
-            log.exception("Issue with getting origin")
+            log.exception("Issue with getting origin - a")
             pretty_origPlace = str(origPlace.text)
     except Exception:
-        log.exception("Issue with getting origin")
+        log.exception("Issue with getting origin - b")
         pretty_origPlace = "Origin unknown"
     return pretty_origPlace
 
@@ -187,7 +187,7 @@ def get_support(root: etree._Element) -> str:
         str: supporting material
     """
     supportDesc = root.find('.//supportDesc', root.nsmap)
-    if supportDesc:
+    if supportDesc is not None:
         support = supportDesc.attrib['material']
         if support == "chart":
             pretty_support = "Paper"
@@ -229,10 +229,10 @@ def get_folio(root: etree._Element) -> int:
     Returns:
         int: total of folios
     """
-    # TODO: look into this method... can this be streamlined?
-    extent = root.find('.//extent', root.nsmap)
+    # TODO: look into this method... can this be streamlined? it also picks up lots of errors...
+    extent: etree._Element = root.find('.//extent', root.nsmap)
 
-    if not extent:
+    if extent is None:
         return 0
     extent_copy = copy.copy(extent)
 
@@ -241,13 +241,13 @@ def get_folio(root: etree._Element) -> int:
     while dimensions:
         for d in dimensions:
             extent_copy.remove(d)
-        dimensions = extent_copy.find('dimensions')
+        dimensions = extent_copy.find('dimensions', root.nsmap)
 
-    locus = extent_copy.find('locus')
+    locus = extent_copy.find('locus', root.nsmap)
 
     while locus:
         extent_copy.remove(locus)
-        locus = extent_copy.find('locus')
+        locus = extent_copy.find('locus', root.nsmap)
 
     clean_extent_copy: str = extent_copy.text
 
@@ -289,14 +289,16 @@ def get_folio(root: etree._Element) -> int:
                         if folio_n:
                             folio_total = folio_total+folio_n
 
-                    folio_z = _get_digits(extent_copy)
+                    folio_z = _get_digits(clean_extent_copy)
                     if folio_z:
                         folio_total = folio_total+folio_z
 
             folio_check: str = str(folio_total)
             if len(folio_check) > 3:
                 name: str = tamer._find_full_id(root)
-                log.warning(f"{name}: Attention. Check number of folios.")
+                log.warning(f"{name}: Attention. Check number of folios: {len(folio_check)} ({folio_check}) from: {extent_copy.text}")
+                if extent_copy.items():
+                    log.error(f"Note: extent had attributes: {extent_copy.items()}")
                 folio_total = 0
 
     except Exception:
@@ -389,60 +391,56 @@ def get_extent(root: etree._Element) -> tuple[int, int, str]:  # TODO-BL: tidy u
         str: qualitative description of manuscript's extent
     """
     extent = root.find('.//extent', root.nsmap)
-
     if extent is None:
         return 0, 0, "no dimensions given"
 
-    extent_copy = copy.copy(extent)
+    dimensions = extent.find('dimensions', root.nsmap)
+    if dimensions is None:
+        log.debug("failed building manuscript extent description")
+        return 0, 0, "N/A"
+    try:
+        height = dimensions.find("height", root.nsmap)
+        width = dimensions.find("width", root.nsmap)
 
-    dimensions = extent_copy.find('dimensions', root.nsmap)
-    if dimensions is not None:
-        try:
-            height = dimensions.find("height", root.nsmap)
-            width = dimensions.find("width", root.nsmap)
+        height_measurements = 0
+        if height is not None:
+            try:
+                height_measurements = int(height.text)
+            except Exception:
+                log.debug("There was a 'height' element, but getting text from it failed.")
+        width_measurements = 0
+        if width is not None:
+            try:
+                width_measurements = int(width.text)
+            except Exception:
+                log.debug("There was a 'width' element, but getting text from it failed.")
+        unit = dimensions.get('unit')
+        if unit is not None:
+            unit0 = height.get('unit')
+            unit1 = width.get('unit')
+            if unit0 is not None and unit1 is not None and unit0 == unit1:
+                unit = "mm"
 
-            height_measurements = 0
-            if height is not None:
-                try:
-                    height_measurements = int(height.text)
-                except Exception:
-                    log.debug("There was a 'height' element, but getting text from it failed.")
-            width_measurements = 0
-            if width is not None:
-                try:
-                    width_measurements = int(width.text)
-                except Exception:
-                    log.debug("There was a 'width' element, but getting text from it failed.")
-            unit = dimensions.get('unit')
-            if unit is None:
-                unit0 = height.get('unit')
-                unit1 = width.get('unit')
-                if unit0 is not None and unit1 is not None and unit0 == unit1:
-                    unit = "mm"
-
-            if width_measurements + height_measurements > 0:
-                if not unit:
-                    no_digits = len(str(width_measurements))
-                    if no_digits == 3:
-                        unit = "mm?"
-                    if no_digits == 2:
-                        unit = "cm?"
-                    else:
-                        unit = "??"
-                pretty_extent = f"{height_measurements} x {width_measurements} {unit}"
-            else:
-                pretty_extent = "No dimensions given"
-        except Exception:
-            log.exception("failed building manuscript extent description")
-            return 0, 0, "N/A"
-        if not height:
-            height = 0
-        if not width:
-            width = 0
-        return height_measurements, width_measurements, pretty_extent
-    else:
+        if width_measurements + height_measurements > 0:
+            if not unit:
+                no_digits = len(str(width_measurements))
+                if no_digits == 3:
+                    unit = "mm?"
+                if no_digits == 2:
+                    unit = "cm?"
+                else:
+                    unit = "??"
+            pretty_extent = f"{height_measurements} x {width_measurements} {unit}"
+        else:
+            pretty_extent = "No dimensions given"
+    except Exception:
         log.exception("failed building manuscript extent description")
         return 0, 0, "N/A"
+    if height is None:
+        height = 0
+    if width is None:
+        width = 0
+    return height_measurements, width_measurements, pretty_extent
 
 
 def get_description(root: etree._Element) -> tuple[str, str, str, str]:
@@ -552,29 +550,30 @@ def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
     return date, tp, ta, meandate, yearrange
 
 
-def get_ms_id(root: etree._Element) -> Tuple[str, str, str]:
+def get_ms_origin(root: etree._Element) -> Tuple[str, str, str]:
     ms_id = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
 
-    if not ms_id:
+    if ms_id is None:
         return "", "", ""
     else:
         co = ms_id.find("country", nsmap)
         try:
             country = co.text
-        except:
+        except Exception:
             country = ""
         se = ms_id.find("settlement", nsmap)
         # settlement = se.text if se else ""
         # This should be working. This should result in settlement = se.text. But it doesnt. It ALWAYS fucking results in settlement = ""
         # WHY? /SK
+        # TODO-BL: tidy up
         try:
             settlement = se.text
-        except:
+        except Exception:
             settlement = ""
         re = ms_id.find("repository", nsmap)
         try:
             repository = re.text
-        except:
+        except Exception:
             repository = ""
     return country, settlement, repository
 

@@ -28,11 +28,11 @@ def _load_xml_contents(path: Path) -> Optional[etree._Element]:
         return None
 
 
-def _parse_xml_content(root: etree._Element) -> tuple[MetadataRowType, list[tuple[str, str]], list[tuple[str, str]]]:
+def _parse_xml_content(root: etree._Element, filename: str) -> tuple[MetadataRowType, list[tuple[str, str]], list[tuple[str, str]]]:
     shelfmark = _get_shelfmark(root)
     full_id = _find_full_id(root)
     ms_nickname = _get_shorttitle(root, full_id)
-    country, settlement, repository = metadata.get_ms_id(root)
+    country, settlement, repository = metadata.get_ms_origin(root)
     origin = metadata.get_origin(root)
     date, tp, ta, meandate, yearrange = metadata.get_date(root)
     support = metadata.get_support(root)
@@ -76,8 +76,6 @@ def _parse_xml_content(root: etree._Element) -> tuple[MetadataRowType, list[tupl
         ms_x_ppl,
         ms_x_txts,
     )
-    if creator != 'NULL':
-        print(creator)
     return res
 
 
@@ -123,7 +121,12 @@ def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
         title_raw = head.find("title", root.nsmap)
     else:
         title_raw = summary.find("title", root.nsmap)
+    if title_raw is None:
+        log.debug(f"No title present in manuscript: {ms_id}")
+        return "N/A"
     title = title_raw.text
+    if not title:
+        return "N/A"
     try:
         res = title.replace('\n', ' ')
         res = res.replace('\t', ' ')
@@ -137,8 +140,9 @@ def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
 def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[tuple[MetadataRowType, list[tuple[str, str]], list[tuple[str, str]]]]:
     for f in files:
         ele = _load_xml_contents(f)
-        if ele:
-            yield _parse_xml_content(ele)
+        filename = f.name
+        if ele is not None:
+            yield _parse_xml_content(ele, filename)
 
 
 def get_metadata_from_files(files: Iterable[Path]) -> tuple[list[MetadataRowType], list[list[tuple[str, str]]], list[list[tuple[str, str]]]]:
@@ -175,7 +179,6 @@ def get_ppl_names() -> list[tuple[str, str, str]]:
     tree = etree.parse(PERSON_DATA_PATH, None)
     root = tree.getroot()
     ppl = root.findall(".//person", nsmap)
-    print(len(ppl))  # TODO: remove or log
     for pers in ppl:
         id_ = pers.get('{http://www.w3.org/XML/1998/namespace}id')
         name_tag = pers.find('persName', nsmap)
