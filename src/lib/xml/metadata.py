@@ -1,17 +1,14 @@
-from typing import Dict, List, Optional, Tuple
-from bs4 import BeautifulSoup
-from bs4.element import Tag
-import urllib
-import pandas as pd
-from pandas import DataFrame
 import copy
 import re
 import statistics
-from src.lib import utils
-from lxml import etree
-import src.lib.xml.tamer as tamer
-import numpy
+import urllib
+from typing import List, Optional, Tuple
 
+import src.lib.xml.tamer as tamer
+from bs4 import BeautifulSoup
+from bs4.element import Tag
+from lxml import etree
+from src.lib import utils
 
 log = utils.get_logger(__name__)
 nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
@@ -21,24 +18,20 @@ nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998
 # ----------------
 
 
-""" Anmerkung: Folgender Funktion bedarf es noch für get_creator resp. get_persName. Ggf. streichen """  # QUESTION: what?
-# QUESTION: Unsure about above comments. Who wrote what? And by what I mean which comment, not 'what'^^
+# def get_soup(url: str) -> BeautifulSoup:  # TODO: should become obsolete
+#     """Get a BeautifulSoup object from a URL
 
+#     Args:
+#         url (str): url
 
-def get_soup(url: str) -> BeautifulSoup:  # TODO: should become obsolete
-    """Get a BeautifulSoup object from a URL
+#     Returns:
+#         bs4.BeautifulSoup: BeautifulSoup object representation of the HTML/XML page.
+#     """
 
-    Args:
-        url (str): url
+#     sauce = urllib.request.urlopen(url).read()
+#     soup = BeautifulSoup(sauce, "xml")
 
-    Returns:
-        bs4.BeautifulSoup: BeautifulSoup object representation of the HTML/XML page.
-    """
-
-    sauce = urllib.request.urlopen(url).read()
-    soup = BeautifulSoup(sauce, "xml")
-
-    return soup
+#     return soup
 
 
 def get_cleaned_text(carrot: Tag) -> str:
@@ -75,9 +68,6 @@ def _get_digits(text: str) -> int:
     for x in text:
         if x.isdigit():
             s += x
-
-        else:
-            pass
     if s:
         i = int(s)
     else:
@@ -134,13 +124,17 @@ def get_origin(root: etree._Element) -> str:
         str: country name
     """
     origPlace = root.find(".//origPlace", root.nsmap)
-
+    # TODO-BL: tidy up
     try:
         try:
             pretty_origPlace = _get_key(origPlace)
-        except:
-            pretty_origPlace = origPlace.text
-    except:
+            if not pretty_origPlace:
+                return "Origin unknown"
+        except Exception:
+            log.exception("Issue with getting origin")
+            pretty_origPlace = str(origPlace.text)
+    except Exception:
+        log.exception("Issue with getting origin")
         pretty_origPlace = "Origin unknown"
     return pretty_origPlace
 
@@ -153,6 +147,7 @@ def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that 
     Returns:
         str: creator name(s)
     """
+    # TODO-BL: make strict division between SQLite and XML
     hands = root.findall(".//handDesc", root.nsmap)
     pplIDs: List[str] = []
 
@@ -167,7 +162,7 @@ def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that 
                         scribe = " ".join(scribe.split())
                         if scribe is not None:  # Somehow, a few None values made their way into the final db...? /SK
                             pplIDs.append(scribe)
-        except:
+        except Exception:
             # LATER: find out why, if that happens
             fKey = "NULL"
             pplIDs.append(fKey)
@@ -202,7 +197,7 @@ def get_support(root: etree._Element) -> str:
             pretty_support = support
             try:
                 pretty_support = support.text
-            except:
+            except Exception:
                 pretty_support = ""
     else:
         pretty_support = ""
@@ -274,7 +269,7 @@ def get_folio(root: etree._Element) -> int:
                 folio_total = int(clean_extent_copy)
             else:  # I have no idea what this does
                 '''No total is given. First Get rid of other unnecessary info:'''
-                given_emptiness: str = clean_extent_copy.find("Auð blöð")
+                given_emptiness = clean_extent_copy.find("Auð blöð")
                 if given_emptiness:
                     clean_extent_copy = clean_extent_copy[:given_emptiness]
 
@@ -304,86 +299,86 @@ def get_folio(root: etree._Element) -> int:
                 log.warning(f"{name}: Attention. Check number of folios.")
                 folio_total = 0
 
-    except:
+    except Exception:
         folio_total = 0
         log.warning(f"{folio_total}: Attention. Check number of folios.")
 
     return folio_total
 
 
-def get_dimensions(soup: BeautifulSoup) -> Tuple[int, int]:
-    """Get dimensions. If more than one volume, it calculates average dimensions. For quantitative usage.
-    Args:
-        soup (BeautifulSoup): BeautifulSoup
+# def get_dimensions(soup: BeautifulSoup) -> Tuple[int, int]:
+#     """Get dimensions. If more than one volume, it calculates average dimensions. For quantitative usage.
+#     Args:
+#         soup (BeautifulSoup): BeautifulSoup
 
-    Returns:
-        tuple: height and width
-    """
-    extent: Tag = soup.find('extent')
-    if not extent:
-        return 0, 0
-    extent_copy = copy.copy(extent)
-    dimensions: Tag = extent_copy.find('dimensions')
-    height: Tag = []
-    width: Tag = []
+#     Returns:
+#         tuple: height and width
+#     """
+#     extent: Tag = soup.find('extent')
+#     if not extent:
+#         return 0, 0
+#     extent_copy = copy.copy(extent)
+#     dimensions: Tag = extent_copy.find('dimensions')
+#     height: Tag = []
+#     width: Tag = []
 
-    myheights: List[int] = []
-    mywidths: List[int] = []
-    while dimensions:
-        height = dimensions.height
-        pretty_height: int = _get_length(height)
+#     myheights: List[int] = []
+#     mywidths: List[int] = []
+#     while dimensions:
+#         height = dimensions.height
+#         pretty_height: int = _get_length(height)
 
-        width = dimensions.width
-        pretty_width: int = _get_length(width)
+#         width = dimensions.width
+#         pretty_width: int = _get_length(width)
 
-        myheights.append(pretty_height)
-        mywidths.append(pretty_width)
+#         myheights.append(pretty_height)
+#         mywidths.append(pretty_width)
 
-        extent_copy.dimensions.unwrap()
-        dimensions = extent_copy.find('dimensions')
+#         extent_copy.dimensions.unwrap()
+#         dimensions = extent_copy.find('dimensions')
 
-    try:
-        perfect_height = sum(myheights) / len(myheights)
-        perfect_height = int(perfect_height)
-        perfect_width = sum(mywidths) / len(mywidths)
-        perfect_width = int(perfect_width)
-    except Exception:
-        log.debug("Something went wrong with the calculation of the dimensions.")
-        perfect_height = 0
-        perfect_width = 0
+#     try:
+#         perfect_height = sum(myheights) / len(myheights)
+#         perfect_height = int(perfect_height)
+#         perfect_width = sum(mywidths) / len(mywidths)
+#         perfect_width = int(perfect_width)
+#     except Exception:
+#         log.debug("Something went wrong with the calculation of the dimensions.")
+#         perfect_height = 0
+#         perfect_width = 0
 
-    return perfect_height, perfect_width
-
-
-def _get_length(txt: str) -> int:
-    """Get length. If length is given as range, calculates average.
-
-    Args:
-        txt (str): txt with length info.
-
-    Returns:
-        int: returns length.
-    """
-
-    length: str = get_cleaned_text(txt)
-    try:
-        x: int = length.find("-")
-        if x == -1:
-            pretty_length: int = int(length)
-        else:
-            mylist = length.split("-")
-            int_map = map(int, mylist)
-            int_list = list(int_map)
-            pretty_length = int(sum(int_list) / len(int_list))
-            pretty_length = int(pretty_length)
-    except Exception:
-        log.info(f"Curr MS missing length!")
-        pretty_length = 0
-
-    return pretty_length
+#     return perfect_height, perfect_width
 
 
-def get_extent(root: etree._Element) -> tuple[int, int, str]:
+# def _get_length(txt: str) -> int:
+#     """Get length. If length is given as range, calculates average.
+
+#     Args:
+#         txt (str): txt with length info.
+
+#     Returns:
+#         int: returns length.
+#     """
+
+#     length: str = get_cleaned_text(txt)
+#     try:
+#         x: int = length.find("-")
+#         if x == -1:
+#             pretty_length: int = int(length)
+#         else:
+#             mylist = length.split("-")
+#             int_map = map(int, mylist)
+#             int_list = list(int_map)
+#             pretty_length = int(sum(int_list) / len(int_list))
+#             pretty_length = int(pretty_length)
+#     except Exception:
+#         log.info(f"Curr MS missing length!")
+#         pretty_length = 0
+
+#     return pretty_length
+
+
+def get_extent(root: etree._Element) -> tuple[int, int, str]:  # TODO-BL: tidy up
     """Get extent of manuscript. For qualitative usage.
         NB! The 'extent' is the measurements of the leaves!
 
@@ -406,18 +401,18 @@ def get_extent(root: etree._Element) -> tuple[int, int, str]:
             height = dimensions.find("height", root.nsmap)
             width = dimensions.find("width", root.nsmap)
 
+            height_measurements = 0
             if height is not None:
                 try:
                     height_measurements = int(height.text)
                 except Exception:
                     log.debug("There was a 'height' element, but getting text from it failed.")
-                    height_measurements = 0
+            width_measurements = 0
             if width is not None:
                 try:
                     width_measurements = int(width.text)
                 except Exception:
                     log.debug("There was a 'width' element, but getting text from it failed.")
-                    width_measurements = 0
             unit = dimensions.get('unit')
             if unit is None:
                 unit0 = height.get('unit')
@@ -467,36 +462,36 @@ def get_description(root: etree._Element) -> tuple[str, str, str, str]:
     return str(height), str(width), pretty_extent, pretty_description
 
 
-def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str, str]:  # TODO: does that make some of the other funtions obsolete?
-    """Get data of the manuscript's location.
+# def get_location(soup: BeautifulSoup) -> Tuple[str, str, str, str, str, str]:  # TODO: does that make some of the other funtions obsolete?
+#     """Get data of the manuscript's location.
 
-    Args:
-        soup (bs4.BeautifulSoup): BeautifulSoup object
+#     Args:
+#         soup (bs4.BeautifulSoup): BeautifulSoup object
 
-    Returns:
-        tuple: data of manuscript's location
-    """
-    country = soup.country
-    try:
-        pretty_country = _get_key(country)
-        if not pretty_country:
-            pretty_country = get_cleaned_text(country)
-    except:
-        pretty_country = "Country unknown"
+#     Returns:
+#         tuple: data of manuscript's location
+#     """
+#     country = soup.country
+#     try:
+#         pretty_country = _get_key(country)
+#         if not pretty_country:
+#             pretty_country = get_cleaned_text(country)
+#     except:
+#         pretty_country = "Country unknown"
 
-    settlement = soup.find("settlement")
-    institution = soup.find("institution")
-    repository = soup.find("repository")
-    collection = soup.find("collection")
-    signature = soup.find("idno")
+#     settlement = soup.find("settlement")
+#     institution = soup.find("institution")
+#     repository = soup.find("repository")
+#     collection = soup.find("collection")
+#     signature = soup.find("idno")
 
-    pretty_settlement = get_cleaned_text(settlement)
-    pretty_institution = get_cleaned_text(institution)
-    pretty_repository = get_cleaned_text(repository)
-    pretty_collection = get_cleaned_text(collection)
-    pretty_signature = get_cleaned_text(signature)
+#     pretty_settlement = get_cleaned_text(settlement)
+#     pretty_institution = get_cleaned_text(institution)
+#     pretty_repository = get_cleaned_text(repository)
+#     pretty_collection = get_cleaned_text(collection)
+#     pretty_signature = get_cleaned_text(signature)
 
-    return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature
+#     return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature
 
 
 def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:

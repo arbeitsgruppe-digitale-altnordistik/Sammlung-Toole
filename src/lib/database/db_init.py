@@ -1,11 +1,9 @@
 import sqlite3
 from logging import Logger
-from typing import Any
 
-import pandas as pd
 import streamlit as st
 from src.lib import utils
-import collections
+from src.lib.xml.tamer import MetadataRowType
 
 
 @st.experimental_singleton   # type: ignore
@@ -82,7 +80,7 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
     curse.close()
 
 
-def populate_ms_table(conn: sqlite3.Connection, incoming: list[tuple[Any]]) -> None:
+def populate_ms_table(conn: sqlite3.Connection, incoming: list[MetadataRowType]) -> None:
     '''Function to populate the manuscripts table with data.
 
     Args:
@@ -100,21 +98,21 @@ def populate_ms_table(conn: sqlite3.Connection, incoming: list[tuple[Any]]) -> N
     curse.close()
 
 
-def populate_junctionPxM(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
+def populate_junction_pxm(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
     curse = conn.cursor()
     curse.executemany('''INSERT OR IGNORE INTO junctionPxM(persID, msID) VALUES (?, ?)''', incoming)
     conn.commit()
     curse.close()
 
 
-def populate_junctionTxM(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
+def populate_junction_txm(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
     curse = conn.cursor()
     curse.executemany("INSERT OR IGNORE INTO junctionTxM(msID, txtName) VALUES (?,?)", incoming)
     conn.commit()
     curse.close()
 
 
-def PxM_integrity_check(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> bool:
+def pxm_integrity_check(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> bool:
     curse = conn.cursor()
     curse.execute(f"SELECT persID FROM junctionPxM")
     l0 = [x[1] for x in incoming]

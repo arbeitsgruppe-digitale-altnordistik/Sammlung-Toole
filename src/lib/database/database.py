@@ -41,8 +41,6 @@ def create_connection(db_file: str = DATABASE_PATH) -> sqlite3.Connection:
     return conn
 
 
-# FIXME-BL: how to use my own cursor with pd.read_sql()?
-# You use the conn object with pandas, it creates its own cursor /SK
 def get_metadata(conn: sqlite3.Connection, table_name: str, column_name: str, search_criteria: list[str]) -> pd.DataFrame:
     """One stop shop for simple search/SELECT queries.
 

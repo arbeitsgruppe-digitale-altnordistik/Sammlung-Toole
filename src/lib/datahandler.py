@@ -5,20 +5,20 @@ This module handles data and provides convenient and efficient access to it.
 from __future__ import annotations
 
 from pathlib import Path
-import sqlite3
 from typing import Tuple
 
 import pandas as pd
 import src.lib.xml.tamer as tamer
-from bs4 import BeautifulSoup
 from src.lib import utils
-from src.lib.constants import *
+from src.lib.constants import DATABASE_GROUPS_PATH, DATABASE_PATH, XML_BASE_PATH
 from src.lib.database import database, db_init, groups_database, groups_db_init
 from src.lib.groups import Group
 from src.lib.utils import GitUtil, SearchOptions, Settings
 
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
+
+# TODO: get rid of some of the code duplications in this file?
 
 
 class DataHandler:
@@ -73,7 +73,7 @@ class DataHandler:
     def _load_persons() -> Tuple[dict[str, str], dict[str, list[str]]]:
         """Load person data"""
         person_names = database.persons_lookup_dict(database.create_connection().cursor())
-        return person_names, tamer.get_person_names_inverse(person_names)
+        return person_names, _get_person_names_inverse(person_names)
 
     @staticmethod
     def _build_groups_db() -> None:
@@ -88,12 +88,12 @@ class DataHandler:
             ppl = tamer.get_ppl_names()
             db_init.populate_people_table(db_conn, ppl)
             files = Path(XML_BASE_PATH).rglob('*.xml')
-            ms_meta, msppl, mstxts = tamer.unpack_work(files)
+            ms_meta, msppl, mstxts = tamer.get_metadata_from_files(files)
             db_init.populate_ms_table(db_conn, ms_meta)
             ms_ppl = [x for y in msppl for x in y if x[0] != 'N/A']
             ms_txts = [x for y in mstxts for x in y if x[1] != "N/A"]
-            db_init.populate_junctionPxM(db_conn, ms_ppl)
-            db_init.populate_junctionTxM(db_conn, ms_txts)
+            db_init.populate_junction_pxm(db_conn, ms_ppl)
+            db_init.populate_junction_txm(db_conn, ms_txts)
             with database.create_connection(DATABASE_PATH) as dest_conn:
                 db_conn.backup(dest_conn)
 
@@ -289,3 +289,10 @@ class DataHandler:
     # def get_group_by_name(self, name: str, gtype: Optional[GroupType] = None) -> Optional[Group]:
     #     with groups_database.create_connection() as con:
     #         return groups_database.get_group_by_name(con, name, gtype)
+
+
+def _get_person_names_inverse(person_names: dict[str, str]) -> dict[str, list[str]]:
+    res: dict[str, list[str]] = {}
+    for k, v in person_names.items():
+        res[v] = res.get(v, []) + [k]
+    return res
