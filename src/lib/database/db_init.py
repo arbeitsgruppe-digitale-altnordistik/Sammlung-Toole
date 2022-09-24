@@ -1,9 +1,11 @@
 import sqlite3
 from logging import Logger
+from typing import Any
 
 import pandas as pd
 import streamlit as st
 from src.lib import utils
+import collections
 
 
 @st.experimental_singleton   # type: ignore
@@ -26,9 +28,10 @@ def db_set_up(conn: sqlite3.Connection) -> None:
     '''
     log.info("Setting up database tables...")
     curse = conn.cursor()
-    curse.execute('''CREATE TABLE IF NOT EXISTS people (firstName,
-                                                        lastName,
-                                                        persID PRIMARY KEY)''')  # TODO: put primary keys in their rightful places
+    curse.execute('''CREATE TABLE IF NOT EXISTS people (persID PRIMARY KEY,
+                                                        firstName,
+                                                        lastName
+                                                        )''')
     curse.execute('''CREATE TABLE IF NOT EXISTS manuscripts (shelfmark,
                                                             shorttitle,
                                                             country,
@@ -50,17 +53,18 @@ def db_set_up(conn: sqlite3.Connection) -> None:
                                                             id,
                                                             full_id PRIMARY KEY,
                                                             filename)''')
-    curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer PRIMARY KEY DEFAULT 0 NOT NULL,
+    curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer auto_increment PRIMARY KEY,
                                                                 persID,
                                                                 msID,
                                                                 FOREIGN KEY(persID) REFERENCES people(persID) ON DELETE CASCADE ON UPDATE CASCADE,
                                                                 FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
-    curse.execute('''CREATE TABLE IF NOT EXISTS junctionTxM (locID integer PRIMARY KEY,
+    curse.execute('''CREATE TABLE IF NOT EXISTS junctionTxM (locID integer auto_increment PRIMARY KEY,
                                                                 msID,
                                                                 txtName,
                                                                 FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
     log.info("Successfully created database tables.")
-    return
+    conn.commit()
+    curse.close()
 
 
 def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, str, str]]) -> None:
@@ -70,14 +74,15 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
 
     Args:
         conn (sqlite.Connection): DB connection object
-        incoming (List[Tuple[str, str, str]]): First name, last name, and ID of persons to be stored
+        incoming (List[Tuple[str, str, str]]): handritID, first name, last name of persons to be stored
     '''
     curse = conn.cursor()
     curse.executemany('''INSERT OR IGNORE INTO people VALUES (?, ?, ?)''', incoming)
-    return
+    conn.commit()
+    curse.close()
 
 
-def populate_ms_table(conn: sqlite3.Connection, incoming: pd.DataFrame) -> None:
+def populate_ms_table(conn: sqlite3.Connection, incoming: list[tuple[Any]]) -> None:
     '''Function to populate the manuscripts table with data.
 
     Args:
@@ -88,24 +93,25 @@ def populate_ms_table(conn: sqlite3.Connection, incoming: pd.DataFrame) -> None:
     Returns:
         None
     '''
-    incoming2 = incoming[~incoming.duplicated(["full_id"])]
-    # dupl = incoming[incoming.duplicated(["full_id"])]  # QUESTION-BL: this is unused, should it come back or can it be removed?
-    incoming2.to_sql("manuscripts", conn, if_exists='append', index=False)
-    return
-
-
-def populate_junctionPxM(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> None:
     curse = conn.cursor()
-    curse.executemany('''INSERT OR IGNORE INTO junctionPxM VALUES (?, ?, ?)''', incoming)
+    sql_query = '''INSERT OR IGNORE INTO manuscripts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'''
+    curse.executemany(sql_query, incoming)
+    conn.commit()
     curse.close()
-    return
+
+
+def populate_junctionPxM(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
+    curse = conn.cursor()
+    curse.executemany('''INSERT OR IGNORE INTO junctionPxM(persID, msID) VALUES (?, ?)''', incoming)
+    conn.commit()
+    curse.close()
 
 
 def populate_junctionTxM(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
     curse = conn.cursor()
     curse.executemany("INSERT OR IGNORE INTO junctionTxM(msID, txtName) VALUES (?,?)", incoming)
+    conn.commit()
     curse.close()
-    return
 
 
 def PxM_integrity_check(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> bool:

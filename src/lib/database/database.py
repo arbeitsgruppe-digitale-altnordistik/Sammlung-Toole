@@ -121,11 +121,12 @@ def txts_x_ms(curse: Cursor, mss: list[str]) -> list[str]:
 
 def persons_lookup_dict(curse: Cursor) -> dict[str, str]:
     """
+    Gets the data from person(ID, first name, last name).
     Returns the lookup-dict for the IDs of people to their natural names.
     """
     curse.execute('SELECT * FROM people')
     raw = curse.fetchall()
-    res = {x[2]: f"{x[0]} {x[1]}" for x in raw}
+    res = {x[0]: f"{x[1]} {x[2]}" for x in raw}
     return res
 
 
