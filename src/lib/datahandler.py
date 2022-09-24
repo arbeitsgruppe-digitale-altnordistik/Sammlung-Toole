@@ -9,7 +9,7 @@ import sqlite3
 from typing import Tuple
 
 import pandas as pd
-import src.lib.tamer as tamer
+import src.lib.xml.tamer as tamer
 from bs4 import BeautifulSoup
 from src.lib import utils
 from src.lib.constants import *

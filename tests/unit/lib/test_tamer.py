@@ -1,1 +1,1 @@
-from src.lib import tamer
+from src.lib.xml import tamer

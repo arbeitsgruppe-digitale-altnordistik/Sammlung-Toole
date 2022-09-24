@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, Iterator, List,  Tuple
 
 import pandas as pd
 import requests
-import src.lib.metadata as metadata
+import src.lib.xml.metadata as metadata
 import src.lib.utils as utils
 from bs4 import BeautifulSoup
 from lxml import etree
