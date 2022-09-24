@@ -1,7 +1,6 @@
 import copy
 import re
 import statistics
-import urllib
 from typing import List, Optional, Tuple
 
 import src.lib.xml.tamer as tamer

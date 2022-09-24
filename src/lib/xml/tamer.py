@@ -39,7 +39,7 @@ def _parse_xml_content(root: etree._Element, filename: str) -> tuple[MetadataRow
     folio = metadata.get_folio(root)
     height, width, extent, description = metadata.get_description(root)
     handrit_id = _find_id(root)
-    filename = _find_filename(root)
+    # filename = _find_filename(root)  # TODO-BL: not needed anymore, right?
     creator = metadata.get_creators(root)
     txts = _get_txt_list_from_ms(root, full_id)
     ppl = _get_ppl_from_ms(root, full_id)

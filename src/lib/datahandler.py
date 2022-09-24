@@ -155,7 +155,7 @@ class DataHandler:
             log.debug('Searched texts are empty list')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ms_x_txts(curse=database.create_connection().cursor(), txts=texts)
+            res = database.ms_x_txts(cursor=database.create_connection().cursor(), txts=texts)
             return res
         else:
             sets = []
@@ -190,7 +190,7 @@ class DataHandler:
             log.debug('Searched for empty list of mss')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.txts_x_ms(curse=database.create_connection().cursor(), mss=Inmss)
+            res = database.txts_x_ms(cursor=database.create_connection().cursor(), ms_ids=Inmss)
             return res
         else:
             sets: list[set[str]] = []
@@ -209,7 +209,7 @@ class DataHandler:
 
     def get_person_name(self, pers_id: str) -> str:
         """Get a person's name, identified by the person's ID"""
-        res = database.simple_people_search(curse=database.create_connection().cursor(), persID=pers_id)
+        res = database.simple_people_search(cursor=database.create_connection().cursor(), pers_id=pers_id)
         return res or ""
 
     def search_persons_related_to_manuscripts(self, ms_full_ids: list[str], searchOption: SearchOptions) -> list[str]:
@@ -219,7 +219,7 @@ class DataHandler:
             log.debug('Searched for empty list of mss')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ppl_x_mss(curse=database.create_connection().cursor(), msIDs=ms_full_ids)
+            res = database.ppl_x_mss(cursor=database.create_connection().cursor(), ms_ids=ms_full_ids)
             return res
         else:
             sets = []
@@ -243,7 +243,7 @@ class DataHandler:
             log.debug('Searched for empty list of ppl')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ms_x_ppl(curse=database.create_connection().cursor(), pplIDs=person_ids)
+            res = database.ms_x_ppl(cursor=database.create_connection().cursor(), pers_ids=person_ids)
             return res
         else:
             sets = []
