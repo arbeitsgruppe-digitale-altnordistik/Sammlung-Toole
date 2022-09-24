@@ -134,7 +134,7 @@ def get_txt_list_from_ms(root: etree.Element, ms_id: str) -> list[str]:
     return txts
 
 
-def _get_shorttitle(root: etree._Element, msID: str) -> str:
+def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
     head = root.find(".//head", root.nsmap)
     summary = root.find(".//summary", root.nsmap)
     try:
@@ -146,7 +146,7 @@ def _get_shorttitle(root: etree._Element, msID: str) -> str:
             title_raw = summary.find("title", root.nsmap)
         title = title_raw.text
     except:
-        log.info(f"{msID} has no nickname or it is stored in a weird way")
+        log.info(f"{ms_id} has no nickname or it is stored in a weird way")
         # TODO: Catch weird XML better.
         title = "N/A"
     try:

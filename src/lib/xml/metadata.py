@@ -145,53 +145,11 @@ def get_origin(root: etree._Element) -> str:
     return pretty_origPlace
 
 
-def get_creator(soup: BeautifulSoup, persons: Dict[str, str]) -> str:  # TODO: Kill once migrated.
-    """Deprecation warning: Will be removed once SQLite is full implemented.
-
-    Get creator(s).
-
-    Args:
-        soup (bs4.BeautifulSoup): BeautifulSoup object
-        persons (Dict[str, str]): look-up table for person names by ID
-
-    Returns:
-        str: creator name(s)
-    """
-    hands = soup.handDesc
-
-    if hands:
-        try:
-            creators = hands.find_all('name', {'type': 'person'})
-
-            if not creators:
-                pretty_creators = "Scribe(s) unknown"
-            else:
-                names: List[str] = []
-                for creator in creators:
-                    key = creator.get('key')
-                    if key:
-                        name = persons.get(key)
-                        if name:
-                            names.append(name)
-                pretty_creators = '; '.join(names)
-        except:
-            # LATER: find out why, if that happens
-            pretty_creators = "Scribe(s) unknown"
-    else:
-        # LATER: find out why, if that happens
-        pretty_creators = "Scribe(s) unknown"
-
-    return pretty_creators
-
-
 def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that works with foreign keys
-    # TODO: Update docstring /SK
     """Get creator(s). Function for new SQLite backend.
 
     Args:
-        soup (bs4.BeautifulSoup): BeautifulSoup object
-        persons (Dict[str, str]): look-up table for person names by ID
-
+        root (etree._Element): etree XML element object
     Returns:
         str: creator name(s)
     """
@@ -224,53 +182,11 @@ def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that 
     return res
 
 
-def get_shorttitle(soup: BeautifulSoup) -> str:
-    """Get short title to describe (NOT identify) a manuscript.
-
-    Args:
-        soup (bs4.BeautifulSoup): BeautifulSoup object
-
-    Returns:
-        str: short title
-    """
-    msName = ""
-    headtitle = ""
-    summarytitle = ""
-
-    msName = soup.find('msName')
-    head = soup.head
-    if head:
-        headtitle = head.find('title')
-    summary = soup.summary
-    if summary:
-        summarytitle = summary.find('title')
-
-    if msName:
-        shorttitle = msName
-    elif headtitle:
-        shorttitle = headtitle
-    elif summarytitle:
-        shorttitle = summarytitle
-    else:
-        msItem = soup.msItem
-        if not msItem:
-            return "None"
-        shorttitle = msItem.find('title')
-        if not shorttitle:
-            pretty_shorttitle = "None"
-    try:
-        pretty_shorttitle = get_cleaned_text(shorttitle)
-    except:
-        return shorttitle
-
-    return pretty_shorttitle
-
-
 def get_support(root: etree._Element) -> str:
     """Get supporting material (paper or parchment).
 
     Args:
-        soup (bs4.BeautifulSoup): BeautifulSoup object
+        root (etree._Element): etree XML element object
 
     Returns:
         str: supporting material
@@ -313,7 +229,7 @@ def get_folio(root: etree._Element) -> int:
         - return: n/a
 
     Args:
-        soup (bs4.BeautifulSoup): BeautifulSoup object
+        root (etree._Element): etree XML element object
 
     Returns:
         int: total of folios
@@ -472,7 +388,7 @@ def get_extent(root: etree._Element) -> tuple[int, int, str]:
         NB! The 'extent' is the measurements of the leaves!
 
     Args:
-        soup (BeautifulSoup): BeautifulSoup
+        root (etree._Element): etree XML element object
 
     Returns:
         str: qualitative description of manuscript's extent
@@ -538,7 +454,7 @@ def get_description(root: etree._Element) -> tuple[str, str, str, str]:
     """Summarizes support and dimensions for usage in citavi.
 
     Args:
-        soup (bs4.BeautifulSoup): BeautifulSoup object
+        root (etree._Element): etree XML element object
 
     Returns:
         str: support / dimensions
@@ -677,225 +593,3 @@ def check_graphic(soup: BeautifulSoup) -> bool:
         g = False
 
     return g
-
-# Get all metadata
-# ----------------
-
-
-# def get_all_data(inData: List[str], DataType: str = 'urls') -> Tuple[pd.DataFrame, str]:    # TODO: should become obsolete when these methods are called from handler
-#     """ Create dataframe for usage in interface
-
-#     The dataframe contains the following collumns:
-#     "Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement", "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio"
-
-#     Args:
-#         inData (list): list of urls or ids
-#         DataType: Whether its a list of URLs or IDs. Allowed: 'urls', 'ids'
-
-#     Returns:
-#         tuple: pd.DataFrame (containing manuscript meta data), file_name
-#     """
-
-#     mylist = []
-
-#     i = 0
-#     for thing in inData:
-
-#         log.info(f'Loading: {i}, which is {thing}')
-#         i += 1
-#         if DataType == 'urls':
-#             soup = load_xml(thing)
-
-#         if DataType == 'ids':
-#             presoup = load_xmls_by_id(thing)
-#             soup = list(presoup.values())[0]  # TODO: do we really want to hard-exclude multi language like this?
-
-#         # gets soup from url (without crawler)
-#         # soup = get_soup(url)
-
-#         name = get_tag(soup)
-#         location = get_location(soup)
-#         shorttitle = get_shorttitle(soup)
-#         creator = get_creator(soup)
-#         dimensions = get_dimensions(soup)
-#         folio = get_folio(soup)
-#         origin = get_origin(soup)
-#         support = get_support(soup)
-#         graphic = check_graphic(soup)
-#         dates = get_date(soup)
-
-#         mytuple = (name,) + (creator,) + (shorttitle,) + (origin,) + location + (support,) + dimensions + (folio,) + dates + (graphic,)
-#         structure = get_structure(mylist, mytuple)
-
-#         columns = ["Handrit-ID", "Creator", "Short title", "Origin", "Country", "Settlement",
-#                    "Institution", "Repository", "Collection", "Signature", "Support", "Height", "Width", "Folio",
-#                    "Date", "Tempus post quem", "Tempus ante quem", "Mean Date", "Year Range", "Digitized"]
-#         data = pandafy_data(structure, columns)
-
-#     log.info(f'Loaded:  {i}',)
-
-#     return data
-
-
-# Get metadata and citavify
-# -------------------------
-
-
-def summarize_location(location: Tuple[str, str, str, str, str, str]) -> Tuple[str, str, str]:
-    """ Get manuscript location and summarize for usage in citavi
-
-    Args:
-        location (tuple): metadata of manuscript's location
-
-    Returns:
-        tuple: summary of metadata of manuscript's location
-    """
-
-    location_list = list(location)
-    for i in range(len(location_list)):
-        if not location_list[i]:
-            location_list[i] = ""
-            continue
-        location_list[i] = location_list[i] + ", "
-    try:
-        settlement = location_list[1] + location_list[0]
-        settlement = settlement[:-2]
-
-    except:
-        settlement = "unknown"
-
-    try:
-        archive = location_list[2] + location_list[3] + location_list[4]
-        archive = archive[:-2]
-    except:
-        archive = "unknown"
-
-    signature = location_list[5]
-    signature = signature[:-2]
-
-    return settlement, archive, signature
-
-
-def get_citavified_data(inData: List[str], DataType: str = 'urls') -> Tuple[pd.DataFrame, str]:  # TODO: Obsolete? Now integrated in interface.
-    """ Create dataframe for usage in interface
-
-    The dataframe contains the following columns:
-    - Handrit ID (`Handrit-ID`)
-    - Creators / scribes (`Creator`)
-    - Short title (`Short title`)
-    - Description (`Description`)
-    - Dating (`Dating`)
-    - Manusript origin (`Origin`)
-    - Place of archive (`Settlement`)
-    - Name of archive (`Archive`)
-    - Signature (`Signature`)
-
-    Args:
-        inData (list): list of urls or ids
-        DataType (str): Whether the list consists of URLs or IDs. Allowed: 'urls', 'ids'
-
-    Returns:
-        tuple: pd.DataFrame (containing manuscript meta data), file_name
-    """
-
-    i = 0
-
-    mylist = []
-    for thing in inData:
-        log.info(f'Loading: {i}')
-        i += 1
-
-        if DataType == 'urls':
-            soup = load_xml(thing)
-        if DataType == 'ids':
-            presoup = load_xmls_by_id(thing)
-            soup = list(presoup.values())[0]
-
-        name = get_tag(soup)
-        creator = get_creator(soup)
-        shorttitle = get_shorttitle(soup)
-        description = get_description(soup)
-        dates = get_date(soup)
-        date = dates[1]
-        origin = get_origin(soup)
-        location = get_location(soup)
-        settlement, archive, signature = summarize_location(location)
-
-        mytuple = (name,) + (creator,) + (shorttitle,) + (description,) + (date,) + (origin,) + (settlement,) + (archive,) + (signature,)
-        structure = mylist.append(mytuple)
-
-    columns = ["Handrit-ID", "Creator", "Short title", "Description", "Dating", "Origin",  "Settlement", "Archive", "Signature"]
-
-    data = pandafy_data(structure, columns)
-    file_name = "metadata_citavified"
-
-    log.info(f'Loaded:  {i}',)
-
-    return data, file_name
-
-
-# Get titles (by Balduin)
-# -----------------------
-
-def clean_msitems(soups):
-    for soup in soups:
-        for sub in soup.find_all('msItem'):
-            sub.decompose()
-        yield soup
-
-
-def get_title(item):
-    title = item.find('title')
-    rubric = item.find('rubric')
-    return title, rubric
-
-
-def dictionarize(items):
-    res = []
-    for item in items:
-        number = item.get('n')
-        title, rubric = get_title(item)
-        pretty_title = get_cleaned_text(title)
-        pretty_rubric = get_cleaned_text(rubric)
-        res.append((number, pretty_title, pretty_rubric,))
-    return res
-
-
-def _title_from_soup(soup: BeautifulSoup) -> List[Tuple[str, str, str]]:
-    items = soup.find_all('msItem')
-    copies = [copy.copy(item) for item in items]
-    cleaned_copies = clean_msitems(copies)
-    structure = dictionarize(cleaned_copies)
-    return structure
-
-
-def do_it_my_way(links):
-    for url in links:
-        soup = get_soup(url)
-        structure = _title_from_soup(soup)
-        yield url, structure
-
-
-# Pandas and CSV export
-# ---------------------
-
-
-def pandafy_data(result: list, columns: list) -> DataFrame:
-    """Creates panda dataframe.
-
-    Args:
-        result (list): list of metadata
-        columns (list): list of columns description
-
-    Returns:
-        pandas.core.frame.DataFrame: panda dataframe
-    """
-    data = pd.DataFrame(result)
-    data.columns = columns
-
-    return data
-
-
-def CSVExport(FileName: str, DataFrame: pd.DataFrame) -> None:
-    DataFrame.to_csv(FileName+".csv", sep='\t', encoding='utf-8', index=False)
-    log.info("File exported")
