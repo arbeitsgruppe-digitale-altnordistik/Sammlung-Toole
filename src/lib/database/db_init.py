@@ -51,6 +51,7 @@ def db_set_up(conn: sqlite3.Connection) -> None:
                                                             id,
                                                             full_id PRIMARY KEY,
                                                             filename)''')
+    # TODO-BL: add table for unified manuscript metadata
     curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer auto_increment PRIMARY KEY,
                                                                 persID,
                                                                 msID,
@@ -80,6 +81,11 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
     conn.commit()
     curse.close()
     log.info(f"Successfully added people to people database table: {len(incoming)} entries.")
+
+
+def populate_unified_ms_table(conn: sqlite3.Connection, incoming: list[MetadataRowType]) -> None:
+    ...
+    # TODO-BL: implement
 
 
 def populate_ms_table(conn: sqlite3.Connection, incoming: list[MetadataRowType]) -> None:

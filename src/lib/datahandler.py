@@ -8,12 +8,14 @@ from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
-import src.lib.xml.tamer as tamer
 from src.lib import utils
-from src.lib.constants import DATABASE_GROUPS_PATH, DATABASE_PATH, XML_BASE_PATH
-from src.lib.database import database, db_init, groups_database, groups_db_init
+from src.lib.constants import (DATABASE_GROUPS_PATH, DATABASE_PATH,
+                               XML_BASE_PATH)
+from src.lib.database import (database, db_init, deduplicate, groups_database,
+                              groups_db_init)
 from src.lib.groups import Group
 from src.lib.utils import GitUtil, SearchOptions, Settings
+from src.lib.xml import tamer
 
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
@@ -90,10 +92,12 @@ class DataHandler:
             files = Path(XML_BASE_PATH).rglob('*.xml')
             ms_meta, msppl, mstxts = tamer.get_metadata_from_files(files)
             db_init.populate_ms_table(db_conn, ms_meta)
-            ms_ppl = [x for y in msppl for x in y if x[0] != 'N/A']
-            ms_txts = [x for y in mstxts for x in y if x[1] != "N/A"]
+            ms_ppl = [x for y in msppl for x in y if x[0] != 'N/A']  # TODO-BL: I'd like to get rid of "N/A"
+            ms_txts = [x for y in mstxts for x in y if x[1] != "N/A"]  # TODO-BL: I'd like to get rid of "N/A"
             db_init.populate_junction_pxm(db_conn, ms_ppl)
             db_init.populate_junction_txm(db_conn, ms_txts)
+            unified_metadata = deduplicate.get_unified_metadata(ms_meta)
+            db_init.populate_unified_ms_table(db_conn, unified_metadata)
             with database.create_connection(DATABASE_PATH) as dest_conn:
                 db_conn.backup(dest_conn)
 
