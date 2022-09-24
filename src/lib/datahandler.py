@@ -90,8 +90,8 @@ class DataHandler:
             files = Path(XML_BASE_PATH).rglob('*.xml')
             ms_meta, msppl, mstxts = tamer.unpack_work(files)
             db_init.populate_ms_table(db_conn, ms_meta)
-            ms_ppl = [x for y in msppl for x in y if not x[0] == 'N/A']
-            ms_txts = [x for y in mstxts for x in y if not x[1] == "N/A"]
+            ms_ppl = [x for y in msppl for x in y if x[0] != 'N/A']
+            ms_txts = [x for y in mstxts for x in y if x[1] != "N/A"]
             db_init.populate_junctionPxM(db_conn, ms_ppl)
             db_init.populate_junctionTxM(db_conn, ms_txts)
             with database.create_connection(DATABASE_PATH) as dest_conn:

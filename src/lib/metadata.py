@@ -10,6 +10,7 @@ import statistics
 from src.lib import utils
 from lxml import etree
 import src.lib.tamer as tamer
+import numpy
 
 
 log = utils.get_logger(__name__)
@@ -346,32 +347,30 @@ def get_folio(root: etree._Element) -> int:
         perfect_copy = copy_no_space.isdigit()
 
         if perfect_copy == True:
-            folio_total = copy_no_space
+            folio_total = int(copy_no_space)
         else:
-            folio_total: int = 0
+            folio_total = 0
             '''Is a total of folio given:'''
             given_total: int = clean_extent_copy.find("blöð alls")
 
             if given_total > 0:
                 clean_extent_copy = clean_extent_copy[:given_total]
                 folio_total = int(clean_extent_copy)
-            else:
+            else:  # I have no idea what this does
                 '''No total is given. First Get rid of other unnecessary info:'''
                 given_emptiness: str = clean_extent_copy.find("Auð blöð")
-                if given_emptiness > 0:
+                if given_emptiness:
                     clean_extent_copy = clean_extent_copy[:given_emptiness]
-                else:
-                    pass
 
                 clean_extent_copy = re.sub(r"\([^()]*\)", "()", clean_extent_copy)
 
-                brackets: str = clean_extent_copy.find("()")
+                brackets = clean_extent_copy.find("()")
 
                 if brackets == -1:
                     folio_total = _get_digits(clean_extent_copy)
 
                 else:
-                    while brackets > 0:
+                    while brackets != -1:
                         first_bit: str = clean_extent_copy[:brackets]
                         clean_extent_copy = clean_extent_copy[brackets+2:]
                         brackets = clean_extent_copy.find("()")
@@ -385,12 +384,9 @@ def get_folio(root: etree._Element) -> int:
 
             folio_check: str = str(folio_total)
             if len(folio_check) > 3:
-                name: str = tamer._find_full_id(root)  # TODO: Is this acutally still needed?
+                name: str = tamer._find_full_id(root)
                 log.warning(f"{name}: Attention. Check number of folios.")
-            elif folio_total == 0:
                 folio_total = 0
-            else:
-                pass
 
     except:
         folio_total = 0

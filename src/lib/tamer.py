@@ -51,7 +51,7 @@ def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], list[tuple[str,
     support = metadata.get_support(root)
     folio = metadata.get_folio(root)
     height, width, extent, description = metadata.get_description(root)
-    id = _find_id(root)
+    handrit_id = _find_id(root)
     filename = _find_filename(root)
     creator = metadata.get_creators(root)
     txts = get_txt_list_from_ms(root, full_id)
@@ -60,8 +60,8 @@ def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], list[tuple[str,
     if ppl_raw is not None:  # TODO: Refactor
         for pers in ppl_raw:
             try:
-                persID = pers.attrib['key']
-                ppl.append(persID)
+                pers_id = pers.attrib['key']
+                ppl.append(pers_id)
             except:
                 pass
     else:
@@ -73,8 +73,6 @@ def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], list[tuple[str,
         log.info(f"{full_id} doesn't have any people living in it. Check!")
         ppl.append("N/A")
     log.debug(f"Sucessfully processed {shelfmark}/{full_id}")
-    # if folio > 250:
-    #     print(f"Something is weird with ms {full_id}: Apparently has {folio} folios.")
     res = (
         (
             shelfmark,
@@ -84,30 +82,30 @@ def parse_xml_content(root: etree._Element) -> tuple[tuple[Any], list[tuple[str,
             repository,
             origin,
             date,
-            str(tp),
-            str(ta),
-            str(meandate),
-            str(yearrange),
+            tp,
+            ta,
+            meandate,
+            yearrange,
             support,
-            str(folio),
+            folio,
             height,
             width,
             extent,
             description,
             creator,
-            id,
+            handrit_id,
             full_id,
             filename
         ),
         ms_x_ppl,
         ms_x_txts,
     )
-    if not creator == 'NULL':
+    if creator != 'NULL':
         print(creator)
     return res
 
 
-def get_txt_list_from_ms(root: etree.Element, msID: str) -> list[str]:
+def get_txt_list_from_ms(root: etree.Element, ms_id: str) -> list[str]:
     txts_raw = root.findall(".//msItem", nsmap)
     txts: list[str] = []
     if txts_raw is not None:
@@ -129,7 +127,7 @@ def get_txt_list_from_ms(root: etree.Element, msID: str) -> list[str]:
                         title = " ".join(title.split())  # There are excessive spaces in the XML. This gets rid of them /SK
                         txts.append(title)
     else:
-        log.info(f"{msID} apparently has no texts. Check if this is correct!")
+        log.info(f"{ms_id} apparently has no texts. Check if this is correct!")
         txts.append("N/A")
     if len(txts) == 0:
         txts.append("N/A")
