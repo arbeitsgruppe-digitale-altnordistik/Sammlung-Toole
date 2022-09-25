@@ -3,6 +3,7 @@ from logging import Logger
 
 import streamlit as st
 from src.lib import utils
+from src.lib.database.deduplicate import UnifiedMetadata
 from src.lib.xml.tamer import MetadataRowType
 
 
@@ -83,7 +84,7 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
     log.info(f"Successfully added people to people database table: {len(incoming)} entries.")
 
 
-def populate_unified_ms_table(conn: sqlite3.Connection, incoming: list[MetadataRowType]) -> None:
+def populate_unified_ms_table(conn: sqlite3.Connection, incoming: list[UnifiedMetadata]) -> None:
     ...
     # TODO-BL: implement
 
