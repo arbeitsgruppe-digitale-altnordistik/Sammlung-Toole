@@ -98,6 +98,7 @@ class DataHandler:
             db_init.populate_junction_txm(db_conn, ms_txts)
             unified_metadata = deduplicate.get_unified_metadata(ms_meta)
             db_init.populate_unified_ms_table(db_conn, unified_metadata)
+            # TODO-BL: we probably should have junction tables for the unified data too?
             with database.create_connection(DATABASE_PATH) as dest_conn:
                 db_conn.backup(dest_conn)
 
