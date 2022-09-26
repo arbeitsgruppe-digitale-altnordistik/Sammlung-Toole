@@ -566,7 +566,7 @@ def get_ms_id(root: etree._Element) -> Tuple[str, str, str]:
         co = ms_id.find("country", nsmap)
         try:
             country = co.text
-        except:
+        except Exception:
             country = ""
         se = ms_id.find("settlement", nsmap)
         # settlement = se.text if se else ""
@@ -574,7 +574,7 @@ def get_ms_id(root: etree._Element) -> Tuple[str, str, str]:
         # WHY? /SK
         try:
             settlement = se.text
-        except:
+        except Exception:
             settlement = ""
         re = ms_id.find("repository", nsmap)
         try:

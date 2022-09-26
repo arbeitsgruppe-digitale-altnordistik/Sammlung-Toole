@@ -129,7 +129,7 @@ def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
         elif summary is not None:
             title_raw = summary.find("title", root.nsmap)
         title = title_raw.text
-    except:
+    except Exception:
         log.info(f"{ms_id} has no nickname or it is stored in a weird way")
         # TODO: Catch weird XML better.
         title = "N/A"
@@ -138,7 +138,7 @@ def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
         res = res.replace('\t', ' ')
         res = ' '.join(res.split())
         return str(res)
-    except:
+    except Exception:
         return str(title)
 
 

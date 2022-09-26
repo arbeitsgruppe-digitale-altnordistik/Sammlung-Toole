@@ -16,7 +16,7 @@ def search_page() -> None:
     st.header('Search Page')
     opts: dict[str, Callable[[], None]] = {
         'How To': how_to,
-        'Search Manuscripts by related People': manuscripts_by_persons,
+        'Search Manuscripts by related People': __search_mss_by_person_step_search,
         'Search People by related Manuscripts': persons_by_manuscripts,
         'Search Manuscripts by Text': manuscripts_by_texts,
         'Search Texts contained by Manuscripts': text_by_manuscripts,
@@ -63,36 +63,39 @@ def how_to() -> None:
 # ================================
 
 
-def manuscripts_by_persons() -> None:
-    """Search Page: Search for manuscripts by persons related to the manuscripts.
+# def manuscripts_by_persons() -> None:
+#     """Search Page: Search for manuscripts by persons related to the manuscripts.
 
-    Args:
-        state (StateHandler): The current session state.
-    """
-    if state.steps.search_mss_by_persons == Step.MS_by_Pers.Search_person:
-        __search_mss_by_person_step_search()
-    else:
-        __search_mss_by_person_step_save_results()
+#     Args:
+#         state (StateHandler): The current session state.
+#     """
+#     if state.steps.search_mss_by_persons == Step.MS_by_Pers.Search_person:
+#         __search_mss_by_person_step_search()
+#     else:
+#         __search_mss_by_person_step_save_results()
 
 
 def __search_mss_by_person_step_search() -> None:
     """
     Step 1 of this search: Select person(s).
     """
-    __search_step_1(
-        what_sg="Person",
-        what_pl="People",
-        selection_keys=list(handler.person_names.keys()),
-        search_func=handler.search_manuscripts_related_to_persons,
-        state_func=state.store_ms_by_person_search_state,
-        format_func=lambda x: f"{handler.person_names[x]} ({x})",
-    )
+    display_container = st.empty()
+    with display_container.container():
+        __search_step_1(
+            what_sg="Person",
+            what_pl="People",
+            selection_keys=list(handler.person_names.keys()),
+            search_func=handler.search_manuscripts_related_to_persons,
+            state_func=state.store_ms_by_person_search_state,
+            format_func=lambda x: f"{handler.person_names[x]} ({x})",
+        )
+    if state.steps.search_mss_by_persons == Step.MS_by_Pers.Store_Results:
+        display_container.empty()
+        with display_container.container():
+            result_view()
 
 
-def __search_mss_by_person_step_save_results() -> None:
-    """
-    Step 2 of this search: Do something with the result.
-    """
+def result_view() -> None:
     results = state.searchState.ms_by_pers.mss
     ppl = state.searchState.ms_by_pers.ppl
     mode = state.searchState.ms_by_pers.mode
@@ -109,26 +112,43 @@ def __search_mss_by_person_step_save_results() -> None:
         metadatahandler.show_data_chart(meta)
     with export:
         metadatahandler.citavi_export(meta)
-        def next_step() -> None: state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
-        __save_group(
-            ids=results,
-            searchterms=ppl,
-            grouptype=GroupType.ManuscriptGroup,
-            step_func=next_step
-        )
-        __add_to_group(
-            ids=results,
-            searchterms=ppl,
-            groups=handler.get_ms_groups(),
-            step_func=next_step
-        )
+        __save_group(results, ppl, GroupType.ManuscriptGroup)
+        __add_to_group(results, ppl, handler.get_ms_groups())
+
+
+def __search_mss_by_person_step_save_results() -> None:
+    """
+    Step 2 of this search: Do something with the result.
+    """
+    results = state.searchState.ms_by_pers.mss
+    ppl = state.searchState.ms_by_pers.ppl
+    mode = state.searchState.ms_by_pers.mode
+    st.subheader("Person(s) selected")
+    query = f' {mode.value} '.join([f"{handler.get_person_name(x)} ({x})" for x in ppl])
+    st.write(f"Searched for '{query}', found {len(results)} manuscripts")
     if st.button("Back"):
         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
         st.experimental_rerun()
+    __show_as_list(results)
+    def next_step() -> None: state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
+    __save_group(
+        ids=results,
+        searchterms=ppl,
+        grouptype=GroupType.ManuscriptGroup,
+        step_func=next_step
+    )
+    __add_to_group(
+        ids=results,
+        searchterms=ppl,
+        groups=handler.get_ms_groups(),
+        step_func=next_step
+    )
+    # LATER: metadatahandler is currently a mix of util and UI... should probably be divided and put in the right place
+    metadatahandler.process_ms_results(handler, results)
+
 
 # Search for people by manuscript
 # ===============================
-
 
 def persons_by_manuscripts() -> None:
     """Search Page: Search for persons by manuscripts related to the person.
@@ -166,26 +186,23 @@ def __search_person_by_mss_step_save_results() -> None:
     st.subheader("Manuscript(s) selected")
     query = f' {mode.value} '.join([f"({x})" for x in mss])
     st.write(f"Searched for '{query}', found {len(results)} {'person' if len(results) == 1 else 'people'}")
-    base, export = st.tabs(["Overview", "Export/Save"])
-    with base:
-        __show_as_list([handler.person_names[x] for x in results])
-    with export:
-        def next_step() -> None: state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
-        __save_group(
-            ids=results,
-            searchterms=mss,
-            grouptype=GroupType.PersonGroup,
-            step_func=next_step
-        )
-        __add_to_group(
-            ids=results,
-            searchterms=mss,
-            groups=handler.get_ppl_groups(),
-            step_func=next_step
-        )
     if st.button("Back"):
         state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
         st.experimental_rerun()
+    __show_as_list([handler.person_names[x] for x in results])
+    def next_step() -> None: state.steps.search_ppl_by_mss = Step.Pers_by_Ms.Search_Ms
+    __save_group(
+        ids=results,
+        searchterms=mss,
+        grouptype=GroupType.PersonGroup,
+        step_func=next_step
+    )
+    __add_to_group(
+        ids=results,
+        searchterms=mss,
+        groups=handler.get_ppl_groups(),
+        step_func=next_step
+    )
 
 
 # Search for manuscripts by text
@@ -226,32 +243,24 @@ def __search_mss_by_text_step_save_results() -> None:
     st.subheader("Text(s) selected")
     query = f' {mode.value} '.join(txt)
     st.write(f"Searched for '{query}', found {len(results)} manuscripts")
-    base, data, chart, export = st.tabs(["Overview", "Details", "Chart(s)", "Export/Save"])
-    with base:
-        __show_as_list([handler.manuscripts[x] for x in results])
-    meta = handler.search_manuscript_data(results).reset_index(drop=True)
-    with data:
-        metadatahandler.show_data_table(meta)
-    with chart:
-        metadatahandler.show_data_chart(meta)
-    with export:
-        metadatahandler.citavi_export(meta)
-        def next_step() -> None: state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
-        __save_group(
-            ids=results,
-            searchterms=ppl,
-            grouptype=GroupType.ManuscriptGroup,
-            step_func=next_step
-        )
-        __add_to_group(
-            ids=results,
-            searchterms=ppl,
-            groups=handler.get_ms_groups(),
-            step_func=next_step
-        )
     if st.button("Back"):
-        state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
+        state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
         st.experimental_rerun()
+    __show_as_list([handler.manuscripts[x] for x in results])
+    def next_step() -> None: state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
+    __save_group(
+        ids=results,
+        searchterms=txt,
+        grouptype=GroupType.ManuscriptGroup,
+        step_func=next_step
+    )
+    __add_to_group(
+        ids=results,
+        searchterms=txt,
+        groups=handler.get_ms_groups(),
+        step_func=next_step
+    )
+    metadatahandler.process_ms_results(handler, results)
 
 
 # Search for texts by manuscript
@@ -296,26 +305,23 @@ def __search_text_by_mss_step_save_results() -> None:
     st.subheader("Manuscript(s) selected")
     query = f' {mode.value} '.join([f"({x})" for x in mss])
     st.write(f"Searched for '{query}', found {len(results)} {'text' if len(results) == 1 else 'texts'}")
-    base, export = st.tabs(["Overview", "Export/Save"])
-    with base:
-        __show_as_list(results)
-    with export:
-        def next_step() -> None: state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
-        __save_group(
-            ids=results,
-            searchterms=mss,
-            grouptype=GroupType.TextGroup,
-            step_func=next_step
-        )
-        __add_to_group(
-            ids=results,
-            searchterms=mss,
-            groups=handler.get_txt_groups(),
-            step_func=next_step
-        )
     if st.button("Back"):
         state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
         st.experimental_rerun()
+    __show_as_list(results)
+    def next_step() -> None: state.steps.search_txt_by_mss = Step.Txt_by_Ms.Search_Ms
+    __save_group(
+        ids=results,
+        searchterms=mss,
+        grouptype=GroupType.TextGroup,
+        step_func=next_step
+    )
+    __add_to_group(
+        ids=results,
+        searchterms=mss,
+        groups=handler.get_txt_groups(),
+        step_func=next_step
+    )
 
 
 # helper functions
@@ -354,14 +360,12 @@ def __search_step_1(
             with st.spinner('Searching...'):
                 res = search_func(selection, mode)
             state_func(res, selection, mode)
-            st.experimental_rerun()
 
 
 def __save_group(
     ids: list[str],
     searchterms: list[str],
     grouptype: GroupType,
-    step_func: Callable[[], None]
 ) -> None:
     """Prompt to save search results as a new Group.
 
@@ -377,15 +381,12 @@ def __save_group(
             if st.form_submit_button("Save"):
                 grp = Group(grouptype, name, set(ids))
                 handler.put_group(grp)
-                step_func()
-                st.experimental_rerun()
 
 
 def __add_to_group(
     ids: list[str],
     searchterms: list[str],
     groups: list[Group],
-    step_func: Callable[[], None]
 ) -> None:
     """Prompt to save search results combined with an existing group.
 
@@ -415,8 +416,6 @@ def __add_to_group(
                     new_items = previous_group.items.union(set(ids))
                 new_group = Group(previous_group.group_type,  name, new_items)
                 handler.put_group(new_group)
-                step_func()
-                st.experimental_rerun()
 
 
 def __ask_for_search_mode() -> SearchOptions:
