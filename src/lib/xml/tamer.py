@@ -145,7 +145,11 @@ def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[tuple[MetadataRo
             yield _parse_xml_content(ele, filename)
 
 
-def get_metadata_from_files(files: Iterable[Path]) -> tuple[list[MetadataRowType], list[list[tuple[str, str]]], list[list[tuple[str, str]]]]:
+def get_metadata_from_files(files: Iterable[Path]) -> tuple[
+    list[MetadataRowType],
+    list[list[tuple[str, str]]],
+    list[list[tuple[str, str]]]
+]:
     data = _get_all_data_from_files(files)
     # LATER: the rest can be simplified to `return tuple(zip(*data))` but typing is not happy
     meta_data: list[MetadataRowType] = []

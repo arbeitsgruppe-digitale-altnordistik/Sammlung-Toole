@@ -45,13 +45,6 @@ class DataHandler:
     Dictionary mapping person names to a list of IDs of persons with said name"""
 
     def __init__(self) -> None:
-        """DataHandler constructor.
-
-        Returns a new instance of a DataHandler.
-
-        Should not be called directly, but rather through the factory method `DataHandler.get_handler()`.
-        """
-
         if not Path(DATABASE_PATH).exists():
             DataHandler._build_db()
         if not Path(DATABASE_GROUPS_PATH).exists():
@@ -64,7 +57,6 @@ class DataHandler:
         log.info("Loaded MS Info")
         self.texts = database.txt_lookup_list(database.create_connection().cursor())
         log.info("Loaded Text Info")
-        # self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
 

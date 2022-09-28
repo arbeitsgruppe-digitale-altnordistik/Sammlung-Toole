@@ -15,8 +15,8 @@ class UnifiedMetadata:
         shelfmark (str): the manuscript shelfmark
         catalogue_entries (int): the number of entries that were combined into this unified entry
 
-    # CHORE: documentation
     """
+    # CHORE: documentation
     shelfmark: str
     catalogue_entries: int
     ms_title: str
@@ -39,9 +39,17 @@ class UnifiedMetadata:
     filename: str
 
     @property
+    def terminus_post_quem(self) -> int:
+        return max(self.terminus_post_quem_all)
+
+    @property
     def terminus_post_quem_mean(self) -> int:
         """The statistical mean of the termini post quos"""
         return int(statistics.mean(self.terminus_post_quem_all))
+
+    @property
+    def terminus_ante_quem(self) -> int:
+        return min(self.terminus_ante_quem_all)
 
     @property
     def terminus_ante_quem_mean(self) -> int:
@@ -93,7 +101,9 @@ class UnifiedMetadata:
         str,  # repository
         str,  # origin
         str,  # date_string
+        int,  # terminus post quem
         str,  # terminus_post_quem_all
+        int,  # terminus ante quem
         str,  # terminus_ante_quem_all
         int,  # date mean
         float,  # date standard deviation
@@ -118,7 +128,9 @@ class UnifiedMetadata:
             self.repository,
             self.origin,
             self.date_string,
+            self.terminus_post_quem,
             '|'.join((str(d) for d in self.terminus_post_quem_all)),
+            self.terminus_ante_quem,
             '|'.join((str(d) for d in self.terminus_ante_quem_all)),
             self.date_mean,
             self.date_sd,

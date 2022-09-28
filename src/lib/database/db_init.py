@@ -52,7 +52,35 @@ def db_set_up(conn: sqlite3.Connection) -> None:
                                                             id,
                                                             full_id PRIMARY KEY,
                                                             filename)''')
-    # TODO-BL: add table for unified manuscript metadata
+    curse.execute(
+        '''CREATE TABLE IF NOT EXISTS manuscriptUnified (
+            id INTEGER PRIMARY KEY,
+            shelfmark TEXT,
+            catalogue_entries INTEGER,
+            ms_title TEXT,
+            country TEXT,
+            settlement TEXT,
+            repository TEXT,
+            origin TEXT,
+            full_date TEXT,
+            terminus_post_quem INTEGER,
+            termini_post_quos TEXT,
+            terminus_ante_quem INTEGER,
+            termini_ante_quos TEXT,
+            mean_date INTEGER,
+            date_standard_deviation REAL,
+            support TEXT,
+            folio INTEGER,
+            height TEXT,
+            width TEXT,
+            extent TEXT,
+            description TEXT,
+            creator TEXT,
+            old_primary_keys TEXT,
+            full_ids TEXT,
+            file_names TEXT
+        )'''
+    )
     curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer auto_increment PRIMARY KEY,
                                                                 persID,
                                                                 msID,
@@ -85,8 +113,13 @@ def populate_people_table(conn: sqlite3.Connection, incoming: list[tuple[str, st
 
 
 def populate_unified_ms_table(conn: sqlite3.Connection, incoming: list[UnifiedMetadata]) -> None:
-    ...
-    # TODO-BL: implement
+    cursor = conn.cursor()
+    data = [d.to_tuple() for d in incoming]
+    query = f"INSERT OR IGNORE INTO manuscriptUnified VALUES (NULL, {', '.join('?' * 24)})"
+    cursor.executemany(query, data)
+    conn.commit()
+    cursor.close()
+    log.info(f"Successfully added unified manuscript metadata into manuscript_unified: {len(incoming)} entries.")
 
 
 def populate_ms_table(conn: sqlite3.Connection, incoming: list[MetadataRowType]) -> None:
