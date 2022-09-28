@@ -8,6 +8,15 @@ from src.lib.xml.tamer import MetadataRowType
 
 @dataclass(frozen=True)
 class UnifiedMetadata:
+    """
+    Model/Dataclass for a single entry of unified manuscript meta data
+
+    Args:
+        shelfmark (str): the manuscript shelfmark
+        catalogue_entries (int): the number of entries that were combined into this unified entry
+
+    # CHORE: documentation
+    """
     shelfmark: str
     catalogue_entries: int
     ms_title: str
@@ -31,22 +40,27 @@ class UnifiedMetadata:
 
     @property
     def terminus_post_quem_mean(self) -> int:
+        """The statistical mean of the termini post quos"""
         return int(statistics.mean(self.terminus_post_quem_all))
 
     @property
     def terminus_ante_quem_mean(self) -> int:
+        """The statistical mean of the termini ante quos"""
         return int(statistics.mean(self.terminus_ante_quem_all))
 
     @property
     def date_mean(self) -> int:
+        """The statistical mean of the ,amuscript datings"""
         return int(statistics.mean(self.terminus_ante_quem_all + self.terminus_post_quem_all))
 
     @property
     def date_sd(self) -> float:
+        """The statistical standard deviation of the termini post et ante quos"""
         return statistics.stdev(self.terminus_ante_quem_all + self.terminus_post_quem_all)
 
     @staticmethod
     def from_entry(e: MetadataRowType) -> UnifiedMetadata:
+        """Creates an object of type UNifiedMetadata from a single row from the manuscripts database"""
         return UnifiedMetadata(
             shelfmark=e[0],
             catalogue_entries=1,
@@ -79,9 +93,7 @@ class UnifiedMetadata:
         str,  # repository
         str,  # origin
         str,  # date_string
-        int,  # terminus_post_quem_mean # TODO: should this be here? as it's a property not a field
         str,  # terminus_post_quem_all
-        int,  # terminus_ante_mean_all # TODO: dito
         str,  # terminus_ante_quem_all
         int,  # date mean
         float,  # date standard deviation
@@ -96,6 +108,7 @@ class UnifiedMetadata:
         str,  # full_id
         str  # filename
     ]:
+        """Returns the data of this object as a tuple for stroing in the database"""
         return (
             self.shelfmark,
             self.catalogue_entries,
@@ -105,9 +118,7 @@ class UnifiedMetadata:
             self.repository,
             self.origin,
             self.date_string,
-            self.terminus_post_quem_mean,
             '|'.join((str(d) for d in self.terminus_post_quem_all)),
-            self.terminus_ante_quem_mean,
             '|'.join((str(d) for d in self.terminus_ante_quem_all)),
             self.date_mean,
             self.date_sd,
@@ -124,6 +135,11 @@ class UnifiedMetadata:
         )
 
     def __add__(self, other: UnifiedMetadata) -> UnifiedMetadata:
+        """
+        Combines the UnifiedMetadata object with an other UnifiedMetadata object.
+
+        Operator overload so that we can use `+` on these objects
+        """
         if self.shelfmark != other.shelfmark:
             print(f"WARNING: Combining manuscripts with different shelfmarks: {self.shelfmark} != {other.shelfmark}")
             with open('zzz_diff_shelfmarks.txt', 'a', encoding='utf-8') as f:
@@ -158,7 +174,15 @@ class UnifiedMetadata:
         )
 
 
-def unify_metadata_entries(entries: list[MetadataRowType]) -> UnifiedMetadata:
+def _unify_metadata_entries(entries: list[MetadataRowType]) -> UnifiedMetadata:
+    """Combines a list of ununified manuscript metadata *with the same ID* into one unified entry.
+
+    Args:
+        entries (list[MetadataRowType]): a list of manuscript metadata, where all entries have the same manuscript ID
+
+    Returns:
+        UnifiedMetadata: A single manuscript entry with unified metadata in it
+    """
     n = len(entries)
     if n > 3:
         print(f"WARNING: Trouble deduplicating '{n}' entries for {entries[0][0]}")
@@ -173,15 +197,45 @@ def unify_metadata_entries(entries: list[MetadataRowType]) -> UnifiedMetadata:
 
 
 def get_unified_metadata(ms_metadata: list[MetadataRowType]) -> list[UnifiedMetadata]:
+    """Combine all metadata with of the same ID into single entries.
+
+    Given a list of rows from the db table of non-unified manuscript metadata,
+    this method returns a list of unified manuscript metadata, where all entries
+    that concern the same maniuscript ID are merged into one entry.
+
+    Note that this process is potentially "lossy", i.e. in some edge cases,
+    the result may not be as sensible as the input.
+
+    The result also contains some information on the differences of input.
+
+    Args:
+        ms_metadata (list[MetadataRowType]): data as contained by the manuscripts table in the DB
+
+    Returns:
+        list[UnifiedMetadata]: unified data as modelled in `UnifiedMetadata`
+    """
     metadata_per_id: dict[str, list[MetadataRowType]] = {}
     for m in ms_metadata:
         id_ = m[18]
         c = metadata_per_id.get(id_, [])
         metadata_per_id[id_] = c + [m]
-    return [unify_metadata_entries(m) for m in metadata_per_id.values()]
+    return [_unify_metadata_entries(m) for m in metadata_per_id.values()]
 
 
 def combine_str(x: str, y: str) -> str:
+    """
+    Combine two strings into a "unified" string.
+
+    Works under the following assumptions:
+        - if the two strings are equal, this value is returned
+        - if one of the strings contains the other, then the containing string is returned
+        - if one of the strings is contained by a given set of values to disregard ("unknown", "N/A", etc.)
+          then the other string is returned, even though the other string might still be in this set too.
+          (That means that "N/A" + "Origin Unknown" returns "Origin Unknown")
+        - if the two strings make up a well-known, given pair of strings (e.g. "København", "Copenhagen"),
+          then one of the values (here "Copenhagen") is returned.
+        - if none of these conditions are met, then the two strings are combined with the ` | ` seperator
+    """
     disregard = {"origin unknown", "n/a"}
     dk = {"Danmark", "Denmark"}
     cph = {"København", "Copenhagen"}
@@ -205,6 +259,14 @@ def combine_str(x: str, y: str) -> str:
 
 
 def combine_int(x: int, y: int) -> int:
+    """
+    Combines two integers.
+
+    Assumptions:
+        - if the values are identical, return this value
+        - if one value is 0, return the other one (even though that may be 0 too)
+        - otherwise, return the mean of the two
+    """
     if x == y:
         return x
     if x == 0:
