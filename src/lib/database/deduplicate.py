@@ -17,6 +17,7 @@ class UnifiedMetadata:
 
     """
     # CHORE: documentation
+    handrit_id: str
     shelfmark: str
     catalogue_entries: int
     ms_title: str
@@ -34,7 +35,6 @@ class UnifiedMetadata:
     extent: str
     description: str
     creator: str
-    old_primary_key: str
     full_id: str
     filename: str
 
@@ -87,12 +87,13 @@ class UnifiedMetadata:
             extent=e[15],
             description=e[16],
             creator=e[17],
-            old_primary_key=e[18],
+            handrit_id=e[18],
             full_id=e[19],
             filename=e[20]
         )
 
     def to_tuple(self) -> tuple[
+        str,  # handrit_id
         str,  # shelfmark
         int,  # catalogue_entries
         str,  # ms_title
@@ -114,12 +115,12 @@ class UnifiedMetadata:
         str,  # extent
         str,  # description
         str,  # creator
-        str,  # old_primary_key
         str,  # full_id
         str  # filename
     ]:
         """Returns the data of this object as a tuple for stroing in the database"""
         return (
+            self.handrit_id,
             self.shelfmark,
             self.catalogue_entries,
             self.ms_title,
@@ -141,7 +142,6 @@ class UnifiedMetadata:
             self.extent,
             self.description,
             self.creator,
-            self.old_primary_key,
             self.full_id,
             self.filename
         )
@@ -156,6 +156,10 @@ class UnifiedMetadata:
             print(f"WARNING: Combining manuscripts with different shelfmarks: {self.shelfmark} != {other.shelfmark}")
             with open('zzz_diff_shelfmarks.txt', 'a', encoding='utf-8') as f:
                 f.write(f"{self.shelfmark}\t{other.shelfmark}\n")
+        if self.handrit_id != other.handrit_id:
+            print(f"WARNING: Combining manuscripts with different IDs: {self.handrit_id} != {other.handrit_id}")
+            with open('zzz_diff_ids.txt', 'a', encoding='utf-8') as f:
+                f.write(f"{self.handrit_id}\t{other.handrit_id}\n")
         if self.folio != other.folio:
             print(f"WARNING: Folio number mismatch: {self.folio} != {other.folio} in manuscript: {self.shelfmark}")
             with open('zzz_diff_fol.txt', 'a', encoding='utf-8') as f2:
@@ -163,6 +167,7 @@ class UnifiedMetadata:
         tps = list(set(self.terminus_post_quem_all + other.terminus_post_quem_all) - {0}) or [0]
         tas = list(set(self.terminus_ante_quem_all + other.terminus_ante_quem_all) - {0}) or [0]
         return UnifiedMetadata(
+            handrit_id=self.handrit_id,
             shelfmark=combine_str(self.shelfmark, other.shelfmark),
             catalogue_entries=self.catalogue_entries + other.catalogue_entries,
             ms_title=combine_str(self.ms_title, other.ms_title),
@@ -180,7 +185,6 @@ class UnifiedMetadata:
             extent=combine_str(self.extent, other.extent),
             description=combine_str(self.description, other.description),
             creator=combine_str(self.creator, other.creator),
-            old_primary_key=f"{self.old_primary_key}|{other.old_primary_key}",
             full_id=f"{self.full_id}|{other.full_id}",
             filename=f"{self.filename}|{other.filename}",
         )
