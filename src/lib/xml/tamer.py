@@ -28,7 +28,7 @@ def _load_xml_contents(path: Path) -> Optional[etree._Element]:
         return None
 
 
-def _parse_xml_content(root: etree._Element, filename: str) -> tuple[MetadataRowType, list[tuple[str, str]], list[tuple[str, str]]]:
+def _parse_xml_content(root: etree._Element, filename: str) -> tuple[MetadataRowType, list[tuple[str, str, str]], list[tuple[str, str, str]]]:
     shelfmark = _get_shelfmark(root)
     full_id = _find_full_id(root)
     ms_nickname = _get_shorttitle(root, full_id)
@@ -39,15 +39,13 @@ def _parse_xml_content(root: etree._Element, filename: str) -> tuple[MetadataRow
     folio = metadata.get_folio(root)
     height, width, extent, description = metadata.get_description(root)
     handrit_id = _find_id(root)
-    # filename = _find_filename(root)  # TODO-BL: not needed anymore, right?
     creator = metadata.get_creators(root)
     txts = _get_txt_list_from_ms(root, full_id)
     ppl = _get_ppl_from_ms(root, full_id)
-    ms_x_ppl = [(x, full_id) for x in list(dict.fromkeys(ppl))]  # TODO-BL: Understand this?!
-    ms_x_txts = [(full_id, x) for x in list(dict.fromkeys(txts))]  # TODO-BL: Understand this?!
+    ms_x_ppl = [(full_id, handrit_id, p) for p in ppl]
+    ms_x_txts = [(full_id, handrit_id, t) for t in txts]
     if len(ppl) == 0:
         log.info(f"{full_id} doesn't have any people living in it. Check!")
-        ppl.append("N/A")  # TODO-BL: Understand this?!
     log.debug(f"Sucessfully processed {shelfmark}/{full_id}")
     res = (
         (
@@ -137,7 +135,7 @@ def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
         return str(title)
 
 
-def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[tuple[MetadataRowType, list[tuple[str, str]], list[tuple[str, str]]]]:
+def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[tuple[MetadataRowType, list[tuple[str, str, str]], list[tuple[str, str, str]]]]:
     for f in files:
         ele = _load_xml_contents(f)
         filename = f.name
@@ -147,14 +145,14 @@ def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[tuple[MetadataRo
 
 def get_metadata_from_files(files: Iterable[Path]) -> tuple[
     list[MetadataRowType],
-    list[list[tuple[str, str]]],
-    list[list[tuple[str, str]]]
+    list[list[tuple[str, str, str]]],
+    list[list[tuple[str, str, str]]]
 ]:
     data = _get_all_data_from_files(files)
     # LATER: the rest can be simplified to `return tuple(zip(*data))` but typing is not happy
     meta_data: list[MetadataRowType] = []
-    ppl: list[list[tuple[str, str]]] = []
-    txts: list[list[tuple[str, str]]] = []
+    ppl: list[list[tuple[str, str, str]]] = []
+    txts: list[list[tuple[str, str, str]]] = []
     for m, p, t in data:
         meta_data.append(m)
         ppl.append(p)

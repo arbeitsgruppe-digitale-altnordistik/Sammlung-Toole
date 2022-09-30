@@ -26,23 +26,17 @@ settings = Settings.get_settings()
 class DataHandler:
 
     manuscripts: dict[str, list[str]]
-    """Lookup dictionary
-    Dictionary mapping full msIDs (handrit-IDs) to Shelfmarks, Nicknames of manuscripts.
-    """
+    """Lookup dictionary mapping full msIDs (handrit-IDs) to Shelfmarks, Nicknames of manuscripts."""
+
     texts: list[str]
     """Temporary lookup tool for search"""
     # TODO: Come up with better solution -> Implement Tarrins unified names
 
     person_names: dict[str, str]
-    """Name lookup dictionary
-
-    Lookup dictionary mapping person IDs to the full name of the person
-    """
+    """Name lookup dictionary mapping person IDs to the full name of the person"""
 
     person_names_inverse: dict[str, list[str]]
-    """Inverted name lookup dictionary
-    
-    Dictionary mapping person names to a list of IDs of persons with said name"""
+    """Inverse name lookup dictionary, mapping person names to a list of IDs of persons with said name"""
 
     def __init__(self) -> None:
         if not Path(DATABASE_PATH).exists():
@@ -82,15 +76,17 @@ class DataHandler:
             ppl = tamer.get_ppl_names()
             db_init.populate_people_table(db_conn, ppl)
             files = Path(XML_BASE_PATH).rglob('*.xml')
+            # files = list(Path(XML_BASE_PATH).rglob('*.xml'))[:100]
             ms_meta, msppl, mstxts = tamer.get_metadata_from_files(files)
             db_init.populate_ms_table(db_conn, ms_meta)
-            ms_ppl = [x for y in msppl for x in y if x[0] != 'N/A']  # TODO-BL: I'd like to get rid of "N/A"
-            ms_txts = [x for y in mstxts for x in y if x[1] != "N/A"]  # TODO-BL: I'd like to get rid of "N/A"
+            ms_ppl = [x for y in msppl for x in y if x[2] != 'N/A']
+            ms_txts = [x for y in mstxts for x in y if x[2] != "N/A"]  # TODO-BL: I'd like to get rid of "N/A"
             db_init.populate_junction_pxm(db_conn, ms_ppl)
             db_init.populate_junction_txm(db_conn, ms_txts)
             unified_metadata = deduplicate.get_unified_metadata(ms_meta)
             db_init.populate_unified_ms_table(db_conn, unified_metadata)
-            # TODO-BL: we probably should have junction tables for the unified data too?
+            db_init.populate_junction_pxm_unified(db_conn, ms_ppl)
+            db_init.populate_junction_txm_unified(db_conn, ms_txts)
             with database.create_connection(DATABASE_PATH) as dest_conn:
                 db_conn.backup(dest_conn)
 

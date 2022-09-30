@@ -27,31 +27,38 @@ def db_set_up(conn: sqlite3.Connection) -> None:
     '''
     log.info("Setting up database tables...")
     curse = conn.cursor()
-    curse.execute('''CREATE TABLE IF NOT EXISTS people (persID PRIMARY KEY,
-                                                        firstName,
-                                                        lastName
-                                                        )''')
-    curse.execute('''CREATE TABLE IF NOT EXISTS manuscripts (shelfmark,
-                                                            shorttitle,
-                                                            country,
-                                                            settlement,
-                                                            repository,
-                                                            origin,
-                                                            date,
-                                                            terminusPostQuem,
-                                                            terminusAnteQuem,
-                                                            meandate,
-                                                            yearrange,
-                                                            support,
-                                                            folio,
-                                                            height,
-                                                            width,
-                                                            extent,
-                                                            description,
-                                                            creator,
-                                                            id,
-                                                            full_id PRIMARY KEY,
-                                                            filename)''')
+    curse.execute(
+        '''CREATE TABLE IF NOT EXISTS people (
+            persID PRIMARY KEY,
+            firstName,
+            lastName
+        )'''
+    )
+    curse.execute(
+        '''CREATE TABLE IF NOT EXISTS manuscripts (
+            shelfmark,
+            shorttitle,
+            country,
+            settlement,
+            repository,
+            origin,
+            date,
+            terminusPostQuem,
+            terminusAnteQuem,
+            meandate,
+            yearrange,
+            support,
+            folio,
+            height,
+            width,
+            extent,
+            description,
+            creator,
+            id,
+            full_id PRIMARY KEY,
+            filename
+        )'''
+    )
     curse.execute(
         '''CREATE TABLE IF NOT EXISTS manuscriptUnified (
             id INTEGER PRIMARY KEY,
@@ -81,16 +88,42 @@ def db_set_up(conn: sqlite3.Connection) -> None:
             file_names TEXT
         )'''
     )
-    curse.execute('''CREATE TABLE IF NOT EXISTS junctionPxM (locID integer auto_increment PRIMARY KEY,
-                                                                persID,
-                                                                msID,
-                                                                FOREIGN KEY(persID) REFERENCES people(persID) ON DELETE CASCADE ON UPDATE CASCADE,
-                                                                FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
-    curse.execute('''CREATE TABLE IF NOT EXISTS junctionTxM (locID integer auto_increment PRIMARY KEY,
-                                                                msID,
-                                                                txtName,
-                                                                FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE)''')
-    log.info("Successfully created database tables.")
+    curse.execute(
+        '''CREATE TABLE IF NOT EXISTS junctionPxM (
+            locID INTEGER PRIMARY KEY AUTOINCREMENT,
+            persID,
+            msID,
+            FOREIGN KEY(persID) REFERENCES people(persID) ON DELETE CASCADE ON UPDATE CASCADE,
+            FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE
+        )'''
+    )
+    curse.execute(
+        '''CREATE TABLE IF NOT EXISTS junctionTxM (
+            locID INTEGER PRIMARY KEY AUTOINCREMENT,
+            msID,
+            txtName,
+            FOREIGN KEY(msID) REFERENCES manuscripts(full_id) ON DELETE CASCADE ON UPDATE CASCADE
+        )'''
+    )
+    curse.execute(
+        '''CREATE TABLE IF NOT EXISTS junctionPxMU (
+            locID INTEGER PRIMARY KEY AUTOINCREMENT,
+            persID,
+            handritID,
+            UNIQUE(persID, handritID),
+            FOREIGN KEY(persID) REFERENCES people(persID) ON DELETE CASCADE ON UPDATE CASCADE,
+            FOREIGN KEY(handritID) REFERENCES manuscripts(id) ON DELETE CASCADE ON UPDATE CASCADE
+        )'''
+    )
+    curse.execute(
+        '''CREATE TABLE IF NOT EXISTS junctionTxMU (
+            locID INTEGER PRIMARY KEY AUTOINCREMENT,
+            handritID,
+            txtName,
+            UNIQUE(handritID, txtName),
+            FOREIGN KEY(handritID) REFERENCES manuscripts(id) ON DELETE CASCADE ON UPDATE CASCADE
+        )'''
+    )
     conn.commit()
     curse.close()
     log.info("Successfully created all database tables.")
@@ -141,20 +174,40 @@ def populate_ms_table(conn: sqlite3.Connection, incoming: list[MetadataRowType])
     log.info(f"Successfully added manuscripts to manuscript database table: {len(incoming)} entries.")
 
 
-def populate_junction_pxm(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
+def populate_junction_pxm(conn: sqlite3.Connection, incoming: list[tuple[str, str, str]]) -> None:
     curse = conn.cursor()
-    curse.executemany('''INSERT OR IGNORE INTO junctionPxM(persID, msID) VALUES (?, ?)''', incoming)
+    data = [(p, ms) for (ms, _, p) in incoming]
+    curse.executemany('''INSERT OR IGNORE INTO junctionPxM(persID, msID) VALUES (?, ?)''', data)
     conn.commit()
     curse.close()
     log.info("Successfully populated PxM junction table.")
 
 
-def populate_junction_txm(conn: sqlite3.Connection, incoming: list[tuple[str, str]]) -> None:
+def populate_junction_txm(conn: sqlite3.Connection, incoming: list[tuple[str, str, str]]) -> None:
     curse = conn.cursor()
-    curse.executemany("INSERT OR IGNORE INTO junctionTxM(msID, txtName) VALUES (?,?)", incoming)
+    data = [(ms, txt) for (ms, _, txt) in incoming]
+    curse.executemany("INSERT OR IGNORE INTO junctionTxM(msID, txtName) VALUES (?,?)", data)
     conn.commit()
     curse.close()
     log.info("Successfully populated TxM junction table.")
+
+
+def populate_junction_pxm_unified(conn: sqlite3.Connection, incoming: list[tuple[str, str, str]]) -> None:
+    curse = conn.cursor()
+    data = [(p, ms) for (_, ms, p) in incoming]
+    curse.executemany('''INSERT OR IGNORE INTO junctionPxMU(persID, handritID) VALUES (?, ?)''', data)
+    conn.commit()
+    curse.close()
+    log.info("Successfully populated PxM unified junction table.")
+
+
+def populate_junction_txm_unified(conn: sqlite3.Connection, incoming: list[tuple[str, str, str]]) -> None:
+    curse = conn.cursor()
+    data = [(ms, txt) for (_, ms, txt) in incoming]
+    curse.executemany("INSERT OR IGNORE INTO junctionTxMU(handritID, txtName) VALUES (?,?)", data)
+    conn.commit()
+    curse.close()
+    log.info("Successfully populated TxM unified junction table.")
 
 
 def pxm_integrity_check(conn: sqlite3.Connection, incoming: list[tuple[int, str, str]]) -> bool:
