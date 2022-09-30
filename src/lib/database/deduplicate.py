@@ -252,7 +252,7 @@ def combine_str(x: str, y: str) -> str:
           then one of the values (here "Copenhagen") is returned.
         - if none of these conditions are met, then the two strings are combined with the ` | ` seperator
     """
-    disregard = {"origin unknown", "n/a"}
+    disregard = {"origin unknown", "n/a", "null"}
     dk = {"Danmark", "Denmark"}
     cph = {"København", "Copenhagen"}
     if x == y:

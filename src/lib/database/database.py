@@ -80,7 +80,7 @@ def ms_x_ppl(cursor: Cursor, pers_ids: list[str]) -> list[str]:
     """
     Get IDs of all manuscripts related to a list of people.
     """
-    query = f"SELECT msID FROM junctionPxM WHERE persID in ({', '.join('?' for _ in pers_ids)})"
+    query = f"SELECT handritID FROM junctionPxMU WHERE persID in ({', '.join('?' for _ in pers_ids)})"
     cursor.execute(query, pers_ids)
     res = {x[0] for x in cursor.fetchall()}
     return list(res)
@@ -91,7 +91,7 @@ def ppl_x_mss(cursor: Cursor, ms_ids: list[str]) -> list[str]:
     Get IDs of all people connected to a list of manuscripts.
     Returns list of IDs for people.
     """
-    query = f"SELECT persID FROM junctionPxM WHERE msID in ({', '.join('?' for _ in ms_ids)})"
+    query = f"SELECT persID FROM junctionPxMU WHERE handritID in ({', '.join('?' for _ in ms_ids)})"
     cursor.execute(query, ms_ids)
     res = {x[0] for x in cursor.fetchall()}
     return list(res)
@@ -102,7 +102,7 @@ def ms_x_txts(cursor: Cursor, txts: list[str]) -> list[str]:
     Get IDs of all manuscripts connected to a list of texts.
     Returns list of IDs for manuscripts.
     """  # TODO: clarify text definition
-    query = f"SELECT msID FROM junctionTxM WHERE txtName in ({', '.join('?' for _ in txts)})"
+    query = f"SELECT handritID FROM junctionTxMU WHERE txtName in ({', '.join('?' for _ in txts)})"
     cursor.execute(query, txts)
     res = {x[0] for x in cursor.fetchall()}
     return list(res)
@@ -113,7 +113,7 @@ def txts_x_ms(cursor: Cursor, ms_ids: list[str]) -> list[str]:
     Get IDs of all texts connected to a list of manuscripts.
     Returns list of IDs for texts.
     """  # TODO: clarify text definition
-    query = f"SELECT txtName FROM junctionTxM WHERE msID in ({', '.join('?' for _ in ms_ids)})"
+    query = f"SELECT txtName FROM junctionTxMU WHERE handritID in ({', '.join('?' for _ in ms_ids)})"
     cursor.execute(query, ms_ids)
     res = {x[0] for x in cursor.fetchall()}
     return list(res)

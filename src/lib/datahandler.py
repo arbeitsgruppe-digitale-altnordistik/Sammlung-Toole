@@ -129,7 +129,7 @@ class DataHandler:
                 Returns None if no manuscript was found or if no parameters were passed.
         """
         db = database.create_connection()
-        res = database.get_metadata(table_name="manuscripts", column_name="full_id", search_criteria=mssIDs, conn=db)
+        res = database.get_metadata(table_name="manuscriptUnified", column_name="handrit_id", search_criteria=mssIDs, conn=db)
         # FIXME-BL: docstring got outdated and is now lying
         return res
 
