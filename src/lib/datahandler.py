@@ -130,6 +130,7 @@ class DataHandler:
         """
         db = database.create_connection()
         res = database.get_metadata(table_name="manuscripts", column_name="full_id", search_criteria=mssIDs, conn=db)
+        # FIXME-BL: docstring got outdated and is now lying
         return res
 
     def search_manuscripts_containing_texts(self, texts: list[str], searchOption: SearchOptions) -> list[str]:
@@ -199,11 +200,6 @@ class DataHandler:
             res = list(set.intersection(*sets))
             log.info(f'Search result: {res}')
             return res
-
-    def get_person_name(self, pers_id: str) -> str:
-        """Get a person's name, identified by the person's ID"""
-        res = database.simple_people_search(cursor=database.create_connection().cursor(), pers_id=pers_id)
-        return res or ""
 
     def search_persons_related_to_manuscripts(self, ms_full_ids: list[str], searchOption: SearchOptions) -> list[str]:
         # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround # TODO: the hacky-whack should live in its own function
