@@ -41,6 +41,7 @@ def _parse_xml_content(root: etree._Element, filename: str) -> tuple[MetadataRow
     handrit_id = _find_id(root)
     creator = metadata.get_creators(root)
     txts = _get_txt_list_from_ms(root, full_id)
+    print(txts)
     ppl = _get_ppl_from_ms(root, full_id)
     ms_x_ppl = [(full_id, handrit_id, p) for p in ppl]
     ms_x_txts = [(full_id, handrit_id, t) for t in txts]
@@ -94,16 +95,28 @@ def _get_txt_list_from_ms(root: etree._Element, ms_id: str) -> list[str]:
         return ["N/A"]  # TODO-BL: Understand this?!
     txts: list[str] = []
     for txt in txts_raw:
-        lvl = txt.get('n')
-        if lvl is None:
-            title_raw = txt.find("title", nsmap)
-            if title_raw is not None:
-                title: str = title_raw.text
-                if title is not None:
-                    if "\n" in title:
-                        title = "".join(title.splitlines())
-                    title = " ".join(title.split())  # There are excessive spaces in the XML. This gets rid of them /SK
-                    txts.append(title)
+        # lvl = txt.get('n')
+        # print(lvl)
+        # if lvl is None:
+        title_raw = txt.find("title", nsmap)
+        # rubric_raw = txt.find("rubric", nsmap)
+        # print(lvl)
+        # print(title_raw.text if title_raw is not None else "null")
+        # print(rubric_raw)
+        if title_raw is not None:
+            title: str = title_raw.text
+            if title is not None:
+                if "\n" in title:
+                    title = "".join(title.splitlines())
+                title = " ".join(title.split())  # There are excessive spaces in the XML. This gets rid of them /SK
+                txts.append(title)
+        # elif rubric_raw is not None:
+        #     rubric: str = rubric_raw.text
+        #     if rubric is not None:
+        #         if "\n" in rubric:
+        #             rubric = "".join(rubric.splitlines())
+        #         rubric = " ".join(rubric.split())
+        #         txts.append(rubric)
     if len(txts) == 0:
         txts.append("N/A")
     return txts
@@ -147,6 +160,8 @@ def get_metadata_from_files(files: Iterable[Path]) -> tuple[
     list[MetadataRowType],
     list[list[tuple[str, str, str]]],
     list[list[tuple[str, str, str]]]
+
+
 ]:
     data = _get_all_data_from_files(files)
     # LATER: the rest can be simplified to `return tuple(zip(*data))` but typing is not happy
