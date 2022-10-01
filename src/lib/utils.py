@@ -292,7 +292,7 @@ def date_plotting(inDF: pd.DataFrame) -> Figure:  # TODO Update doc  # LATER: ma
         scatterplot data for plotly to be drawn with corresponding function
     '''
 
-    inDF = inDF[inDF['terminusAnteQuem'] != 0]
-    inDF = inDF[inDF['terminusPostQuem'] != 0]
-    fig = px.scatter(inDF, x='terminusPostQuem', y='terminusAnteQuem', color='shelfmark')
+    inDF = inDF[inDF['terminus_ante_quem'] != 0]
+    inDF = inDF[inDF['terminus_post_quem'] != 0]
+    fig = px.scatter(inDF, x='terminus_post_quem', y='terminus_ante_quem', color='shelfmark')
     return fig

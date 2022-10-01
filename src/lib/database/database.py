@@ -112,7 +112,8 @@ def txts_x_ms(cursor: Cursor, ms_ids: list[str]) -> list[str]:
     """
     Get IDs of all texts connected to a list of manuscripts.
     Returns list of IDs for texts.
-    """  # TODO: clarify text definition
+    """
+    # TODO: clarify text definition
     query = f"SELECT txtName FROM junctionTxMU WHERE handritID in ({', '.join('?' for _ in ms_ids)})"
     cursor.execute(query, ms_ids)
     res = {x[0] for x in cursor.fetchall()}
@@ -134,7 +135,7 @@ def ms_lookup_dict(cursor: Cursor) -> dict[str, list[str]]:
     """
     Returns the lookup-dict for the IDs of manuscripts to their human readable signatures.
     """
-    cursor.execute('SELECT full_ID, shelfmark, shorttitle FROM manuscripts')
+    cursor.execute('SELECT handrit_id, shelfmark, ms_title FROM manuscriptUnified')
     raw = cursor.fetchall()
     res = {x[0]: [x[1], x[2]] for x in raw}
     return res
