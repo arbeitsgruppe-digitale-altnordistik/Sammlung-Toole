@@ -139,11 +139,13 @@ def __group_combinator(groups: list[Group], mode: SearchOptions) -> set[str]:
 
 
 def __union_selector() -> SearchOptions:
+    or_ = 'OR  (union - pick items that appear in at least one selected group)'
+    and_ = 'AND (intersection - pick items that appear in all selected groups)'
     modes = {
-        'OR  (union - pick items that appear in at least one selected group)': SearchOptions.CONTAINS_ONE,
-        'AND (intersection - pick items that appear in all selected groups)': SearchOptions.CONTAINS_ALL,
+        or_: SearchOptions.CONTAINS_ONE,
+        and_: SearchOptions.CONTAINS_ALL,
     }
-    mode_selection = st.radio("Combination mode", list(modes.keys()))
+    mode_selection = st.radio("Combination mode", list(modes.keys())) or or_
     mode = modes[mode_selection]
     return mode
 

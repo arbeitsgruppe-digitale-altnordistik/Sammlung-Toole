@@ -21,7 +21,7 @@ def search_page() -> None:
         'Search Manuscripts by Text': manuscripts_by_texts,
         'Search Texts contained by Manuscripts': text_by_manuscripts,
     }
-    choice = st.sidebar.radio('What would you like to search?', options=list(opts.keys()))
+    choice = st.sidebar.radio('What would you like to search?', options=list(opts.keys())) or 'How To'
     fn = opts[choice]
     fn()
 
@@ -401,7 +401,7 @@ def __add_to_group(
         with st.form("add_to_group"):
             group_lookup = {g.name: g for g in groups}
             group_names = list(group_lookup.keys())
-            previous_name: str = st.radio("Select a group", group_names)
+            previous_name: str = st.radio("Select a group", group_names) or group_names[0]
             mode = __ask_for_search_mode()
             previous_group = group_lookup[previous_name]
             previous_query = previous_name.removeprefix("Search results for <").removesuffix(">")
@@ -420,9 +420,11 @@ def __add_to_group(
 
 
 def __ask_for_search_mode() -> SearchOptions:
-    modes = {'AND (must contain all selected)': SearchOptions.CONTAINS_ALL,
-             'OR  (must contain at least one of the selected)': SearchOptions.CONTAINS_ONE}
-    mode_selection = st.radio('Search mode', list(modes.keys()), 1)
+    and_ = 'AND (must contain all selected)'
+    or_ = 'OR  (must contain at least one of the selected)'
+    modes = {and_: SearchOptions.CONTAINS_ALL,
+             or_: SearchOptions.CONTAINS_ONE}
+    mode_selection = st.radio('Search mode', list(modes.keys()), 1) or or_
     return modes[mode_selection]
 
 
