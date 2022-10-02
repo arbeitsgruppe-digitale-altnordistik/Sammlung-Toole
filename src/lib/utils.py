@@ -15,6 +15,7 @@ import plotly.express as px
 import requests
 from bs4 import BeautifulSoup
 from plotly.graph_objs import Figure
+import plotly.graph_objs as go
 
 __logs: List[logging.Logger] = []
 
@@ -294,5 +295,22 @@ def date_plotting(inDF: pd.DataFrame) -> Figure:  # TODO Update doc  # LATER: ma
 
     inDF = inDF[inDF['terminusAnteQuem'] != 0]
     inDF = inDF[inDF['terminusPostQuem'] != 0]
-    fig = px.scatter(inDF, x='terminusPostQuem', y='terminusAnteQuem', color='shelfmark')
+
+    first = inDF['terminusPostQuem'].min()-20
+    last = inDF['terminusAnteQuem'].max()+20
+    diag = pd.DataFrame(dict(
+        x=[first, last],
+        y=[first, last]
+    ))
+    fig_scat = px.scatter(inDF, x='terminusPostQuem', y='terminusAnteQuem', color='shelfmark')
+    fig_line = px.line(diag, x="x", y="y")
+    fig_line.update_traces(line=dict(color='rgba(50,50,50,0.8)'))
+    fig = go.Figure(data=fig_line.data + fig_scat.data)
+    fig.update_layout(
+        title="Manuscript Dating Plot",
+        xaxis_title="Terminus Post Quem",
+        yaxis_title="Terminus Ante Quem",
+        legend_title="Manuscripts"
+    )
+
     return fig
