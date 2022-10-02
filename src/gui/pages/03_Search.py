@@ -245,7 +245,7 @@ def __search_mss_by_text_step_save_results() -> None:
         )
         __add_to_group(
             ids=results,
-            searchterms=ppl,
+            searchterms=txt,
             groups=handler.get_ms_groups(),
             step_func=next_step
         )
