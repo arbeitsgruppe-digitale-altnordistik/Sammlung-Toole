@@ -5,51 +5,40 @@ This module handles data and provides convenient and efficient access to it.
 from __future__ import annotations
 
 from pathlib import Path
-import sqlite3
 from typing import Tuple
 
 import pandas as pd
-import src.lib.xml.tamer as tamer
-from bs4 import BeautifulSoup
 from src.lib import utils
-from src.lib.constants import *
-from src.lib.database import database, db_init, groups_database, groups_db_init
+from src.lib.constants import (DATABASE_GROUPS_PATH, DATABASE_PATH,
+                               XML_BASE_PATH)
+from src.lib.database import (database, db_init, deduplicate, groups_database,
+                              groups_db_init)
 from src.lib.groups import Group
 from src.lib.utils import GitUtil, SearchOptions, Settings
+from src.lib.xml import tamer
 
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
+
+# TODO: get rid of some of the code duplications in this file?
 
 
 class DataHandler:
 
     manuscripts: dict[str, list[str]]
-    """Lookup dictionary
-    Dictionary mapping full msIDs (handrit-IDs) to Shelfmarks, Nicknames of manuscripts.
-    """
+    """Lookup dictionary mapping full msIDs (handrit-IDs) to Shelfmarks, Nicknames of manuscripts."""
+
     texts: list[str]
     """Temporary lookup tool for search"""
     # TODO: Come up with better solution -> Implement Tarrins unified names
 
     person_names: dict[str, str]
-    """Name lookup dictionary
-
-    Lookup dictionary mapping person IDs to the full name of the person
-    """
+    """Name lookup dictionary mapping person IDs to the full name of the person"""
 
     person_names_inverse: dict[str, list[str]]
-    """Inverted name lookup dictionary
-    
-    Dictionary mapping person names to a list of IDs of persons with said name"""
+    """Inverse name lookup dictionary, mapping person names to a list of IDs of persons with said name"""
 
     def __init__(self) -> None:
-        """DataHandler constructor.
-
-        Returns a new instance of a DataHandler.
-
-        Should not be called directly, but rather through the factory method `DataHandler.get_handler()`.
-        """
-
         if not Path(DATABASE_PATH).exists():
             DataHandler._build_db()
         if not Path(DATABASE_GROUPS_PATH).exists():
@@ -62,7 +51,6 @@ class DataHandler:
         log.info("Loaded MS Info")
         self.texts = database.txt_lookup_list(database.create_connection().cursor())
         log.info("Loaded Text Info")
-        # self.manuscripts.drop(columns=["content", "soup"], inplace=True)
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
 
@@ -73,7 +61,7 @@ class DataHandler:
     def _load_persons() -> Tuple[dict[str, str], dict[str, list[str]]]:
         """Load person data"""
         person_names = database.persons_lookup_dict(database.create_connection().cursor())
-        return person_names, tamer.get_person_names_inverse(person_names)
+        return person_names, _get_person_names_inverse(person_names)
 
     @staticmethod
     def _build_groups_db() -> None:
@@ -88,12 +76,17 @@ class DataHandler:
             ppl = tamer.get_ppl_names()
             db_init.populate_people_table(db_conn, ppl)
             files = Path(XML_BASE_PATH).rglob('*.xml')
-            ms_meta, msppl, mstxts = tamer.unpack_work(files)
+            # files = list(Path(XML_BASE_PATH).rglob('*.xml'))[:100]
+            ms_meta, msppl, mstxts = tamer.get_metadata_from_files(files)
             db_init.populate_ms_table(db_conn, ms_meta)
-            ms_ppl = [x for y in msppl for x in y if x[0] != 'N/A']
-            ms_txts = [x for y in mstxts for x in y if x[1] != "N/A"]
-            db_init.populate_junctionPxM(db_conn, ms_ppl)
-            db_init.populate_junctionTxM(db_conn, ms_txts)
+            ms_ppl = [x for y in msppl for x in y if x[2] != 'N/A']
+            ms_txts = [x for y in mstxts for x in y if x[2] != "N/A"]  # TODO-BL: I'd like to get rid of "N/A"
+            db_init.populate_junction_pxm(db_conn, ms_ppl)
+            db_init.populate_junction_txm(db_conn, ms_txts)
+            unified_metadata = deduplicate.get_unified_metadata(ms_meta)
+            db_init.populate_unified_ms_table(db_conn, unified_metadata)
+            db_init.populate_junction_pxm_unified(db_conn, ms_ppl)
+            db_init.populate_junction_txm_unified(db_conn, ms_txts)
             with database.create_connection(DATABASE_PATH) as dest_conn:
                 db_conn.backup(dest_conn)
 
@@ -136,7 +129,8 @@ class DataHandler:
                 Returns None if no manuscript was found or if no parameters were passed.
         """
         db = database.create_connection()
-        res = database.get_metadata(table_name="manuscripts", column_name="full_id", search_criteria=mssIDs, conn=db)
+        res = database.get_metadata(table_name="manuscriptUnified", column_name="handrit_id", search_criteria=mssIDs, conn=db)
+        # FIXME-BL: docstring got outdated and is now lying
         return res
 
     def search_manuscripts_containing_texts(self, texts: list[str], searchOption: SearchOptions) -> list[str]:
@@ -155,7 +149,7 @@ class DataHandler:
             log.debug('Searched texts are empty list')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ms_x_txts(curse=database.create_connection().cursor(), txts=texts)
+            res = database.ms_x_txts(cursor=database.create_connection().cursor(), txts=texts)
             return res
         else:
             sets = []
@@ -190,7 +184,7 @@ class DataHandler:
             log.debug('Searched for empty list of mss')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.txts_x_ms(curse=database.create_connection().cursor(), mss=Inmss)
+            res = database.txts_x_ms(cursor=database.create_connection().cursor(), ms_ids=Inmss)
             return res
         else:
             sets: list[set[str]] = []
@@ -207,11 +201,6 @@ class DataHandler:
             log.info(f'Search result: {res}')
             return res
 
-    def get_person_name(self, pers_id: str) -> str:
-        """Get a person's name, identified by the person's ID"""
-        res = database.simple_people_search(curse=database.create_connection().cursor(), persID=pers_id)
-        return res or ""
-
     def search_persons_related_to_manuscripts(self, ms_full_ids: list[str], searchOption: SearchOptions) -> list[str]:
         # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround # TODO: the hacky-whack should live in its own function
         log.info(f'Searching for persons related to manuscripts: {ms_full_ids} ({searchOption})')
@@ -219,7 +208,7 @@ class DataHandler:
             log.debug('Searched for empty list of mss')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ppl_x_mss(curse=database.create_connection().cursor(), msIDs=ms_full_ids)
+            res = database.ppl_x_mss(cursor=database.create_connection().cursor(), ms_ids=ms_full_ids)
             return res
         else:
             sets = []
@@ -243,7 +232,7 @@ class DataHandler:
             log.debug('Searched for empty list of ppl')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ms_x_ppl(curse=database.create_connection().cursor(), pplIDs=person_ids)
+            res = database.ms_x_ppl(cursor=database.create_connection().cursor(), pers_ids=person_ids)
             return res
         else:
             sets = []
@@ -289,3 +278,10 @@ class DataHandler:
     # def get_group_by_name(self, name: str, gtype: Optional[GroupType] = None) -> Optional[Group]:
     #     with groups_database.create_connection() as con:
     #         return groups_database.get_group_by_name(con, name, gtype)
+
+
+def _get_person_names_inverse(person_names: dict[str, str]) -> dict[str, list[str]]:
+    res: dict[str, list[str]] = {}
+    for k, v in person_names.items():
+        res[v] = res.get(v, []) + [k]
+    return res

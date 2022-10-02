@@ -97,7 +97,7 @@ def __search_mss_by_person_step_save_results() -> None:
     ppl = state.searchState.ms_by_pers.ppl
     mode = state.searchState.ms_by_pers.mode
     st.subheader("Person(s) selected")
-    query = f' {mode.value} '.join([f"{handler.get_person_name(x)} ({x})" for x in ppl])
+    query = f' {mode.value} '.join([f"{handler.person_names.get(x)} ({x})" for x in ppl])
     st.write(f"Searched for '{query}', found {len(results)} manuscripts")
     if st.button("Back"):
         state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
