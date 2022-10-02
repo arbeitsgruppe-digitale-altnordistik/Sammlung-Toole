@@ -293,16 +293,16 @@ def date_plotting(inDF: pd.DataFrame) -> Figure:  # TODO Update doc  # LATER: ma
         scatterplot data for plotly to be drawn with corresponding function
     '''
 
-    inDF = inDF[inDF['terminusAnteQuem'] != 0]
-    inDF = inDF[inDF['terminusPostQuem'] != 0]
+    inDF = inDF[inDF['terminus_ante_quem'] != 0]
+    inDF = inDF[inDF['terminus_post_quem'] != 0]
 
-    first = inDF['terminusPostQuem'].min()-20
-    last = inDF['terminusAnteQuem'].max()+20
+    first = inDF['terminus_post_quem'].min()-20
+    last = inDF['terminus_ante_quem'].max()+20
     diag = pd.DataFrame(dict(
         x=[first, last],
         y=[first, last]
     ))
-    fig_scat = px.scatter(inDF, x='terminusPostQuem', y='terminusAnteQuem', color='shelfmark')
+    fig_scat = px.scatter(inDF, x='terminus_post_quem', y='terminus_ante_quem', color='shelfmark')
     fig_line = px.line(diag, x="x", y="y")
     fig_line.update_traces(line=dict(color='rgba(50,50,50,0.8)'))
     fig = go.Figure(data=fig_line.data + fig_scat.data)
