@@ -223,10 +223,10 @@ class DataHandler:
             log.info(f'Search result: {res}')
             return res
 
-    def search_manuscripts_related_to_persons(self, person_ids: list[str], searchOption: SearchOptions) -> list[str]:
+    def search_manuscripts_related_to_persons(self, person_ids: list[str], search_option: SearchOptions) -> list[str]:
         # CHORE: Document
         # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround
-        log.info(f'Searching for manuscript related to people: {person_ids} ({searchOption})')
+        log.info(f'Searching for manuscript related to people: {person_ids} ({search_option})')
 
         if not person_ids:
             log.debug('Searched for empty list of ppl')

@@ -7,6 +7,9 @@ from uuid import UUID
 
 from src.lib.constants import DATABASE_GROUPS_PATH
 from src.lib.groups import Group, GroupType
+from src.lib import utils
+
+log = utils.get_logger(__name__)
 
 
 class Connection(Protocol):
@@ -91,6 +94,7 @@ def put_group(con: Connection, g: Group) -> None:
     )
     cur.close()
     con.commit()
+    log.info(f"Saved group {g.name}")
 
 
 # def get_group_names(con: Connection, gtype: Optional[GroupType]) -> list[str]:
