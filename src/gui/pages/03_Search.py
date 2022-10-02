@@ -236,10 +236,10 @@ def __search_mss_by_text_step_save_results() -> None:
         metadatahandler.show_data_chart(meta)
     with export:
         metadatahandler.citavi_export(meta)
-        def next_step() -> None: state.steps.search_mss_by_persons = Step.MS_by_Pers.Search_person
+        def next_step() -> None: state.steps.search_mss_by_txt = Step.MS_by_Txt.Search_Txt
         __save_group(
             ids=results,
-            searchterms=ppl,
+            searchterms=txt,
             grouptype=GroupType.ManuscriptGroup,
             step_func=next_step
         )
