@@ -231,7 +231,7 @@ class DataHandler:
         if not person_ids:
             log.debug('Searched for empty list of ppl')
             return []
-        if searchOption == SearchOptions.CONTAINS_ONE:
+        if search_option == SearchOptions.CONTAINS_ONE:
             res = database.ms_x_ppl(cursor=database.create_connection().cursor(), pers_ids=person_ids)
             return res
         else:

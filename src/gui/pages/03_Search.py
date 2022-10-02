@@ -99,7 +99,7 @@ def __search_mss_by_person_step_save_results() -> None:
     st.subheader("Person(s) selected")
     base, data, chart, export = st.tabs(["Overview", "Details", "Chart(s)", "Export/Save"])
     with base:
-        query = f' {mode.value} '.join([f"{handler.get_person_name(x)} ({x})" for x in ppl])
+        query = f' {mode.value} '.join([f"{handler.person_names.get(x)} ({x})" for x in ppl])
         st.write(f"Searched for '{query}', found {len(results)} manuscripts")
         __show_as_list(results)
     meta = handler.search_manuscript_data(results).reset_index(drop=True)
