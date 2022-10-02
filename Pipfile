@@ -15,6 +15,7 @@ streamlit = "*"
 streamlit-aggrid = "*"
 networkx = "*"
 colorama = "*"
+statsmodels = "*"
 
 [dev-packages]
 mypy = "*"
