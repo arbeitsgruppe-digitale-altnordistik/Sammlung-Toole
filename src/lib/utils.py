@@ -4,18 +4,19 @@ import json
 import logging
 import os
 import subprocess
+import sys
 from datetime import timedelta
 from enum import Enum
-import sys
 from time import time
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objs as go
 import requests
+import statsmodels.api as sm
 from bs4 import BeautifulSoup
 from plotly.graph_objs import Figure
-import plotly.graph_objs as go
 
 __logs: List[logging.Logger] = []
 
@@ -285,32 +286,69 @@ __log = get_logger(__name__)
 # Util functions for interface
 # ----------------------------
 
-def date_plotting(inDF: pd.DataFrame) -> Figure:  # TODO Update doc  # LATER: maybe have a separate module for plotting stuff/reports
+# LATER: maybe have a separate module for plotting stuff/reports
+
+def date_plotting(df: pd.DataFrame) -> Figure:
     ''' Plots the data of a given set of MSs. Used with MS metadata results. Returns scatterplot.
     Args:
         inDF(dataFrame, required): pandas DataFrame
     Returns:
         scatterplot data for plotly to be drawn with corresponding function
     '''
-
-    inDF = inDF[inDF['terminus_ante_quem'] != 0]
-    inDF = inDF[inDF['terminus_post_quem'] != 0]
-
-    first = inDF['terminus_post_quem'].min()-20
-    last = inDF['terminus_ante_quem'].max()+20
-    diag = pd.DataFrame(dict(
-        x=[first, last],
-        y=[first, last]
-    ))
-    fig_scat = px.scatter(inDF, x='terminus_post_quem', y='terminus_ante_quem', color='shelfmark')
-    fig_line = px.line(diag, x="x", y="y")
-    fig_line.update_traces(line=dict(color='rgba(50,50,50,0.8)'))
-    fig = go.Figure(data=fig_line.data + fig_scat.data)
+    df = df[df['terminus_ante_quem'] != 0]
+    df = df[df['terminus_post_quem'] != 0]
+    fig = px.scatter(df, x='terminus_post_quem', y='terminus_ante_quem', color='shelfmark')
+    first = df['terminus_post_quem'].min()-20
+    last = df['terminus_ante_quem'].max()+20
+    fig.add_shape(type='line', x0=first, y0=first, x1=last, y1=last, line=dict(color='rgba(50,50,50,0.8)'))
     fig.update_layout(
         title="Manuscript Dating Plot",
         xaxis_title="Terminus Post Quem",
         yaxis_title="Terminus Ante Quem",
         legend_title="Manuscripts"
     )
+    return fig
 
+
+def dimensions_plotting(df: pd.DataFrame) -> Figure:
+    df["width"] = pd.to_numeric(df["width"], errors='coerce')
+    df["height"] = pd.to_numeric(df["height"], errors='coerce')
+    df = df[df['height'] != 0]
+    df = df[df['width'] != 0]
+    df = df[df['mean_date'] != 0]
+    fig = px.scatter(
+        df,
+        x='width',
+        y='height',
+        color=df['support'],
+        hover_name=df['shelfmark']
+    )
+    return fig
+
+
+def dimensions_plotting_facet(df: pd.DataFrame) -> Figure:
+    df = df[['width', 'height', 'mean_date', 'support', 'shelfmark']]
+    df["width"] = pd.to_numeric(df["width"], errors='coerce')
+    df["height"] = pd.to_numeric(df["height"], errors='coerce')
+    df = df.dropna()
+    df = df[df['height'] != 0]
+    df = df[df['width'] != 0]
+    df = df[df['mean_date'] != 0]
+    df['century'] = df['mean_date'].div(100).round()
+    df = df.sort_values('width')
+    model = sm.OLS(df["height"], sm.add_constant(df["width"])).fit()
+    trace = go.Scatter(x=df["width"], y=model.predict(), line_color="gray", name="overall OLS")
+    trace.update(legendgroup="trendline", showlegend=False)
+    df = df.sort_values('century')
+    fig = px.scatter(
+        df,
+        x='width',
+        y='height',
+        color=df['support'],
+        hover_name=df['shelfmark'],
+        facet_col=df['century'],
+        facet_col_wrap=3
+    )
+    fig.add_trace(trace, row="all", col="all", exclude_empty_subplots=True)
+    fig.update_traces(selector=-1, showlegend=True)
     return fig
