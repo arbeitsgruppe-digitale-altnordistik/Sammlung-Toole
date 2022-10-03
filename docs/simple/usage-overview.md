@@ -14,9 +14,16 @@ Once you have access to the tool (be that on a server or locally), simply open t
 
 On normal screen sizes, you will see the navigation bar on the left side on the page.
 
-> If you don't see the navigation bar, there is a chance it's just collapsed/hidden. Look out for a little arrow on the very left edge of the screen.
+> If you don't see the navigation bar, there is a chance it's just collapsed/hidden. Look out for a little arrow on the 
+> very left edge of the screen.
 
+> On small screens, especially on mobile devices, the layout may look slightly different. You will find your way aound 
+> it, no doubt.
 
-> On small screens, especially on mobile devices, the layout may look slightly different.
+In the navigation bar, you can simply select a page, and the application will take you there. You can familiarize 
+yourself with the available data on the [Browse](browse.md) page, search the data on the [Search](search.md) page
+and store, cobine or visualize search results on the [Groups](groups.md) page.
 
-In the dropdown located in the navigation bar, you can simply select a page (e.g. [Groups](groups.md) or [Search](search.md)), and the application will take you there.
+When you have a set of manuscripts that interests you, the app will provide you with metadata on these manuscripts
+for further inverstigation, that can then be downloaded as a CSV spreadsheet for later use. The application will even
+provide you with some visualizations of the data out of the box.
