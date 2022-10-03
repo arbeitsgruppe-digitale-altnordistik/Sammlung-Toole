@@ -14,6 +14,8 @@ Once you have access to the tool (be that on a server or locally), simply open t
 
 On normal screen sizes, you will see the navigation bar on the left side on the page.
 
+![Navigation Bar](../assets/images/nav.png)
+
 > If you don't see the navigation bar, there is a chance it's just collapsed/hidden. Look out for a little arrow on the 
 > very left edge of the screen.
 
