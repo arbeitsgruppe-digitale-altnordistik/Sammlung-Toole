@@ -1,4 +1,5 @@
 from typing import Any, Callable
+from unittest import result
 
 import streamlit as st
 from src.gui.gui_utils import get_handler, get_log, get_state
@@ -102,6 +103,18 @@ def select_manuscripts() -> None:
                     metadatahandler.show_data_chart(meta)
                 with export:
                     metadatahandler.citavi_export(meta)
+                    __save_group(
+                        ids=selection,
+                        searchterms=selection,
+                        grouptype=GroupType.ManuscriptGroup,
+                        step_func=lambda: None
+                    )
+                    __add_to_group(
+                        ids=selection,
+                        searchterms=selection,
+                        groups=handler.get_ms_groups(),
+                        step_func=lambda: None
+                    )
                 st.write("---")
                 if st.button("Back to Selection"):
                     selection = []
