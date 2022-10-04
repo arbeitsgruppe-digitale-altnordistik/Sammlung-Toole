@@ -310,12 +310,14 @@ def date_plotting(df: pd.DataFrame) -> Figure:
     return fig
 
 
-def dimensions_plotting(df: pd.DataFrame) -> Figure:
+def dimensions_plotting(df: pd.DataFrame) -> Optional[Figure]:
     df["width"] = pd.to_numeric(df["width"], errors='coerce')
     df["height"] = pd.to_numeric(df["height"], errors='coerce')
     df = df[df['height'] != 0]
     df = df[df['width'] != 0]
     df = df[df['mean_date'] != 0]
+    if df.empty:
+        return None
     fig = px.scatter(
         df,
         x='width',
@@ -326,7 +328,7 @@ def dimensions_plotting(df: pd.DataFrame) -> Figure:
     return fig
 
 
-def dimensions_plotting_facet(df: pd.DataFrame) -> Figure:
+def dimensions_plotting_facet(df: pd.DataFrame) -> Optional[Figure]:
     df = df[['width', 'height', 'mean_date', 'support', 'shelfmark']]
     df["width"] = pd.to_numeric(df["width"], errors='coerce')
     df["height"] = pd.to_numeric(df["height"], errors='coerce')
@@ -334,6 +336,8 @@ def dimensions_plotting_facet(df: pd.DataFrame) -> Figure:
     df = df[df['height'] != 0]
     df = df[df['width'] != 0]
     df = df[df['mean_date'] != 0]
+    if df.empty:
+        return None
     df['century'] = df['mean_date'].div(100).round()
     df = df.sort_values('width')
     model = sm.OLS(df["height"], sm.add_constant(df["width"])).fit()
