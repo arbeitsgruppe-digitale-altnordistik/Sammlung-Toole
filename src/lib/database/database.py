@@ -60,7 +60,8 @@ def get_metadata(conn: sqlite3.Connection, table_name: str, column_name: str, se
     for i in search_criteria:
         ii = pd.read_sql(sql=f"SELECT * FROM {table_name} WHERE {column_name} = '{i}'", con=conn)  # TODO: replace with ? notation
         dfs.append(ii)
-    res = pd.concat(dfs)
+    print(dfs)
+    res = pd.concat(dfs) if dfs else pd.DataFrame()
     return res
 
 

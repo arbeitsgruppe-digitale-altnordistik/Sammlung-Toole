@@ -15,18 +15,26 @@ def citavi_export(metadata: pd.DataFrame) -> None:
 
 
 def plot_date_scatter(metadata: pd.DataFrame) -> None:
+    if metadata.empty:
+        return
     fig = utils.date_plotting(metadata)
     st.plotly_chart(fig, use_container_width=True)
 
 
 def plot_dims(metadata: pd.DataFrame) -> None:
+    if metadata.empty:
+        return
     fig = utils.dimensions_plotting(metadata)
-    st.plotly_chart(fig, use_container_width=True)
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def plot_dims_facet(metadata: pd.DataFrame) -> None:
+    if metadata.empty:
+        return
     fig = utils.dimensions_plotting_facet(metadata)
-    st.plotly_chart(fig, use_container_width=True)
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def process_ms_results(handler: DataHandler, mss: list[str]) -> None:
