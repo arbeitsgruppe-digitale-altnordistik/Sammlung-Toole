@@ -2,10 +2,10 @@ from datetime import datetime as dt
 
 import pandas as pd
 import streamlit as st
-from st_aggrid import AgGrid as ag
-from st_aggrid import GridOptionsBuilder, GridUpdateMode, JsCode
 from src.lib import utils
 from src.lib.datahandler import DataHandler
+from st_aggrid import AgGrid as ag
+from st_aggrid import GridUpdateMode
 
 
 def citavi_export(metadata: pd.DataFrame) -> None:
@@ -16,6 +16,16 @@ def citavi_export(metadata: pd.DataFrame) -> None:
 
 def plot_date_scatter(metadata: pd.DataFrame) -> None:
     fig = utils.date_plotting(metadata)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def plot_dims(metadata: pd.DataFrame) -> None:
+    fig = utils.dimensions_plotting(metadata)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def plot_dims_facet(metadata: pd.DataFrame) -> None:
+    fig = utils.dimensions_plotting_facet(metadata)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -31,7 +41,7 @@ def process_ms_results(handler: DataHandler, mss: list[str]) -> None:
         with st.expander("Export results to Citavi"):
             citavi_export(meta)
         with st.expander("Plot dating of manuscripts"):
-            plot_date_scatter(meta)
+            show_data_chart(meta)
 
 
 def show_data_table(meta: pd.DataFrame) -> None:
@@ -40,3 +50,5 @@ def show_data_table(meta: pd.DataFrame) -> None:
 
 def show_data_chart(meta: pd.DataFrame) -> None:
     plot_date_scatter(meta)
+    plot_dims(meta)
+    plot_dims_facet(meta)
