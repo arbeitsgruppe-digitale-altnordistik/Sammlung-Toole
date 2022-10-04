@@ -16,6 +16,7 @@ def search_page() -> None:
     st.header('Search Page')
     opts: dict[str, Callable[[], None]] = {
         'How To': how_to,
+        'Select Manuscripts by ID': select_manuscripts,
         'Search Manuscripts by related People': manuscripts_by_persons,
         'Search People by related Manuscripts': persons_by_manuscripts,
         'Search Manuscripts by Text': manuscripts_by_texts,
@@ -37,30 +38,76 @@ def how_to() -> None:
                 Please select one of the search options on the left in the navigation bar.
 
                 The following search options are available:
+                
+                - Select Manuscript by ID:  
+                  Select manuscripts by ID, shelf mark or name.
 
-                - Manuscript by Person:
+                - Manuscript by Person:  
                   Select one/multiple persons form the Handrit.is authority file.  
                   The tool will find all manuscripts related to one/all of the selected people.
 
 
-                - Person by Manuscript:
+                - Person by Manuscript:  
                   Select one/multiple manuscripts form the Handrit.is collection.  
                   The tool will find all people related to one/all of the selected manuscripts.
 
 
-                - Manuscript by Text:
+                - Manuscript by Text:  
                   Select one/multiple texts mentioned in the Handrit.is collections.  
                   The tool will find all manuscripts related to one/all of the selected texts.
 
 
-                - Text by Manuscript:
+                - Text by Manuscript:  
                   Select one/multiple manuscripts form the Handrit.is collection.  
-                  The tool will find all texts occuring in one/all of the selected manuscripts.
+                  The tool will find all texts occurring in one/all of the selected manuscripts.
                 """)
 
 
-# Search for manuscripts by person
-# ================================
+# Search for manuscripts by ID/shelf mark
+# =======================================
+
+
+def select_manuscripts() -> None:
+    selection = []
+    table = []
+    step1 = st.empty()
+    with step1:
+        with st.container():
+            selection = st.multiselect(
+                f'Select Manuscripts',
+                handler.manuscripts.keys(),
+                format_func=lambda x: f"{' / '.join(handler.manuscripts[x])} ({x})"
+            )
+            if not selection:
+                st.write("Please select one or more manuscripts from the dropdown.")
+                return
+            st.write("Currently Selected:")
+            table = [(*handler.manuscripts[x], x) for x in selection]
+            st.table(table)
+    step2 = st.empty()
+    if selection and step2.button("Continue with Selection"):
+        step1.empty()
+        step2.empty()
+        with step2:
+            with st.container():
+                st.write(f"Selected Manuscripts: {len(selection)}")
+                base, data, chart, export = st.tabs(["Overview", "Details", "Chart(s)", "Export/Save"])
+                with base:
+                    table = [(*handler.manuscripts[x], x) for x in selection]
+                    st.table(table)
+                meta = handler.search_manuscript_data(selection).reset_index(drop=True)
+                with data:
+                    metadatahandler.show_data_table(meta)
+                with chart:
+                    metadatahandler.show_data_chart(meta)
+                with export:
+                    metadatahandler.citavi_export(meta)
+                st.write("---")
+                if st.button("Back to Selection"):
+                    selection = []
+
+        # Search for manuscripts by person
+        # ================================
 
 
 def manuscripts_by_persons() -> None:
