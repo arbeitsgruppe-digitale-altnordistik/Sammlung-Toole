@@ -15,49 +15,46 @@ def get_engine(db_path: str = DATABASE_GROUPS_PATH) -> Engine:
     return create_engine(sqlite_url)
 
 
-engine = get_engine()
-
-
-def setup_db() -> None:
+def setup_db(engine: Engine = get_engine()) -> None:
     SQLModel.metadata.create_all(engine)
 
 
-def get_ms_groups() -> list[Group]:
+def get_ms_groups(engine: Engine = get_engine()) -> list[Group]:
     with Session(engine) as session:
         statement = select(GroupDBModel).where(GroupDBModel.group_type == GroupType.ManuscriptGroup)
         groups = session.exec(statement)
         return [g.to_group() for g in groups]
 
 
-def get_ppl_groups() -> list[Group]:
+def get_ppl_groups(engine: Engine = get_engine()) -> list[Group]:
     with Session(engine) as session:
         statement = select(GroupDBModel).where(GroupDBModel.group_type == GroupType.PersonGroup)
         groups = session.exec(statement)
         return [g.to_group() for g in groups]
 
 
-def get_txt_groups() -> list[Group]:
+def get_txt_groups(engine: Engine = get_engine()) -> list[Group]:
     with Session(engine) as session:
         statement = select(GroupDBModel).where(GroupDBModel.group_type == GroupType.TextGroup)
         groups = session.exec(statement)
         return [g.to_group() for g in groups]
 
 
-def get_all_groups() -> list[Group]:
+def get_all_groups(engine: Engine = get_engine()) -> list[Group]:
     with Session(engine) as session:
         statement = select(GroupDBModel)
         groups = session.exec(statement)
         return [g.to_group() for g in groups]
 
 
-def add_group(group: Group) -> None:
+def add_group(group: Group, engine: Engine = get_engine()) -> None:
     with Session(engine) as session:
         db_model = GroupDBModel.make(group)
         session.add(db_model)
         session.commit()
 
 
-def update_group(group: Group, group_id: UUID) -> None:
+def update_group(group: Group, group_id: UUID, engine: Engine = get_engine()) -> None:
     with Session(engine) as session:
         group_old = session.get(GroupDBModel, group_id)
         if group_old is not None:
