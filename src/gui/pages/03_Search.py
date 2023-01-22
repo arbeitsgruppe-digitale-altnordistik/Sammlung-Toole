@@ -1,5 +1,4 @@
 from typing import Any, Callable
-from unittest import result
 
 import streamlit as st
 from src.gui.gui_utils import get_handler, get_log, get_state

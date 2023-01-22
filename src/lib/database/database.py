@@ -10,7 +10,7 @@ from src.lib import utils
 from src.lib.constants import DATABASE_PATH
 
 
-@st.experimental_singleton   # type: ignore
+@st.experimental_singleton
 def get_log() -> Logger:
     return utils.get_logger(__name__)
 
