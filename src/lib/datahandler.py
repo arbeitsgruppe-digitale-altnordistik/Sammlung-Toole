@@ -8,11 +8,11 @@ from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
+
 from src.lib import utils
 from src.lib.constants import (DATABASE_GROUPS_PATH, DATABASE_PATH,
                                XML_BASE_PATH)
-from src.lib.database import (database, db_init, deduplicate, groups_database,
-                              groups_db_init)
+from src.lib.database import database, db_init, deduplicate, groups_db
 from src.lib.groups import Group
 from src.lib.utils import GitUtil, SearchOptions, Settings
 from src.lib.xml import tamer
@@ -65,9 +65,8 @@ class DataHandler:
 
     @staticmethod
     def _build_groups_db() -> None:
-        with groups_database.create_connection() as con:
-            groups_db_init.db_set_up(con)
-            log.info("Built groups database")
+        groups_db.setup_db()
+        log.info("Built groups database")
 
     @staticmethod
     def _build_db() -> None:
@@ -248,36 +247,28 @@ class DataHandler:
             return res
 
     def get_all_groups(self) -> list[Group]:
-        with groups_database.create_connection() as con:
-            cur = con.cursor()
-            return groups_database.get_all_groups(cur)
+        """Gets all groups from the DB"""
+        return groups_db.get_all_groups()
 
     def get_ms_groups(self) -> list[Group]:
-        with groups_database.create_connection() as con:
-            cur = con.cursor()
-            return groups_database.get_ms_groups(cur)
+        """Gets all manuscript groups from the DB"""
+        return groups_db.get_ms_groups()
 
     def get_ppl_groups(self) -> list[Group]:
-        with groups_database.create_connection() as con:
-            cur = con.cursor()
-            return groups_database.get_ppl_groups(cur)
+        """Gets all people groups from the DB"""
+        return groups_db.get_ppl_groups()
 
     def get_txt_groups(self) -> list[Group]:
-        with groups_database.create_connection() as con:
-            cur = con.cursor()
-            return groups_database.get_txt_groups(cur)
+        """Gets all text groups from the DB"""
+        return groups_db.get_txt_groups()
 
     def put_group(self, group: Group) -> None:
-        with groups_database.create_connection() as con:
-            groups_database.put_group(con, group)
+        """Puts a group to the DB, replacing it if it already existed"""
+        groups_db.update_group(group, group.group_id)
 
-    # def get_group_names(self, gtype: Optional[GroupType] = None) -> list[str]:
-    #     with groups_database.create_connection() as con:
-    #         return groups_database.get_group_names(con, gtype)
-
-    # def get_group_by_name(self, name: str, gtype: Optional[GroupType] = None) -> Optional[Group]:
-    #     with groups_database.create_connection() as con:
-    #         return groups_database.get_group_by_name(con, name, gtype)
+    def add_group(self, group: Group) -> None:
+        """Adds a new group to the DB."""
+        groups_db.add_group(group)
 
 
 def _get_person_names_inverse(person_names: dict[str, str]) -> dict[str, list[str]]:
