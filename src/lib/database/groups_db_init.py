@@ -8,7 +8,7 @@ import streamlit as st
 from src.lib import utils
 
 
-@st.experimental_singleton   # type: ignore
+@st.experimental_singleton
 def get_log() -> Logger:
     return utils.get_logger(__name__)
 

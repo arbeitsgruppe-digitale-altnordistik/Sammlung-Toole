@@ -95,27 +95,3 @@ def put_group(con: Connection, g: Group) -> None:
     cur.close()
     con.commit()
     log.info(f"Saved group {g.name}")
-
-
-# def get_group_names(con: Connection, gtype: Optional[GroupType]) -> list[str]:
-#     cur = con.cursor()
-#     query = 'SELECT name FROM groups'
-#     if gtype:
-#         query += f' WHERE group_type = "{GroupType.value}"'
-#     cur.execute(query)
-#     res = [r[0] for r in cur.fetchall()]
-#     cur.close()
-#     return res
-
-
-# def get_group_by_name(con: Connection, name: str, gtype: Optional[GroupType]) -> Optional[Group]:
-#     cur = con.cursor()
-#     query = f'SELECT * FROM groups WHERE name = "{name}"'
-#     if gtype:
-#         query += f' AND group_type = "{GroupType.value}"'
-#     cur.execute(query)
-#     res = cur.fetchall()
-#     cur.close()
-#     if res:
-#         return __get_group(res[0])
-#     return None
