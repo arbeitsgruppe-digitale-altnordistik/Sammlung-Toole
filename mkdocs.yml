@@ -8,6 +8,7 @@ nav:
       - Groups: simple/groups.md
       - Visualization: simple/visualization.md
   - Advanced Usage: advanced-usage.md
+  - Technical Details: technicalities.md
   - Development: development.md
   - Contributing: contributing.md
 
