@@ -57,10 +57,6 @@ test-unit: ## run unit tests
 test-integration: ## run integration tests
 	pipenv run coverage run -m pytest tests/integration/
 
-.PHONY: test-end-to-end
-test-end-to-end: ## run end-to-end tests 
-	pipenv run coverage run -m pytest tests/e2e/
-
 .PHONY: coverage-report
 coverage-report: ## run end-to-end tests
 	pipenv run coverage run -m pytest --cov --cov-report=xml

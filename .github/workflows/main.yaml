@@ -38,23 +38,6 @@ jobs:
       - name: Run Integration Tests
         run: make test-integration
 
-  test-e2e:
-    name: End-to-end Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-      - name: Install Requirements
-        run: make setup
-      - name: Run E2E Tests
-        run: make test-end-to-end
-
   codecov:
     name: CodeCov
     runs-on: ubuntu-latest
