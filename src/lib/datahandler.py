@@ -12,7 +12,8 @@ import pandas as pd
 from src.lib import utils
 from src.lib.constants import (DATABASE_GROUPS_PATH, DATABASE_PATH,
                                XML_BASE_PATH)
-from src.lib.database import database, db_init, deduplicate, groups_db
+from src.lib.database import database, db_init, deduplicate
+from src.lib.database.groups_db import GroupsDB, GroupsDBImpl
 from src.lib.groups import Group
 from src.lib.utils import GitUtil, SearchOptions, Settings
 from src.lib.xml import tamer
@@ -30,7 +31,6 @@ class DataHandler:
 
     texts: list[str]
     """Temporary lookup tool for search"""
-    # TODO: Come up with better solution -> Implement Tarrins unified names
 
     person_names: dict[str, str]
     """Name lookup dictionary mapping person IDs to the full name of the person"""
@@ -38,11 +38,16 @@ class DataHandler:
     person_names_inverse: dict[str, list[str]]
     """Inverse name lookup dictionary, mapping person names to a list of IDs of persons with said name"""
 
-    def __init__(self) -> None:
+    groups_db: GroupsDB
+    """Database connector to the groups database"""
+
+    def __init__(self, groups_db: GroupsDB | None = None) -> None:
+        self.groups_db = groups_db if groups_db else GroupsDBImpl()
         if not Path(DATABASE_PATH).exists():
             DataHandler._build_db()
         if not Path(DATABASE_GROUPS_PATH).exists():
-            DataHandler._build_groups_db()
+            self.groups_db.setup_db()
+            log.info("Built groups database")
 
         log.info("Creating new handler")
         self.person_names, self.person_names_inverse = DataHandler._load_persons()
@@ -62,11 +67,6 @@ class DataHandler:
         """Load person data"""
         person_names = database.persons_lookup_dict(database.create_connection().cursor())
         return person_names, _get_person_names_inverse(person_names)
-
-    @staticmethod
-    def _build_groups_db() -> None:
-        groups_db.setup_db()
-        log.info("Built groups database")
 
     @staticmethod
     def _build_db() -> None:
@@ -248,27 +248,27 @@ class DataHandler:
 
     def get_all_groups(self) -> list[Group]:
         """Gets all groups from the DB"""
-        return groups_db.get_all_groups()
+        return self.groups_db.get_all_groups()
 
     def get_ms_groups(self) -> list[Group]:
         """Gets all manuscript groups from the DB"""
-        return groups_db.get_ms_groups()
+        return self.groups_db.get_ms_groups()
 
     def get_ppl_groups(self) -> list[Group]:
         """Gets all people groups from the DB"""
-        return groups_db.get_ppl_groups()
+        return self.groups_db.get_ppl_groups()
 
     def get_txt_groups(self) -> list[Group]:
         """Gets all text groups from the DB"""
-        return groups_db.get_txt_groups()
+        return self.groups_db.get_txt_groups()
 
     def put_group(self, group: Group) -> None:
         """Puts a group to the DB, replacing it if it already existed"""
-        groups_db.update_group(group, group.group_id)
+        self.groups_db.update_group(group, group.group_id)
 
     def add_group(self, group: Group) -> None:
         """Adds a new group to the DB."""
-        groups_db.add_group(group)
+        self.groups_db.add_group(group)
 
 
 def _get_person_names_inverse(person_names: dict[str, str]) -> dict[str, list[str]]:
