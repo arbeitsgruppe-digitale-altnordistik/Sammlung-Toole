@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from src.lib.groups import Group, GroupType
-from src.lib.models.group import GroupDBModel
+from src.lib.database.sqlite.models import Groups
 
 
 @pytest.fixture
@@ -34,9 +34,9 @@ def group_default() -> Group:
 
 
 @pytest.fixture
-def group_model() -> GroupDBModel:
+def group_model() -> Groups:
     name = "some name"
-    return GroupDBModel(
+    return Groups(
         group_type=GroupType.ManuscriptGroup,
         name=name,
         date="0.0",
@@ -44,11 +44,11 @@ def group_model() -> GroupDBModel:
     )
 
 
-def test_make_multiple_items(group: Group) -> None:
+def test_groups_make_multiple_items(group: Group) -> None:
     item1 = "some item"
     item2 = "another item"
     group.items = {item1, item2}
-    model = GroupDBModel.make(group)
+    model = Groups.make(group)
     assert model.group_type == group.group_type
     assert model.name == group.name
     assert model.items in {f"{item1}|{item2}", f"{item2}|{item1}"}
@@ -56,10 +56,10 @@ def test_make_multiple_items(group: Group) -> None:
     assert model.group_id == group.group_id
 
 
-def test_make_one_item(group: Group) -> None:
+def test_groups_make_one_item(group: Group) -> None:
     item = "item"
     group.items = {item}
-    model = GroupDBModel.make(group)
+    model = Groups.make(group)
     assert model.group_type == group.group_type
     assert model.name == group.name
     assert model.items == item
@@ -67,8 +67,8 @@ def test_make_one_item(group: Group) -> None:
     assert model.group_id == group.group_id
 
 
-def test_make_empty_items(group: Group) -> None:
-    model = GroupDBModel.make(group)
+def test_groups_make_empty_items(group: Group) -> None:
+    model = Groups.make(group)
     assert model.group_type == group.group_type
     assert model.name == group.name
     assert model.items == ""
@@ -76,8 +76,8 @@ def test_make_empty_items(group: Group) -> None:
     assert model.group_id == group.group_id
 
 
-def test_make_with_defaults(group_default: Group) -> None:
-    model = GroupDBModel.make(group_default)
+def test_groups_make_with_defaults(group_default: Group) -> None:
+    model = Groups.make(group_default)
     after = datetime.now().timestamp()
     assert model.group_type == group_default.group_type
     assert model.name == group_default.name
@@ -87,7 +87,7 @@ def test_make_with_defaults(group_default: Group) -> None:
     assert model.group_id == group_default.group_id
 
 
-def test_to_group_empty_items(group_model: GroupDBModel) -> None:
+def test_groups_to_group_empty_items(group_model: Groups) -> None:
     group = group_model.to_group()
     assert group.group_id == group_model.group_id
     assert group.name == group_model.name
@@ -96,7 +96,7 @@ def test_to_group_empty_items(group_model: GroupDBModel) -> None:
     assert group.items == set()
 
 
-def test_to_group_one_item(group_model: GroupDBModel) -> None:
+def test_groups_to_group_one_item(group_model: Groups) -> None:
     group_model.items = "a"
     group = group_model.to_group()
     assert group.group_id == group_model.group_id
@@ -106,7 +106,7 @@ def test_to_group_one_item(group_model: GroupDBModel) -> None:
     assert group.items == {"a"}
 
 
-def test_to_group_multiple_items(group_model: GroupDBModel) -> None:
+def test_groups_to_group_multiple_items(group_model: Groups) -> None:
     group_model.items = "a|b"
     group = group_model.to_group()
     assert group.group_id == group_model.group_id
