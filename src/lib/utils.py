@@ -7,7 +7,6 @@ import subprocess
 import sys
 from datetime import timedelta
 from enum import Enum
-from time import time
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -95,29 +94,6 @@ class GitUtil:
         # if os.path.exists(GitUtil._path):
         with open(GitUtil._path, mode='w+', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
-
-    @staticmethod
-    def update_handler_state() -> None:
-        """Updates the hansler state information.
-
-        In `.handlerstate.json`, this stores information of the submodule as the current handler state.  
-        Assumes that the handler is up to date.
-
-        This should be called after reloading the handler (ideally without cache), 
-        as its data would then reflect the current state of the submodule (which we assume to be mostly up to date).
-        """
-        submodule_state = GitUtil.__read_data().get("submoduleState") or {}
-        proc = subprocess.run("git -C data/handrit show --quiet --format=format:%h".split(), capture_output=True)
-        com_hash = str(proc.stdout, 'utf-8')
-        obj = {
-            "isUpToDate": True,
-            "handlerState": {
-                "timestamp": int(time()),
-                "commitHash": com_hash
-            },
-            "submoduleState": submodule_state
-        }
-        GitUtil.__write_data(obj)
 
     @staticmethod
     def update_submodule_state() -> None:
