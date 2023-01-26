@@ -1,13 +1,12 @@
 import sqlite3
 from logging import Logger
-
 import streamlit as st
 from src.lib import utils
 from src.lib.database.deduplicate import UnifiedMetadata
 from src.lib.xml.tamer import MetadataRowType
 
 
-@st.experimental_singleton   # type: ignore
+@st.experimental_singleton
 def get_log() -> Logger:
     return utils.get_logger(__name__)
 
