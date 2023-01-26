@@ -69,7 +69,7 @@ class MainDB(Protocol):
 
 def get_engine(db_path: str = DATABASE_PATH_TMP) -> Engine:
     sqlite_url = f"sqlite:///{db_path}"
-    return create_engine(sqlite_url, echo=True)
+    return create_engine(sqlite_url)
 
 
 @dataclass(frozen=True)
@@ -107,7 +107,7 @@ class MainDBImpl:
             mss = session.exec(statement).all()
             return mss
 
-    def ms_x_txt(self, txts: list[str]) -> list[str]:
+    def ms_x_txts(self, txts: list[str]) -> list[str]:
         with Session(self.engine) as session:
             statement = select(
                 ManuscriptDBModel.manuscript_id

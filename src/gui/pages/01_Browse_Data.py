@@ -22,7 +22,7 @@ with st.expander("Show all texts"):
     st.write(txt)
 
 # Persons
-pers = handler.get_all_ppl_data()
+pers = handler.person_names
 st.header("Persons")
 st.write(f'{len(pers)} people loaded.')
 with st.expander("Show all people"):

@@ -13,7 +13,7 @@ from src.lib.models.group import GroupDBModel
 
 
 class GroupsDB(Protocol):
-    def setup_db(self) -> None:
+    def setup_db(self) -> None:  # TODO: move this to a separate protocol
         """Creates the database and db tables if they don't exist yet."""
         ...
 
