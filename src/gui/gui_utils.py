@@ -23,4 +23,4 @@ def get_handler() -> DataHandler:
 @st.experimental_singleton
 def _get_handler() -> DataHandler:
     with st.spinner('Grabbing data handler...'):
-        return DataHandler()
+        return DataHandler.make()

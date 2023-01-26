@@ -9,15 +9,12 @@ from typing import Callable
 import pandas as pd
 
 from src.lib import utils
-from src.lib.database.database import MainDB, MainDBImpl
-from src.lib.database.groups_db import GroupsDB, GroupsDBImpl
+from src.lib.database.database import Database, MainDBImpl
 from src.lib.groups import Group
 from src.lib.utils import GitUtil, SearchOptions, Settings
 
 log = utils.get_logger(__name__)
 settings = Settings.get_settings()
-
-# TODO: get rid of some of the code duplications in this file?
 
 
 class DataHandler:
@@ -34,16 +31,12 @@ class DataHandler:
     person_names_inverse: dict[str, list[str]]
     """Inverse name lookup dictionary, mapping person names to a list of IDs of persons with said name"""
 
-    groups_db: GroupsDB
-    """Database connector to the groups database"""
+    database: Database
+    """Database connector"""
 
-    database: MainDB
-    """Database connector to the main database"""
-
-    def __init__(self, database: MainDB | None = None, groups_db: GroupsDB | None = None) -> None:
+    def __init__(self, database: Database) -> None:
         log.info("Creating new handler")
-        self.groups_db = groups_db if groups_db else GroupsDBImpl()
-        self.database = database if database else MainDBImpl()
+        self.database = database
         log.info("Databases up and running")
         self.person_names = self.database.persons_lookup_dict()
         self.person_names_inverse = _get_person_names_inverse(self.person_names)
@@ -54,6 +47,13 @@ class DataHandler:
         log.info("Loaded Text Info")
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
+
+    @staticmethod
+    def make() -> DataHandler:
+        """Create a DataHandler instance with a readily set-up database"""
+        db = MainDBImpl()
+        db.setup_db()
+        return DataHandler(db)
 
     def search_manuscript_data(self, ms_ids: list[str]) -> pd.DataFrame:
         """Search manuscript metadata for manuscripts, given a list of manuscript IDs.
@@ -135,27 +135,27 @@ class DataHandler:
 
     def get_all_groups(self) -> list[Group]:
         """Gets all groups from the DB"""
-        return self.groups_db.get_all_groups()
+        return self.database.get_all_groups()
 
     def get_ms_groups(self) -> list[Group]:
         """Gets all manuscript groups from the DB"""
-        return self.groups_db.get_ms_groups()
+        return self.database.get_ms_groups()
 
     def get_ppl_groups(self) -> list[Group]:
         """Gets all people groups from the DB"""
-        return self.groups_db.get_ppl_groups()
+        return self.database.get_ppl_groups()
 
     def get_txt_groups(self) -> list[Group]:
         """Gets all text groups from the DB"""
-        return self.groups_db.get_txt_groups()
+        return self.database.get_txt_groups()
 
     def put_group(self, group: Group) -> None:
         """Puts a group to the DB, replacing it if it already existed"""
-        self.groups_db.update_group(group, group.group_id)
+        self.database.update_group(group, group.group_id)
 
     def add_group(self, group: Group) -> None:
         """Adds a new group to the DB."""
-        self.groups_db.add_group(group)
+        self.database.add_group(group)
 
 
 def _get_person_names_inverse(person_names: dict[str, str]) -> dict[str, list[str]]:
