@@ -9,12 +9,12 @@ from typing import Callable
 import pandas as pd
 
 from src.lib import utils
-from src.lib.database.database import Database, MainDBImpl
+from src.lib.database.database import Database
+from src.lib.database.sqlite.database_sqlite_impl import DatabaseSQLiteImpl
 from src.lib.groups import Group
-from src.lib.utils import GitUtil, SearchOptions, Settings
+from src.lib.utils import SearchOptions
 
 log = utils.get_logger(__name__)
-settings = Settings.get_settings()
 
 
 class DataHandler:
@@ -46,12 +46,11 @@ class DataHandler:
         self.texts = self.database.txt_lookup_list()
         log.info("Loaded Text Info")
         log.info("Successfully created a Datahandler instance.")
-        GitUtil.update_handler_state()
 
     @staticmethod
     def make() -> DataHandler:
         """Create a DataHandler instance with a readily set-up database"""
-        db = MainDBImpl()
+        db = DatabaseSQLiteImpl()
         db.setup_db()
         return DataHandler(db)
 
