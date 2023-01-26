@@ -9,7 +9,7 @@ from typing import Callable
 import pandas as pd
 
 from src.lib import utils
-from src.lib.database.db import MainDB, MainDBImpl
+from src.lib.database.database import MainDB, MainDBImpl
 from src.lib.database.groups_db import GroupsDB, GroupsDBImpl
 from src.lib.groups import Group
 from src.lib.utils import GitUtil, SearchOptions, Settings
@@ -54,27 +54,6 @@ class DataHandler:
         log.info("Loaded Text Info")
         log.info("Successfully created a Datahandler instance.")
         GitUtil.update_handler_state()
-
-    # @staticmethod
-    # def _build_db() -> None:
-    #     with database.create_connection(":memory:") as db_conn:
-    #         db_init.db_set_up(db_conn)
-    #         ppl = tamer.get_ppl_names()
-    #         db_init.populate_people_table(db_conn, ppl)
-    #         files = Path(XML_BASE_PATH).rglob('*.xml')
-    #         # files = list(Path(XML_BASE_PATH).rglob('*.xml'))[:100]
-    #         ms_meta, msppl, mstxts = tamer.get_metadata_from_files(files)
-    #         db_init.populate_ms_table(db_conn, ms_meta)
-    #         ms_ppl = [x for y in msppl for x in y if x[2] != 'N/A']
-    #         ms_txts = [x for y in mstxts for x in y if x[2] != "N/A"]  # TODO-BL: I'd like to get rid of "N/A"
-    #         db_init.populate_junction_pxm(db_conn, ms_ppl)
-    #         db_init.populate_junction_txm(db_conn, ms_txts)
-    #         unified_metadata = deduplicate.get_unified_metadata(ms_meta)
-    #         db_init.populate_unified_ms_table(db_conn, unified_metadata)
-    #         db_init.populate_junction_pxm_unified(db_conn, ms_ppl)
-    #         db_init.populate_junction_txm_unified(db_conn, ms_txts)
-    #         with database.create_connection(DATABASE_PATH) as dest_conn:
-    #             db_conn.backup(dest_conn)
 
     def search_manuscript_data(self, ms_ids: list[str]) -> pd.DataFrame:
         """Search manuscript metadata for manuscripts, given a list of manuscript IDs.

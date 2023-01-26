@@ -5,6 +5,27 @@ from src.lib import utils
 from src.lib.database.deduplicate import UnifiedMetadata
 from src.lib.xml.tamer import MetadataRowType
 
+# @staticmethod
+# def _build_db() -> None:
+#     with database.create_connection(":memory:") as db_conn:
+#         db_init.db_set_up(db_conn)
+#         ppl = tamer.get_ppl_names()
+#         db_init.populate_people_table(db_conn, ppl)
+#         files = Path(XML_BASE_PATH).rglob('*.xml')
+#         # files = list(Path(XML_BASE_PATH).rglob('*.xml'))[:100]
+#         ms_meta, msppl, mstxts = tamer.get_metadata_from_files(files)
+#         db_init.populate_ms_table(db_conn, ms_meta)
+#         ms_ppl = [x for y in msppl for x in y if x[2] != 'N/A']
+#         ms_txts = [x for y in mstxts for x in y if x[2] != "N/A"]  # TODO-BL: I'd like to get rid of "N/A"
+#         db_init.populate_junction_pxm(db_conn, ms_ppl)
+#         db_init.populate_junction_txm(db_conn, ms_txts)
+#         unified_metadata = deduplicate.get_unified_metadata(ms_meta)
+#         db_init.populate_unified_ms_table(db_conn, unified_metadata)
+#         db_init.populate_junction_pxm_unified(db_conn, ms_ppl)
+#         db_init.populate_junction_txm_unified(db_conn, ms_txts)
+#         with database.create_connection(DATABASE_PATH) as dest_conn:
+#             db_conn.backup(dest_conn)
+
 
 @st.experimental_singleton
 def get_log() -> Logger:

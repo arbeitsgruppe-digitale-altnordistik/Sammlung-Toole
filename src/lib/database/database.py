@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import Protocol
 import pandas as pd
 from sqlalchemy.future import Engine
-# from sqlalchemy.orm import joinedload
 from src.lib.constants import DATABASE_PATH_TMP
 from sqlmodel import Session, SQLModel, create_engine, select, col
 from src.lib.models.data import *
@@ -21,8 +20,6 @@ class MainDB(Protocol):
             pd.DataFrame
         """
         ...
-
-    # TODO-BL: left out `simple_people_search()` here... check if still needed
 
     def ms_x_ppl(self, pers_ids: list[str]) -> list[str]:
         """Get IDs of all manuscripts related to a list of people."""
@@ -144,63 +141,3 @@ class MainDBImpl:
         with Session(self.engine) as session:
             res = session.exec(select(TextDBModel.text_id)).all()
             return res
-
-    # def test_populate(self) -> None:
-    #     with Session(self.engine) as session:
-    #         text1 = TextDBModel(text_id="text 1")
-    #         text2 = TextDBModel(text_id="text 2")
-    #         ms1 = ManuscriptDBModel(
-    #             manuscript_id="manuscript 1",
-    #             shelfmark="ms1",
-    #             catalogue_entries=1,
-    #             catalogue_ids="ms1_da",
-    #             catalogue_filenames="ms1_da.xml",
-    #             title="some manuscript",
-    #             description="",
-    #             date_string="",
-    #             terminus_post_quem=1200,
-    #             termini_post_quos="1200",
-    #             terminus_ante_quem=1500,
-    #             termini_ante_quos="1500",
-    #             date_standard_deviation=0.0,
-    #             support="parchment",
-    #             folio=50,
-    #             height="300",
-    #             width="200",
-    #             extent="50",
-    #             origin="Iceland",
-    #             creator="Unknown",
-    #             country="Iceland",
-    #             settlement="Reykjavik",
-    #             repository="AM",
-    #             texts=[text1, text2]
-    #         )
-    #         ms2 = ManuscriptDBModel(
-    #             manuscript_id="manuscript 2",
-    #             shelfmark="ms2",
-    #             catalogue_entries=1,
-    #             catalogue_ids="ms2_da",
-    #             catalogue_filenames="ms2_da.xml",
-    #             title="some other manuscript",
-    #             description="",
-    #             date_string="",
-    #             terminus_post_quem=1200,
-    #             termini_post_quos="1200",
-    #             terminus_ante_quem=1500,
-    #             termini_ante_quos="1500",
-    #             date_standard_deviation=0.0,
-    #             support="parchment",
-    #             folio=50,
-    #             height="300",
-    #             width="200",
-    #             extent="50",
-    #             origin="Iceland",
-    #             creator="Unknown",
-    #             country="Iceland",
-    #             settlement="Reykjavik",
-    #             repository="AM",
-    #             texts=[text1]
-    #         )
-    #         session.add(ms1)
-    #         session.add(ms2)
-    #         session.commit()
