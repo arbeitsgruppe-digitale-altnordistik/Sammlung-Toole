@@ -1,102 +1,116 @@
 from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import uuid4
+
+import pytest
 
 from src.lib.groups import Group, GroupType
 from src.lib.models.group import GroupDBModel
 
 
-def test_make() -> None:
+@pytest.fixture
+def group() -> Group:
     group_type = GroupType.TextGroup
     name = "group name"
-    item1 = "some item"
-    item2 = "another item"
     date = datetime.fromtimestamp(0)
     uuid = uuid4()
-    group = Group(
+    return Group(
         group_type=group_type,
         name=name,
-        items={item1, item2},
+        items=set(),
         date=date,
         group_id=uuid
     )
-    model = GroupDBModel.make(group)
-    assert model.group_type == group_type
-    assert model.name == name
-    assert model.items in {f"{item1}|{item2}", f"{item2}|{item1}"}
-    assert model.date == "0.0"
-    assert model.group_id == uuid
 
 
-def test_make_defaults() -> None:
-    before = datetime.now().timestamp()
+@pytest.fixture
+def group_default() -> Group:
     group_type = GroupType.TextGroup
-    name = "group name"
-    item1 = "some item"
-    item2 = "another item"
-    group = Group(
+    name = "default group name"
+    return Group(
         group_type=group_type,
         name=name,
-        items={item1, item2}
+        items=set(),
     )
-    model = GroupDBModel.make(group)
-    after = datetime.now().timestamp()
-    assert model.group_type == group_type
-    assert model.name == name
-    assert model.items in {f"{item1}|{item2}", f"{item2}|{item1}"}
-    assert before < float(model.date) < after
-    assert isinstance(model.group_id, UUID)
 
 
-def test_make_one_item() -> None:
-    before = datetime.now().timestamp()
-    group_type = GroupType.TextGroup
-    name = "group name"
-    item1 = "some item"
-    group = Group(
-        group_type=group_type,
-        name=name,
-        items={item1}
-    )
-    model = GroupDBModel.make(group)
-    after = datetime.now().timestamp()
-    assert model.group_type == group_type
-    assert model.name == name
-    assert model.items == item1
-    assert before < float(model.date) < after
-    assert isinstance(model.group_id, UUID)
-
-
-def test_make_empty_items() -> None:
-    before = datetime.now().timestamp()
-    group_type = GroupType.TextGroup
-    name = "group name"
-    group = Group(
-        group_type=group_type,
-        name=name,
-        items=set()
-    )
-    model = GroupDBModel.make(group)
-    after = datetime.now().timestamp()
-    assert model.group_type == group_type
-    assert model.name == name
-    assert model.items == ""
-    assert before < float(model.date) < after
-    assert isinstance(model.group_id, UUID)
-
-
-def test_to_group() -> None:
-    uuid = uuid4()
+@pytest.fixture
+def group_model() -> GroupDBModel:
     name = "some name"
-    model = GroupDBModel(
-        group_id=uuid,
+    return GroupDBModel(
         group_type=GroupType.ManuscriptGroup,
         name=name,
         date="0.0",
-        items="a|b"
+        items=""
     )
-    group = model.to_group()
-    assert group.group_id == uuid
-    assert group.name == name
+
+
+def test_make_multiple_items(group: Group) -> None:
+    item1 = "some item"
+    item2 = "another item"
+    group.items = {item1, item2}
+    model = GroupDBModel.make(group)
+    assert model.group_type == group.group_type
+    assert model.name == group.name
+    assert model.items in {f"{item1}|{item2}", f"{item2}|{item1}"}
+    assert model.date == "0.0"
+    assert model.group_id == group.group_id
+
+
+def test_make_one_item(group: Group) -> None:
+    item = "item"
+    group.items = {item}
+    model = GroupDBModel.make(group)
+    assert model.group_type == group.group_type
+    assert model.name == group.name
+    assert model.items == item
+    assert model.date == "0.0"
+    assert model.group_id == group.group_id
+
+
+def test_make_empty_items(group: Group) -> None:
+    model = GroupDBModel.make(group)
+    assert model.group_type == group.group_type
+    assert model.name == group.name
+    assert model.items == ""
+    assert model.date == "0.0"
+    assert model.group_id == group.group_id
+
+
+def test_make_with_defaults(group_default: Group) -> None:
+    model = GroupDBModel.make(group_default)
+    after = datetime.now().timestamp()
+    assert model.group_type == group_default.group_type
+    assert model.name == group_default.name
+    assert model.items == ""
+    assert float(model.date) < after
+    assert after - float(model.date) < 5  # should never be 5 seconds
+    assert model.group_id == group_default.group_id
+
+
+def test_to_group_empty_items(group_model: GroupDBModel) -> None:
+    group = group_model.to_group()
+    assert group.group_id == group_model.group_id
+    assert group.name == group_model.name
+    assert group.group_type == GroupType.ManuscriptGroup
+    assert group.date == datetime.fromtimestamp(0, timezone.utc)
+    assert group.items == set()
+
+
+def test_to_group_one_item(group_model: GroupDBModel) -> None:
+    group_model.items = "a"
+    group = group_model.to_group()
+    assert group.group_id == group_model.group_id
+    assert group.name == group_model.name
+    assert group.group_type == GroupType.ManuscriptGroup
+    assert group.date == datetime.fromtimestamp(0, timezone.utc)
+    assert group.items == {"a"}
+
+
+def test_to_group_multiple_items(group_model: GroupDBModel) -> None:
+    group_model.items = "a|b"
+    group = group_model.to_group()
+    assert group.group_id == group_model.group_id
+    assert group.name == group_model.name
     assert group.group_type == GroupType.ManuscriptGroup
     assert group.date == datetime.fromtimestamp(0, timezone.utc)
     assert group.items == {"b", "a"}

@@ -18,7 +18,7 @@ class GroupDBModel(SQLModel, table=True):
     def to_group(self) -> Group:
         data = self.dict()
         data["date"] = datetime.fromtimestamp(float(self.date), timezone.utc).astimezone()
-        data["items"] = set(self.items.split("|"))
+        data["items"] = set(self.items.split("|")) if data["items"] else set()
         return Group(**data)
 
     @staticmethod
