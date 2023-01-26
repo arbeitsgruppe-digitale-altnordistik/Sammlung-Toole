@@ -17,7 +17,7 @@ def get_engine(db_path: str = DATABASE_PATH_TMP) -> Engine:
 
 @dataclass(frozen=True)
 class DatabaseSQLiteImpl:
-    engine: Engine = field(default_factory=get_engine, init=False)
+    engine: Engine = field(default_factory=get_engine)
 
     def setup_db(self) -> None:
         SQLModel.metadata.create_all(self.engine)
