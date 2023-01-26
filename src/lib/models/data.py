@@ -91,6 +91,7 @@ class ManuscriptDBModel(SQLModel, table=True):
     termini_post_quos: str
     terminus_ante_quem: int
     termini_ante_quos: str
+    date_mean: int
     date_standard_deviation: float
     support: str
     folio: int

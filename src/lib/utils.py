@@ -315,7 +315,7 @@ def dimensions_plotting(df: pd.DataFrame) -> Optional[Figure]:
     df["height"] = pd.to_numeric(df["height"], errors='coerce')
     df = df[df['height'] != 0]
     df = df[df['width'] != 0]
-    df = df[df['mean_date'] != 0]
+    df = df[df['date_mean'] != 0]
     if df.empty:
         return None
     fig = px.scatter(
