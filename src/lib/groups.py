@@ -29,7 +29,7 @@ class GroupType(Enum):
             raise ValueError(f"Invalid group type: {s}")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Group:
     """Group dataclass
 

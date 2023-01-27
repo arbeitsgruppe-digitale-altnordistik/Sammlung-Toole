@@ -6,7 +6,7 @@ from sqlalchemy.future import Engine
 from sqlmodel import Session, SQLModel, col, create_engine, select
 
 from src.lib.constants import DATABASE_PATH_TMP
-from src.lib.database.sqlite.models import *
+from src.lib.database.sqlite.models import Groups, Manuscripts, People, Texts
 from src.lib.groups import Group, GroupType
 
 
