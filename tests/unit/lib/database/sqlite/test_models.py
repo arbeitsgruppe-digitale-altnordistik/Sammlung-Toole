@@ -1,3 +1,4 @@
+import dataclasses
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -47,7 +48,7 @@ def group_model() -> Groups:
 def test_groups_make_multiple_items(group: Group) -> None:
     item1 = "some item"
     item2 = "another item"
-    group.items = {item1, item2}
+    group = dataclasses.replace(group, items={item1, item2})
     model = Groups.make(group)
     assert model.group_type == group.group_type
     assert model.name == group.name
@@ -58,7 +59,7 @@ def test_groups_make_multiple_items(group: Group) -> None:
 
 def test_groups_make_one_item(group: Group) -> None:
     item = "item"
-    group.items = {item}
+    group = dataclasses.replace(group, items={item})
     model = Groups.make(group)
     assert model.group_type == group.group_type
     assert model.name == group.name
