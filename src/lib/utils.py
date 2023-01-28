@@ -305,16 +305,16 @@ def dimensions_plotting(df: pd.DataFrame) -> Optional[Figure]:
 
 
 def dimensions_plotting_facet(df: pd.DataFrame) -> Optional[Figure]:
-    df = df[['width', 'height', 'mean_date', 'support', 'shelfmark']]
+    df = df[['width', 'height', 'date_mean', 'support', 'shelfmark']]
     df["width"] = pd.to_numeric(df["width"], errors='coerce')
     df["height"] = pd.to_numeric(df["height"], errors='coerce')
     df = df.dropna()
     df = df[df['height'] != 0]
     df = df[df['width'] != 0]
-    df = df[df['mean_date'] != 0]
+    df = df[df['date_mean'] != 0]
     if df.empty:
         return None
-    df['century'] = df['mean_date'].div(100).round()
+    df['century'] = df['date_mean'].div(100).round()
     df = df.sort_values('width')
     model = sm.OLS(df["height"], sm.add_constant(df["width"])).fit()
     trace = go.Scatter(x=df["width"], y=model.predict(), line_color="gray", name="overall OLS")
