@@ -48,7 +48,7 @@ def populate_db(db: Database, files: Iterable[Path]) -> None:
     ids_used = set()
     for e in catalogue_entries:
         cid = e.catalogue_id
-        if not cid in ids_used:
+        if cid not in ids_used:
             ids_used.add(cid)
             catalogue_entries_unique.append(e)
         else:

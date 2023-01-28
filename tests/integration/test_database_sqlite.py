@@ -86,10 +86,10 @@ class TestGroups:
         db.add_group(group_ms)
         db.add_group(group_txt)
         db.add_group(group_ppl)
-        all = db.get_all_groups()
-        assert group_ms in all
-        assert group_txt in all
-        assert group_ppl in all
+        all_groups = db.get_all_groups()
+        assert group_ms in all_groups
+        assert group_txt in all_groups
+        assert group_ppl in all_groups
         mss = db.get_ms_groups()
         assert mss == [group_ms]
         txt = db.get_txt_groups()
