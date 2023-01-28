@@ -3,10 +3,11 @@ import re
 import statistics
 from typing import List, Optional, Tuple
 
-import src.lib.xml.tamer as tamer
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from lxml import etree
+
+import src.lib.xml.tamer as tamer
 from src.lib import utils
 
 log = utils.get_logger(__name__)
@@ -15,22 +16,6 @@ nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998
 
 # Utlity Functions
 # ----------------
-
-
-# def get_soup(url: str) -> BeautifulSoup:  # TODO: should become obsolete
-#     """Get a BeautifulSoup object from a URL
-
-#     Args:
-#         url (str): url
-
-#     Returns:
-#         bs4.BeautifulSoup: BeautifulSoup object representation of the HTML/XML page.
-#     """
-
-#     sauce = urllib.request.urlopen(url).read()
-#     soup = BeautifulSoup(sauce, "xml")
-
-#     return soup
 
 
 def get_cleaned_text(carrot: Tag) -> str:

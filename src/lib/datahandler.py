@@ -64,6 +64,7 @@ class DataHandler:
             pd.DataFrame: A dataframe containing the metadata for the requested manuscripts.
         """
         res = self.database.get_metadata(ms_ids)
+        log.info(f"Found {len(res.index)} metadata entries for manuscripts: {ms_ids}")
         return res
 
     def search_manuscripts_containing_texts(self, texts: list[str], searchOption: SearchOptions) -> list[str]:
@@ -111,7 +112,15 @@ class DataHandler:
             return _and_search(ms_ids, self.database.txts_x_ms)
 
     def search_persons_related_to_manuscripts(self, ms_ids: list[str], searchOption: SearchOptions) -> list[str]:
-        # CHORE: Document
+        """Search for people related to a given list of manuscripts.
+
+        Args:
+            ms_ids (list[str]): Manuscript IDs
+            searchOption (SearchOptions):  wether to do an AND or an OR search
+
+        Returns:
+            list[str]: a list of person IDs
+        """
         log.info(f'Searching for persons related to manuscripts: {ms_ids} ({searchOption})')
         if not ms_ids:
             log.debug('Searched for empty list of mss')
@@ -122,7 +131,15 @@ class DataHandler:
             return _and_search(ms_ids, self.database.ppl_x_mss)
 
     def search_manuscripts_related_to_persons(self, person_ids: list[str], search_option: SearchOptions) -> list[str]:
-        # CHORE: Document
+        """Search for manuscript related to a given list of people.
+
+        Args:
+            person_ids (list[str]):  list of person IDs
+            search_option (SearchOptions): wether to do an AND or an OR search
+
+        Returns:
+            list[str]: a list of manuscript IDs
+        """
         log.info(f'Searching for manuscript related to people: {person_ids} ({search_option})')
         if not person_ids:
             log.debug('Searched for empty list of people')
@@ -165,16 +182,18 @@ def _get_person_names_inverse(person_names: dict[str, str]) -> dict[str, list[st
 
 
 def _and_search(params: list[str], search_fn: Callable[[list[str]], list[str]]) -> list[str]:
+    """Helper method to do a logical AND search, provided a list of search parameters (IDs) and a search function to call."""
     sets = [set(search_fn([p])) for p in params]
     if not sets:
         log.info('nothing found')
         return []
     res = list(set.intersection(*sets))
-    log.info(f'Search result: {res}')
+    log.info(f'Search results: {len(res)}')
     return res
 
 
 def _or_search(params: list[str], search_fn: Callable[[list[str]], list[str]]) -> list[str]:
+    """Helper method to do a logical OR search, provided a list of search parameters (IDs) and a search function to call."""
     res = search_fn(params)
-    log.info(f'Search result: {res}')
+    log.info(f'Search results: {len(res)}')
     return res

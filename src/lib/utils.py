@@ -12,9 +12,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
-import requests
 import statsmodels.api as sm
-from bs4 import BeautifulSoup
 from plotly.graph_objs import Figure
 
 __logs: List[logging.Logger] = []
@@ -27,7 +25,7 @@ class SearchOptions(Enum):
     """OR search: the item must contain at least one of the requested elements, in order to fit"""
 
 
-class Settings:  # TODO-BL: this should probably be done with streamlit cache in the state handler or so
+class Settings:
     """Data structure to hold settings for the application."""
 
     def __init__(self) -> None:
@@ -173,22 +171,6 @@ class GitUtil:
 
 
 __last: Optional[Settings] = None
-
-
-def get_soup(url: str, parser: str = 'xml') -> BeautifulSoup:
-    """Get a BeautifulSoup object from a URL
-
-    Args:
-        url (str): The URL
-        parser (str, optional): Parser; for HTML, use 'lxml'. Defaults to 'xml'.
-
-    Returns:
-        BeautifulSoup: BeautifulSoup object representation of the HTML/XML page.
-    """
-    __log.debug(f'Requesting ({parser}): {url}')
-    htm = requests.get(url).text
-    soup = BeautifulSoup(htm, parser)
-    return soup
 
 
 def get_logger(name: str) -> logging.Logger:

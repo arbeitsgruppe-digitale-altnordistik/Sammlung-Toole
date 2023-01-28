@@ -12,6 +12,7 @@ from src.lib.people import Person
 
 
 class Groups(SQLModel, table=True):
+    """Model for the `groups` table."""
     group_id: UUID = Field(primary_key=True, default_factory=uuid4)
     group_type: GroupType
     name: str
@@ -19,6 +20,7 @@ class Groups(SQLModel, table=True):
     items: str
 
     def to_group(self) -> Group:
+        """Turns a given row of the table into a `Group` value object."""
         data = self.dict()
         data["date"] = datetime.fromtimestamp(float(self.date), timezone.utc).astimezone()
         data["items"] = set(self.items.split("|")) if data["items"] else set()
@@ -26,6 +28,7 @@ class Groups(SQLModel, table=True):
 
     @staticmethod
     def make(group: Group) -> Groups:
+        """Creates a table row from a `Group` value object."""
         data = {**group.__dict__}
         data["date"] = group.date.timestamp()
         data["items"] = '|'.join(group.items)
@@ -69,12 +72,14 @@ class TextManuscriptJunction(SQLModel, table=True):
 
 
 class Texts(SQLModel, table=True):
+    """Model for the `texts` table."""
     text_id: str = Field(primary_key=True)
     catalogue_entries: list["CatalogueEntries"] = Relationship(back_populates="texts", link_model=TextCatalogueJunction)
     manuscripts: list["Manuscripts"] = Relationship(back_populates="texts", link_model=TextManuscriptJunction)
 
 
 class People(SQLModel, table=True):
+    """Model for the `people` table."""
     pers_id: str = Field(primary_key=True)
     first_name: str | None = None
     last_name: str | None = None
@@ -91,6 +96,7 @@ class People(SQLModel, table=True):
 
 
 class CatalogueEntries(SQLModel, table=True):
+    """Model for the `catalogueentries` table. Represents one XML file on handrit.is."""
     catalogue_id: str = Field(primary_key=True)
     shelfmark: str
     manuscript_id: str
@@ -124,6 +130,7 @@ class CatalogueEntries(SQLModel, table=True):
 
 
 class Manuscripts(SQLModel, table=True):
+    """Model for the `manuscripts` table. Represents one manuscript with potentially multiple entries on handrit.is."""
     manuscript_id: str = Field(primary_key=True)
     shelfmark: str
     catalogue_entries: int

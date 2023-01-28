@@ -1,52 +1,43 @@
 from __future__ import annotations
 
 import statistics
+from logging import Logger
 
+from src.lib import utils
 from src.lib.manuscripts import CatalogueEntry, Manuscript
+
+log: Logger = utils.get_logger(__name__)
 
 
 def get_unified_metadata(entries: list[CatalogueEntry]) -> list[Manuscript]:
     """Combine all metadata with of the same ID into single entries.
 
-    Given a list of rows from the db table of non-unified manuscript metadata,
+    Given a list of handrit catalogue entries,
     this method returns a list of unified manuscript metadata, where all entries
-    that concern the same maniuscript ID are merged into one entry.
+    that concern the same manuscript ID are merged into one entry.
 
     Note that this process is potentially "lossy", i.e. in some edge cases,
     the result may not be as sensible as the input.
 
     The result also contains some information on the differences of input.
-
-    Args:
-        ms_metadata (list[MetadataRowType]): data as contained by the manuscripts table in the DB
-
-    Returns:
-        list[UnifiedMetadata]: unified data as modelled in `UnifiedMetadata`
     """
+    log.info(f"Unifying catalogue info: {len(entries)}")
     entries_per_ms: dict[str, list[CatalogueEntry]] = {}
     for e in entries:
         k = e.manuscript_id
         g = entries_per_ms.get(k, [])
         entries_per_ms[k] = g + [e]
-    return [_unify_metadata_entries(m) for m in entries_per_ms.values()]
+    res = [_unify_metadata_entries(m) for m in entries_per_ms.values()]
+    log.info(f"Created unifies manuscript entries: {len(res)}")
+    return res
 
 
 def _unify_metadata_entries(entries: list[CatalogueEntry]) -> Manuscript:
-    """Combines a list of ununified manuscript metadata *with the same ID* into one unified entry.
-
-    Args:
-        entries (list[MetadataRowType]): a list of manuscript metadata, where all entries have the same manuscript ID
-
-    Returns:
-        UnifiedMetadata: A single manuscript entry with unified metadata in it
-    """
-    n = len(entries)
-    if n > 3:
+    """Combines a list of handrit catalogue entries *with the same ID* into one unified entry."""
+    if len(entries) > 3:
         ms_id = entries[0].manuscript_id
-        print(f"WARNING: Trouble deduplicating '{n}' entries for {ms_id}")
-        with open('zzz_4plus.txt', 'a', encoding='utf-8') as f:
-            issue = '\n'.join((f'    {x}' for x in entries))
-            f.write(f"{n} entries for {ms_id}:\n{issue}\n")
+        cat_ids = [e.catalogue_id for e in entries]
+        log.warning(f"Trouble deduplicating '{len(entries)}' entries for {ms_id} ({cat_ids})")
     tps = [e.terminus_post_quem for e in entries]
     tas = [e.terminus_ante_quem for e in entries]
     return Manuscript(

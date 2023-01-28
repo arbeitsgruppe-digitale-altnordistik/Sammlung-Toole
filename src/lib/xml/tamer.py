@@ -9,26 +9,28 @@ from src.lib.constants import PERSON_DATA_PATH
 from src.lib.manuscripts import CatalogueEntry
 from src.lib.people import Person
 
-
 log = utils.get_logger(__name__)
 nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
-
-# Data preparation
-# ----------------
-"""These functions are used to load relevant data into the SQLite database."""
 
 
 def _load_xml_contents(path: Path) -> Optional[etree._Element]:
     try:
+        log.info(f"Loading XML file: {path}")
         tree: etree._ElementTree = etree.parse(path, None)
         root: etree._Element = tree.getroot()
         return root
-    except Exception:
-        log.exception(f"{path}: Broken XML!")
+    except etree.XMLSyntaxError:
+        if path.is_relative_to('data/handrit'):  # it's a real file not a test file
+            log.exception(f"{path}: Broken XML!")
+        return None
+    except OSError:
+        if path.is_relative_to('data/handrit'):  # it's a real file not a test file
+            log.exception(f"{path}: Non existent XML!")
         return None
 
 
 def _parse_xml_content(root: etree._Element, filename: str) -> CatalogueEntry:
+    log.info(f"Parsing metadata: {filename}")
     shelfmark = _get_shelfmark(root)
     full_id = _find_full_id(root)
     ms_nickname = _get_shorttitle(root, full_id)
@@ -80,10 +82,10 @@ def _get_ppl_from_ms(root: etree._Element) -> list[str]:
     if ppl_raw is None:
         return []
     ppl: list[str] = [person.get('key') for person in ppl_raw if person.get('key') is not None]
+    log.debug(f"Loaded people from xml: {len(ppl)}")
     return list(set(ppl))
 
 
-# TODO-BL: split this up to reduce complexity
 def _get_txt_list_from_ms(root: etree._Element) -> list[str]:
     txts_raw = root.findall(".//msItem", nsmap)
     if txts_raw is None:
@@ -136,7 +138,7 @@ def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
         res = res.replace('\t', ' ')
         res = ' '.join(res.split())
         return str(res)
-    except Exception:  # TODO-BL: tidy this part up
+    except Exception:
         log.exception("Weird stuff going on in getting 'shorttitle'")
         return str(title)
 
@@ -162,8 +164,7 @@ def _get_shelfmark(root: etree._Element) -> str:
         else:
             return ""
     except Exception:
-        # TODO: do we ever get here? may be caught by the if-else and return empty
-        log.exception(f"Faild to load Shelfmark XML:\n\n{root}\n\n")
+        log.exception(f"Faild to load Shelfmark XML: {root}")
         return ""
 
 
@@ -178,7 +179,7 @@ def get_ppl_names() -> list[Person]:
     for pers in ppl:
         id_ = pers.get('{http://www.w3.org/XML/1998/namespace}id')
         name_tag = pers.find('persName', nsmap)
-        firstNameS = name_tag.findall('forename', nsmap)  # TODO: tidy up
+        firstNameS = name_tag.findall('forename', nsmap)
         lastNameS = name_tag.findall('surname', nsmap)
         firstNameClean = [name.text for name in firstNameS if name.text]
         if firstNameClean:
@@ -191,10 +192,6 @@ def get_ppl_names() -> list[Person]:
         currPers = Person(id_, firstName, lastName)
         res.append(currPers)
     return res
-
-
-# Data extraction
-# ---------------
 
 
 def _find_id(root: etree._Element) -> str:

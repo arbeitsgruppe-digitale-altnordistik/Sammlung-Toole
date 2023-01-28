@@ -10,50 +10,27 @@ from src.lib.people import Person
 
 class Database(Protocol):
     def get_metadata(self, ms_ids: list[str]) -> pd.DataFrame:
-        """One stop shop for simple search/SELECT queries.
-
-        Args:
-            table_name(str): Name of table to be queried
-            column_name(str): Name of column on which to apply selection criteria
-            search_criteria(List): What it is you are looking for
-
-        Returns:
-            pd.DataFrame
-        """
+        """Get a dataframe of manuscript metadata, given a list of manuscript IDs."""
         ...
 
     def ms_x_ppl(self, pers_ids: list[str]) -> list[str]:
-        """Get IDs of all manuscripts related to a list of people."""
+        """Get a list of manuscript IDs related to a given list of people."""
         ...
 
     def ppl_x_mss(self, ms_ids: list[str]) -> list[str]:
-        """
-        Get IDs of all people connected to a list of manuscripts.
-        Returns list of IDs for people.
-        """
+        """Get a list of people IDs related to a given list of manuscripts."""
         ...
 
     def ms_x_txts(self, txts: list[str]) -> list[str]:
-        """
-        Get IDs of all manuscripts connected to a list of texts.
-        Returns list of IDs for manuscripts.
-        """
-        # TODO: clarify text definition
+        """Get a list of manuscript IDs containing a given list of texts."""
         ...
 
     def txts_x_ms(self, ms_ids: list[str]) -> list[str]:
-        """
-        Get IDs of all texts connected to a list of manuscripts.
-        Returns list of IDs for texts.
-        """
-        # TODO: clarify text definition
+        """Get a list of texts contained by a given list of manuscripts."""
         ...
 
     def persons_lookup_dict(self) -> dict[str, str]:
-        """
-        Gets the data from person(ID, first name, last name).
-        Returns the lookup-dict for the IDs of people to their natural names.
-        """
+        """Returns the lookup-dict for the IDs of people to their full names."""
         ...
 
     def ms_lookup_dict(self) -> dict[str, list[str]]:
@@ -89,5 +66,5 @@ class Database(Protocol):
         ...
 
     def add_data(self, people: list[Person], catalogue_entries: list[CatalogueEntry], manuscripts: list[Manuscript]) -> None:
-        """Adds all the data to the database"""
+        """Adds all the data to the database, used for initialization."""
         ...

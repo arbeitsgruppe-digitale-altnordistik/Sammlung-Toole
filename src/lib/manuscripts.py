@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class CatalogueEntry:  # TODO-BL: make some optional?
+class CatalogueEntry:
     catalogue_id: str
     shelfmark: str
     manuscript_id: str

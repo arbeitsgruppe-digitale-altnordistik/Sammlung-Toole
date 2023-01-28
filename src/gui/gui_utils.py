@@ -1,6 +1,7 @@
 from logging import Logger
 
 import streamlit as st
+
 from src.lib import utils
 from src.lib.datahandler import DataHandler
 from src.lib.stateHandler import StateHandler
@@ -16,6 +17,7 @@ def get_state() -> StateHandler:
     return StateHandler()
 
 
+@st.experimental_singleton
 def get_handler() -> DataHandler:
     return _get_handler()
 
