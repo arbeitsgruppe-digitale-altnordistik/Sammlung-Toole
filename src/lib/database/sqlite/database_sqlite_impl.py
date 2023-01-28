@@ -6,8 +6,15 @@ from sqlalchemy.future import Engine
 from sqlmodel import Session, SQLModel, col, create_engine, select
 
 from src.lib.constants import DATABASE_PATH_TMP
-from src.lib.database.sqlite.models import Groups, Manuscripts, People, Texts
+from src.lib.database.sqlite.models import (CatalogueEntries, Groups,
+                                            Manuscripts, People,
+                                            PersonCatalogueJunction,
+                                            PersonManuscriptJunction,
+                                            TextCatalogueJunction,
+                                            TextManuscriptJunction, Texts)
 from src.lib.groups import Group, GroupType
+from src.lib.manuscripts import CatalogueEntry, Manuscript
+from src.lib.people import Person
 
 
 def get_engine(db_path: str = DATABASE_PATH_TMP) -> Engine:
@@ -109,4 +116,54 @@ class DatabaseSQLiteImpl:
                 session.delete(group_old)
             group_new = Groups.make(group)
             session.add(group_new)
+            session.commit()
+
+    def add_data(self, people: list[Person], catalogue_entries: list[CatalogueEntry], manuscripts: list[Manuscript]) -> None:
+        self._add_people(people)
+        self._add_texts(manuscripts)
+        self._add_catalogue_entries(catalogue_entries)
+        self._add_manuscripts(manuscripts)
+        self._create_junction_tables(catalogue_entries, manuscripts)
+
+    def _add_people(self, people: list[Person]) -> None:
+        ppl = [People.make(p) for p in people]
+        with Session(self.engine) as session:
+            session.add_all(ppl)
+            session.commit()
+
+    def _add_texts(self, mss: list[Manuscript]) -> None:
+        txt_strs = [t for ms in mss for t in ms.texts]
+        txt = [Texts(text_id=t) for t in list(set(txt_strs))]
+        with Session(self.engine) as session:
+            session.add_all(txt)
+            session.commit()
+
+    def _add_catalogue_entries(self, catalogue_entries: list[CatalogueEntry]) -> None:
+        entries = [CatalogueEntries.make(e) for e in catalogue_entries]
+        with Session(self.engine) as session:
+            session.add_all(entries)
+            session.commit()
+
+    def _add_manuscripts(self, manuscripts: list[Manuscript]) -> None:
+        mss = [Manuscripts.make(ms) for ms in manuscripts]
+        with Session(self.engine) as session:
+            session.add_all(mss)
+            session.commit()
+
+    def _create_junction_tables(self, catalogue_entries: list[CatalogueEntry], manuscripts: list[Manuscript]) -> None:
+        txc = [TextCatalogueJunction(text_id=t, catalogue_id=c.catalogue_id) for c in catalogue_entries for t in c.texts]
+        with Session(self.engine) as session:
+            session.add_all(txc)
+            session.commit()
+        pxc = [PersonCatalogueJunction(pers_id=p, catalogue_id=c.catalogue_id) for c in catalogue_entries for p in c.people]
+        with Session(self.engine) as session:
+            session.add_all(pxc)
+            session.commit()
+        txm = [TextManuscriptJunction(text_id=t, manuscript_id=m.manuscript_id) for m in manuscripts for t in m.texts]
+        with Session(self.engine) as session:
+            session.add_all(txm)
+            session.commit()
+        pxm = [PersonManuscriptJunction(pers_id=p, manuscript_id=m.manuscript_id) for m in manuscripts for p in m.people]
+        with Session(self.engine) as session:
+            session.add_all(pxm)
             session.commit()

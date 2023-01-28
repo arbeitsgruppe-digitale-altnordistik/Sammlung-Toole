@@ -1,14 +1,14 @@
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
-import src.lib.xml.metadata as metadata
-import src.lib.utils as utils
 from lxml import etree
-from src.lib.constants import PERSON_DATA_PATH
 
-MetadataRowType = tuple[
-    str, str, str, str, str, str, str, int, int, int, int, str, int, str, str, str, str, str, str, str, str
-]
+import src.lib.utils as utils
+import src.lib.xml.metadata as metadata
+from src.lib.constants import PERSON_DATA_PATH
+from src.lib.manuscripts import CatalogueEntry
+from src.lib.people import Person
+
 
 log = utils.get_logger(__name__)
 nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
@@ -28,7 +28,7 @@ def _load_xml_contents(path: Path) -> Optional[etree._Element]:
         return None
 
 
-def _parse_xml_content(root: etree._Element, filename: str) -> tuple[MetadataRowType, list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+def _parse_xml_content(root: etree._Element, filename: str) -> CatalogueEntry:
     shelfmark = _get_shelfmark(root)
     full_id = _find_full_id(root)
     ms_nickname = _get_shorttitle(root, full_id)
@@ -40,59 +40,54 @@ def _parse_xml_content(root: etree._Element, filename: str) -> tuple[MetadataRow
     height, width, extent, description = metadata.get_description(root)
     handrit_id = _find_id(root)
     creator = metadata.get_creators(root)
-    txts = _get_txt_list_from_ms(root, full_id)
-    print(txts)
-    ppl = _get_ppl_from_ms(root, full_id)
-    ms_x_ppl = [(full_id, handrit_id, p) for p in ppl]
-    ms_x_txts = [(full_id, handrit_id, t) for t in txts]
-    if len(ppl) == 0:
-        log.info(f"{full_id} doesn't have any people living in it. Check!")
+    txts = _get_txt_list_from_ms(root)
+    if txts == []:
+        log.warn(f"{full_id} apparently has no texts. Check if this is correct!")
+    ppl = _get_ppl_from_ms(root)
+    if ppl == []:
+        log.warn(f"{full_id} doesn't have any people living in it. Check!")
     log.debug(f"Sucessfully processed {shelfmark}/{full_id}")
-    res = (
-        (
-            shelfmark,
-            ms_nickname,
-            country,
-            settlement,
-            repository,
-            origin,
-            date,
-            tp,
-            ta,
-            meandate,
-            yearrange,
-            support,
-            folio,
-            height,
-            width,
-            extent,
-            description,
-            creator,
-            handrit_id,
-            full_id,
-            filename
-        ),
-        ms_x_ppl,
-        ms_x_txts,
+    return CatalogueEntry(
+        catalogue_id=full_id,
+        shelfmark=shelfmark,
+        manuscript_id=handrit_id,
+        catalogue_filename=filename,
+        title=ms_nickname,
+        description=description,
+        date_string=date,
+        terminus_post_quem=tp,
+        terminus_ante_quem=ta,
+        date_mean=meandate,
+        dating_range=yearrange,
+        support=support,
+        folio=folio,
+        height=height,
+        width=width,
+        extent=extent,
+        origin=origin,
+        creator=creator,
+        country=country,
+        settlement=settlement,
+        repository=repository,
+        texts=txts,
+        people=ppl
     )
-    return res
 
 
-def _get_ppl_from_ms(root: etree._Element, full_id: str) -> list[str]:
+def _get_ppl_from_ms(root: etree._Element) -> list[str]:
+    """gets a list of person IDs, given an XML document"""
     ppl_raw = root.findall(".//name", nsmap)
     if ppl_raw is None:
-        log.warn(f"{full_id} doesn't have any people living in it. Check!")
-        return ["N/A"]  # TODO-BL: Understand this?!
-    ppl = [person.get('key') for person in ppl_raw if person.get('key') is not None]
-    return ppl
+        return []
+    ppl: list[str] = [person.get('key') for person in ppl_raw if person.get('key') is not None]
+    return list(set(ppl))
 
 
 # TODO-BL: split this up to reduce complexity
-def _get_txt_list_from_ms(root: etree._Element, ms_id: str) -> list[str]:
+def _get_txt_list_from_ms(root: etree._Element) -> list[str]:
     txts_raw = root.findall(".//msItem", nsmap)
     if txts_raw is None:
-        log.warn(f"{ms_id} apparently has no texts. Check if this is correct!")
-        return ["N/A"]  # TODO-BL: Understand this?!
+        return []
     txts: list[str] = []
     for txt in txts_raw:
         # lvl = txt.get('n')
@@ -117,9 +112,7 @@ def _get_txt_list_from_ms(root: etree._Element, ms_id: str) -> list[str]:
         #             rubric = "".join(rubric.splitlines())
         #         rubric = " ".join(rubric.split())
         #         txts.append(rubric)
-    if len(txts) == 0:
-        txts.append("N/A")
-    return txts
+    return list(set(txts))
 
 
 def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
@@ -148,7 +141,7 @@ def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
         return str(title)
 
 
-def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[tuple[MetadataRowType, list[tuple[str, str, str]], list[tuple[str, str, str]]]]:
+def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[CatalogueEntry]:
     for f in files:
         ele = _load_xml_contents(f)
         filename = f.name
@@ -156,23 +149,9 @@ def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[tuple[MetadataRo
             yield _parse_xml_content(ele, filename)
 
 
-def get_metadata_from_files(files: Iterable[Path]) -> tuple[
-    list[MetadataRowType],
-    list[list[tuple[str, str, str]]],
-    list[list[tuple[str, str, str]]]
-
-
-]:
+def get_metadata_from_files(files: Iterable[Path]) -> list[CatalogueEntry]:
     data = _get_all_data_from_files(files)
-    # LATER: the rest can be simplified to `return tuple(zip(*data))` but typing is not happy
-    meta_data: list[MetadataRowType] = []
-    ppl: list[list[tuple[str, str, str]]] = []
-    txts: list[list[tuple[str, str, str]]] = []
-    for m, p, t in data:
-        meta_data.append(m)
-        ppl.append(p)
-        txts.append(t)
-    return meta_data, ppl, txts
+    return list(data)
 
 
 def _get_shelfmark(root: etree._Element) -> str:
@@ -188,11 +167,11 @@ def _get_shelfmark(root: etree._Element) -> str:
         return ""
 
 
-def get_ppl_names() -> list[tuple[str, str, str]]:
+def get_ppl_names() -> list[Person]:
     """Delivers the names found in the handrit names authority file.
-    Returns list of tuples containing: first name, last name, and alphanumeric, unique ID in that order.
+    Returns list of Person value objects.
     """
-    res: list[tuple[str, str, str]] = []
+    res: list[Person] = []
     tree = etree.parse(PERSON_DATA_PATH, None)
     root = tree.getroot()
     ppl = root.findall(".//person", nsmap)
@@ -209,18 +188,13 @@ def get_ppl_names() -> list[tuple[str, str, str]]:
         lastName = " ".join([name.text for name in lastNameS])
         if not firstName and not lastName and name_tag.text:
             lastName = name_tag.text
-        currPers = (id_, firstName, lastName)
+        currPers = Person(id_, firstName, lastName)
         res.append(currPers)
     return res
 
 
 # Data extraction
 # ---------------
-
-
-def _find_filename(root: etree._Element) -> str:
-    id_ = _find_full_id(root)
-    return f"{id_}.xml"
 
 
 def _find_id(root: etree._Element) -> str:

@@ -7,6 +7,8 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, Relationship, SQLModel
 
 from src.lib.groups import Group, GroupType
+from src.lib.manuscripts import CatalogueEntry, Manuscript
+from src.lib.people import Person
 
 
 class Groups(SQLModel, table=True):
@@ -59,7 +61,7 @@ class TextCatalogueJunction(SQLModel, table=True):
 
 class TextManuscriptJunction(SQLModel, table=True):
     text_id: Optional[str] = Field(default=None, foreign_key="texts.text_id", primary_key=True)
-    catalogue_id: Optional[str] = Field(
+    manuscript_id: Optional[str] = Field(
         default=None,
         foreign_key="manuscripts.manuscript_id",
         primary_key=True
@@ -74,10 +76,18 @@ class Texts(SQLModel, table=True):
 
 class People(SQLModel, table=True):
     pers_id: str = Field(primary_key=True)
-    first_name: str
-    last_name: str
+    first_name: str | None = None
+    last_name: str | None = None
     catalogue_entries: list["CatalogueEntries"] = Relationship(back_populates="people", link_model=PersonCatalogueJunction)
     manuscripts: list["Manuscripts"] = Relationship(back_populates="people", link_model=PersonManuscriptJunction)
+
+    @staticmethod
+    def make(person: Person) -> People:
+        return People(
+            pers_id=person.pers_id,
+            first_name=person.first_name,
+            last_name=person.last_name
+        )
 
 
 class CatalogueEntries(SQLModel, table=True):
@@ -104,6 +114,13 @@ class CatalogueEntries(SQLModel, table=True):
     repository: str
     texts: list[Texts] = Relationship(back_populates="catalogue_entries", link_model=TextCatalogueJunction)
     people: list[People] = Relationship(back_populates="catalogue_entries", link_model=PersonCatalogueJunction)
+
+    @staticmethod
+    def make(entry: CatalogueEntry) -> CatalogueEntries:
+        data = {**entry.__dict__}
+        data["texts"] = []
+        data["people"] = []
+        return CatalogueEntries(**data)
 
 
 class Manuscripts(SQLModel, table=True):
@@ -133,3 +150,10 @@ class Manuscripts(SQLModel, table=True):
     repository: str
     texts: list[Texts] = Relationship(back_populates="manuscripts", link_model=TextManuscriptJunction)
     people: list[People] = Relationship(back_populates="manuscripts", link_model=PersonManuscriptJunction)
+
+    @staticmethod
+    def make(entry: Manuscript) -> Manuscripts:
+        data = {**entry.__dict__}
+        data["texts"] = []
+        data["people"] = []
+        return Manuscripts(**data)

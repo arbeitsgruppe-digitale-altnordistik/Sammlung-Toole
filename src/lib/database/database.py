@@ -4,6 +4,8 @@ from uuid import UUID
 import pandas as pd
 
 from src.lib.groups import Group
+from src.lib.manuscripts import CatalogueEntry, Manuscript
+from src.lib.people import Person
 
 
 class Database(Protocol):
@@ -84,4 +86,8 @@ class Database(Protocol):
 
     def update_group(self, group: Group, group_id: UUID) -> None:
         """Updates a group in the database, either replacing its previous version, or creating it anew."""
+        ...
+
+    def add_data(self, people: list[Person], catalogue_entries: list[CatalogueEntry], manuscripts: list[Manuscript]) -> None:
+        """Adds all the data to the database"""
         ...
