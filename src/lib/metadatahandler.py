@@ -44,7 +44,7 @@ def process_ms_results(handler: DataHandler, mss: list[str]) -> None:
             ag(meta, reload_data=False, update_mode=GridUpdateMode.NO_UPDATE)
     except Exception as e:
         meta = None
-        print('Uh-oh:', e)  # TODO: Proper handling of empty results from AND queries.
+        print('Uh-oh:', e)
     if isinstance(meta, pd.DataFrame):
         with st.expander("Export results to Citavi"):
             citavi_export(meta)

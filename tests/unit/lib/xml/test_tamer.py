@@ -25,5 +25,4 @@ def test_load_xml_contents_failing() -> None:
 
 @pytest.mark.skip(reason="has to be done, but not a priority right now")
 def test_parse_xml_content() -> None:
-    # TODO-BL: test this eventually... needs good test data!
     pass

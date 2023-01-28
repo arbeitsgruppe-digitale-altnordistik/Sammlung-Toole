@@ -108,6 +108,3 @@ class TestGroups:
         res = db.get_all_groups()
         assert res == [new_group]
         assert group_ms not in res
-
-
-# TODO-BL: add more tests here for rest of DB
