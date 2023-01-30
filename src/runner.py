@@ -17,7 +17,6 @@ def update() -> None:
     log.info("Updated data from handrit")
     # store info that submodule has been updated
     GitUtil.update_submodule_state()
-    # LATER: could determin which files changed so that only those need to be re-parsed
 
 
 def is_up_to_date() -> bool:

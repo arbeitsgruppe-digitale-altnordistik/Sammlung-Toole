@@ -7,15 +7,12 @@ import subprocess
 import sys
 from datetime import timedelta
 from enum import Enum
-from time import time
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
-import requests
 import statsmodels.api as sm
-from bs4 import BeautifulSoup
 from plotly.graph_objs import Figure
 
 __logs: List[logging.Logger] = []
@@ -28,7 +25,7 @@ class SearchOptions(Enum):
     """OR search: the item must contain at least one of the requested elements, in order to fit"""
 
 
-class Settings:  # TODO-BL: this should probably be done with streamlit cache in the state handler or so
+class Settings:
     """Data structure to hold settings for the application."""
 
     def __init__(self) -> None:
@@ -95,29 +92,6 @@ class GitUtil:
         # if os.path.exists(GitUtil._path):
         with open(GitUtil._path, mode='w+', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
-
-    @staticmethod
-    def update_handler_state() -> None:
-        """Updates the hansler state information.
-
-        In `.handlerstate.json`, this stores information of the submodule as the current handler state.  
-        Assumes that the handler is up to date.
-
-        This should be called after reloading the handler (ideally without cache), 
-        as its data would then reflect the current state of the submodule (which we assume to be mostly up to date).
-        """
-        submodule_state = GitUtil.__read_data().get("submoduleState") or {}
-        proc = subprocess.run("git -C data/handrit show --quiet --format=format:%h".split(), capture_output=True)
-        com_hash = str(proc.stdout, 'utf-8')
-        obj = {
-            "isUpToDate": True,
-            "handlerState": {
-                "timestamp": int(time()),
-                "commitHash": com_hash
-            },
-            "submoduleState": submodule_state
-        }
-        GitUtil.__write_data(obj)
 
     @staticmethod
     def update_submodule_state() -> None:
@@ -197,22 +171,6 @@ class GitUtil:
 
 
 __last: Optional[Settings] = None
-
-
-def get_soup(url: str, parser: str = 'xml') -> BeautifulSoup:
-    """Get a BeautifulSoup object from a URL
-
-    Args:
-        url (str): The URL
-        parser (str, optional): Parser; for HTML, use 'lxml'. Defaults to 'xml'.
-
-    Returns:
-        BeautifulSoup: BeautifulSoup object representation of the HTML/XML page.
-    """
-    __log.debug(f'Requesting ({parser}): {url}')
-    htm = requests.get(url).text
-    soup = BeautifulSoup(htm, parser)
-    return soup
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -315,7 +273,7 @@ def dimensions_plotting(df: pd.DataFrame) -> Optional[Figure]:
     df["height"] = pd.to_numeric(df["height"], errors='coerce')
     df = df[df['height'] != 0]
     df = df[df['width'] != 0]
-    df = df[df['mean_date'] != 0]
+    df = df[df['date_mean'] != 0]
     if df.empty:
         return None
     fig = px.scatter(
@@ -329,16 +287,16 @@ def dimensions_plotting(df: pd.DataFrame) -> Optional[Figure]:
 
 
 def dimensions_plotting_facet(df: pd.DataFrame) -> Optional[Figure]:
-    df = df[['width', 'height', 'mean_date', 'support', 'shelfmark']]
+    df = df[['width', 'height', 'date_mean', 'support', 'shelfmark']]
     df["width"] = pd.to_numeric(df["width"], errors='coerce')
     df["height"] = pd.to_numeric(df["height"], errors='coerce')
     df = df.dropna()
     df = df[df['height'] != 0]
     df = df[df['width'] != 0]
-    df = df[df['mean_date'] != 0]
+    df = df[df['date_mean'] != 0]
     if df.empty:
         return None
-    df['century'] = df['mean_date'].div(100).round()
+    df['century'] = df['date_mean'].div(100).round()
     df = df.sort_values('width')
     model = sm.OLS(df["height"], sm.add_constant(df["width"])).fit()
     trace = go.Scatter(x=df["width"], y=model.predict(), line_color="gray", name="overall OLS")

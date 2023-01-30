@@ -1,241 +1,82 @@
 from __future__ import annotations
 
 import statistics
-from dataclasses import dataclass
+from logging import Logger
 
-from src.lib.xml.tamer import MetadataRowType
+from src.lib import utils
+from src.lib.manuscripts import CatalogueEntry, Manuscript
 
-
-@dataclass(frozen=True)
-class UnifiedMetadata:
-    """
-    Model/Dataclass for a single entry of unified manuscript meta data
-
-    Args:
-        shelfmark (str): the manuscript shelfmark
-        catalogue_entries (int): the number of entries that were combined into this unified entry
-
-    """
-    # CHORE: documentation
-    handrit_id: str
-    shelfmark: str
-    catalogue_entries: int
-    ms_title: str
-    country: str
-    settlement: str
-    repository: str
-    origin: str
-    date_string: str
-    terminus_post_quem_all: list[int]
-    terminus_ante_quem_all: list[int]
-    support: str
-    folio: int
-    height: str
-    width: str
-    extent: str
-    description: str
-    creator: str
-    full_id: str
-    filename: str
-
-    @property
-    def terminus_post_quem(self) -> int:
-        return max(self.terminus_post_quem_all)
-
-    @property
-    def terminus_post_quem_mean(self) -> int:
-        """The statistical mean of the termini post quos"""
-        return int(statistics.mean(self.terminus_post_quem_all))
-
-    @property
-    def terminus_ante_quem(self) -> int:
-        return min(self.terminus_ante_quem_all)
-
-    @property
-    def terminus_ante_quem_mean(self) -> int:
-        """The statistical mean of the termini ante quos"""
-        return int(statistics.mean(self.terminus_ante_quem_all))
-
-    @property
-    def date_mean(self) -> int:
-        """The statistical mean of the ,amuscript datings"""
-        return int(statistics.mean(self.terminus_ante_quem_all + self.terminus_post_quem_all))
-
-    @property
-    def date_sd(self) -> float:
-        """The statistical standard deviation of the termini post et ante quos"""
-        return statistics.stdev(self.terminus_ante_quem_all + self.terminus_post_quem_all)
-
-    @staticmethod
-    def from_entry(e: MetadataRowType) -> UnifiedMetadata:
-        """Creates an object of type UNifiedMetadata from a single row from the manuscripts database"""
-        return UnifiedMetadata(
-            shelfmark=e[0],
-            catalogue_entries=1,
-            ms_title=e[1],
-            country=e[2],
-            settlement=e[3],
-            repository=e[4],
-            origin=e[5],
-            date_string=e[6],
-            terminus_post_quem_all=[e[7]],
-            terminus_ante_quem_all=[e[8]],
-            support=e[11],
-            folio=e[12],
-            height=e[13],
-            width=e[14],
-            extent=e[15],
-            description=e[16],
-            creator=e[17],
-            handrit_id=e[18],
-            full_id=e[19],
-            filename=e[20]
-        )
-
-    def to_tuple(self) -> tuple[
-        str,  # handrit_id
-        str,  # shelfmark
-        int,  # catalogue_entries
-        str,  # ms_title
-        str,  # country
-        str,  # settlement
-        str,  # repository
-        str,  # origin
-        str,  # date_string
-        int,  # terminus post quem
-        str,  # terminus_post_quem_all
-        int,  # terminus ante quem
-        str,  # terminus_ante_quem_all
-        int,  # date mean
-        float,  # date standard deviation
-        str,  # support
-        int,  # folio
-        str,  # height
-        str,  # width
-        str,  # extent
-        str,  # description
-        str,  # creator
-        str,  # full_id
-        str  # filename
-    ]:
-        """Returns the data of this object as a tuple for stroing in the database"""
-        return (
-            self.handrit_id,
-            self.shelfmark,
-            self.catalogue_entries,
-            self.ms_title,
-            self.country,
-            self.settlement,
-            self.repository,
-            self.origin,
-            self.date_string,
-            self.terminus_post_quem,
-            '|'.join((str(d) for d in self.terminus_post_quem_all)),
-            self.terminus_ante_quem,
-            '|'.join((str(d) for d in self.terminus_ante_quem_all)),
-            self.date_mean,
-            self.date_sd,
-            self.support,
-            self.folio,
-            self.height,
-            self.width,
-            self.extent,
-            self.description,
-            self.creator,
-            self.full_id,
-            self.filename
-        )
-
-    def __add__(self, other: UnifiedMetadata) -> UnifiedMetadata:
-        """
-        Combines the UnifiedMetadata object with an other UnifiedMetadata object.
-
-        Operator overload so that we can use `+` on these objects
-        """
-        if self.shelfmark != other.shelfmark:
-            print(f"WARNING: Combining manuscripts with different shelfmarks: {self.shelfmark} != {other.shelfmark}")
-            with open('zzz_diff_shelfmarks.txt', 'a', encoding='utf-8') as f:
-                f.write(f"{self.shelfmark}\t{other.shelfmark}\n")
-        if self.handrit_id != other.handrit_id:
-            print(f"WARNING: Combining manuscripts with different IDs: {self.handrit_id} != {other.handrit_id}")
-            with open('zzz_diff_ids.txt', 'a', encoding='utf-8') as f:
-                f.write(f"{self.handrit_id}\t{other.handrit_id}\n")
-        if self.folio != other.folio:
-            print(f"WARNING: Folio number mismatch: {self.folio} != {other.folio} in manuscript: {self.shelfmark}")
-            with open('zzz_diff_fol.txt', 'a', encoding='utf-8') as f2:
-                f2.write(f"{self.folio} != {other.folio} in manuscript: {self.shelfmark}\n")
-        tps = list(set(self.terminus_post_quem_all + other.terminus_post_quem_all) - {0}) or [0]
-        tas = list(set(self.terminus_ante_quem_all + other.terminus_ante_quem_all) - {0}) or [0]
-        return UnifiedMetadata(
-            handrit_id=self.handrit_id,
-            shelfmark=combine_str(self.shelfmark, other.shelfmark),
-            catalogue_entries=self.catalogue_entries + other.catalogue_entries,
-            ms_title=combine_str(self.ms_title, other.ms_title),
-            country=combine_str(self.country, other.country),
-            settlement=combine_str(self.settlement, other.settlement),
-            repository=combine_str(self.repository, other.repository),
-            origin=combine_str(self.origin, other.origin),
-            date_string=combine_str(self.date_string, other.date_string),
-            terminus_post_quem_all=tps,
-            terminus_ante_quem_all=tas,
-            support=combine_str(self.support, other.support),
-            folio=combine_int(self.folio, other.folio),
-            height=combine_str(self.height, other.height),
-            width=combine_str(self.width, other.width),
-            extent=combine_str(self.extent, other.extent),
-            description=combine_str(self.description, other.description),
-            creator=combine_str(self.creator, other.creator),
-            full_id=f"{self.full_id}|{other.full_id}",
-            filename=f"{self.filename}|{other.filename}",
-        )
+log: Logger = utils.get_logger(__name__)
 
 
-def _unify_metadata_entries(entries: list[MetadataRowType]) -> UnifiedMetadata:
-    """Combines a list of ununified manuscript metadata *with the same ID* into one unified entry.
-
-    Args:
-        entries (list[MetadataRowType]): a list of manuscript metadata, where all entries have the same manuscript ID
-
-    Returns:
-        UnifiedMetadata: A single manuscript entry with unified metadata in it
-    """
-    n = len(entries)
-    if n > 3:
-        print(f"WARNING: Trouble deduplicating '{n}' entries for {entries[0][0]}")
-        with open('zzz_4plus.txt', 'a', encoding='utf-8') as f:
-            issue = '\n'.join((f'    {x}' for x in entries))
-            f.write(f"{n} entries for {entries[0][0]}:\n{issue}\n")
-    u_entries = [UnifiedMetadata.from_entry(e) for e in entries]
-    res = u_entries.pop()
-    for u in u_entries:
-        res += u
-    return res
-
-
-def get_unified_metadata(ms_metadata: list[MetadataRowType]) -> list[UnifiedMetadata]:
+def get_unified_metadata(entries: list[CatalogueEntry]) -> list[Manuscript]:
     """Combine all metadata with of the same ID into single entries.
 
-    Given a list of rows from the db table of non-unified manuscript metadata,
+    Given a list of handrit catalogue entries,
     this method returns a list of unified manuscript metadata, where all entries
-    that concern the same maniuscript ID are merged into one entry.
+    that concern the same manuscript ID are merged into one entry.
 
     Note that this process is potentially "lossy", i.e. in some edge cases,
     the result may not be as sensible as the input.
 
     The result also contains some information on the differences of input.
-
-    Args:
-        ms_metadata (list[MetadataRowType]): data as contained by the manuscripts table in the DB
-
-    Returns:
-        list[UnifiedMetadata]: unified data as modelled in `UnifiedMetadata`
     """
-    metadata_per_id: dict[str, list[MetadataRowType]] = {}
-    for m in ms_metadata:
-        id_ = m[18]
-        c = metadata_per_id.get(id_, [])
-        metadata_per_id[id_] = c + [m]
-    return [_unify_metadata_entries(m) for m in metadata_per_id.values()]
+    log.info(f"Unifying catalogue info: {len(entries)}")
+    entries_per_ms: dict[str, list[CatalogueEntry]] = {}
+    for e in entries:
+        k = e.manuscript_id
+        g = entries_per_ms.get(k, [])
+        entries_per_ms[k] = g + [e]
+    res = [_unify_metadata_entries(m) for m in entries_per_ms.values()]
+    log.info(f"Created unifies manuscript entries: {len(res)}")
+    return res
+
+
+def _unify_metadata_entries(entries: list[CatalogueEntry]) -> Manuscript:
+    """Combines a list of handrit catalogue entries *with the same ID* into one unified entry."""
+    if len(entries) > 3:
+        ms_id = entries[0].manuscript_id
+        cat_ids = [e.catalogue_id for e in entries]
+        log.warning(f"Trouble deduplicating '{len(entries)}' entries for {ms_id} ({cat_ids})")
+    tps = [e.terminus_post_quem for e in entries]
+    tas = [e.terminus_ante_quem for e in entries]
+    return Manuscript(
+        manuscript_id=combine_strs(*[e.manuscript_id for e in entries]),
+        shelfmark=combine_strs(*[e.shelfmark for e in entries]),
+        catalogue_entries=len(entries),
+        catalogue_ids=" | ".join(e.catalogue_id for e in entries),
+        catalogue_filenames=" | ".join(e.catalogue_filename for e in entries),
+        title=combine_strs(*[e.title for e in entries]),
+        description=combine_strs(*[e.description for e in entries]),
+        date_string=combine_strs(*[e.date_string for e in entries]),
+        terminus_post_quem=max(tps),
+        termini_post_quos=combine_strs(*[str(t) for t in tps]),
+        terminus_ante_quem=min(tas),
+        termini_ante_quos=combine_strs(*[str(t) for t in tas]),
+        date_mean=int(statistics.mean(tps + tas)),
+        date_standard_deviation=statistics.stdev(tps + tas),
+        support=combine_strs(*[e.support for e in entries]),
+        folio=combine_ints(*[e.folio for e in entries]),
+        height=combine_strs(*[e.height for e in entries]),
+        width=combine_strs(*[e.width for e in entries]),
+        extent=combine_strs(*[e.extent for e in entries]),
+        origin=combine_strs(*[e.origin for e in entries]),
+        creator=combine_strs(*[e.creator for e in entries]),
+        country=combine_strs(*[e.country for e in entries]),
+        settlement=combine_strs(*[e.settlement for e in entries]),
+        repository=combine_strs(*[e.repository for e in entries]),
+        texts=list(set.union(*[set(e.texts) for e in entries])),
+        people=list(set.union(*[set(e.people) for e in entries]))
+    )
+
+
+def combine_strs(s: str, *ss: str) -> str:
+    if len(ss) < 1:
+        return s
+    elif len(ss) == 1:
+        return combine_str(s, ss[0])
+    else:
+        return combine_str(s, combine_strs(*ss))
 
 
 def combine_str(x: str, y: str) -> str:
@@ -270,8 +111,17 @@ def combine_str(x: str, y: str) -> str:
     if {x, y} == cph:
         return "Copenhagen"
     r = ' | '.join((x, y))
-    print(r)
+    print(f"Failed to unify: {r}")
     return r
+
+
+def combine_ints(x: int, *xx: int) -> int:
+    if len(xx) < 1:
+        return x
+    elif len(xx) == 1:
+        return combine_int(x, xx[0])
+    else:
+        return combine_int(x, combine_ints(*xx))
 
 
 def combine_int(x: int, y: int) -> int:
@@ -289,5 +139,5 @@ def combine_int(x: int, y: int) -> int:
         return y
     if y == 0:
         return x
-    print(f"{x} != {y}")
+    print(f"Failed to unify: {x} != {y}")
     return int((x + y) / 2)

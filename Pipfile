@@ -16,6 +16,7 @@ streamlit-aggrid = "*"
 networkx = "*"
 colorama = "*"
 statsmodels = "*"
+sqlmodel = "*"
 
 [dev-packages]
 mypy = "*"

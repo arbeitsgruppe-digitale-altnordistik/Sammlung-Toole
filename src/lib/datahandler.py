@@ -4,23 +4,17 @@ This module handles data and provides convenient and efficient access to it.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Tuple
+from typing import Callable
 
 import pandas as pd
+
 from src.lib import utils
-from src.lib.constants import (DATABASE_GROUPS_PATH, DATABASE_PATH,
-                               XML_BASE_PATH)
-from src.lib.database import (database, db_init, deduplicate, groups_database,
-                              groups_db_init)
+from src.lib.database.database import Database
+from src.lib.database.sqlite.database_sqlite_impl import DatabaseSQLiteImpl
 from src.lib.groups import Group
-from src.lib.utils import GitUtil, SearchOptions, Settings
-from src.lib.xml import tamer
+from src.lib.utils import SearchOptions
 
 log = utils.get_logger(__name__)
-settings = Settings.get_settings()
-
-# TODO: get rid of some of the code duplications in this file?
 
 
 class DataHandler:
@@ -30,7 +24,6 @@ class DataHandler:
 
     texts: list[str]
     """Temporary lookup tool for search"""
-    # TODO: Come up with better solution -> Implement Tarrins unified names
 
     person_names: dict[str, str]
     """Name lookup dictionary mapping person IDs to the full name of the person"""
@@ -38,99 +31,40 @@ class DataHandler:
     person_names_inverse: dict[str, list[str]]
     """Inverse name lookup dictionary, mapping person names to a list of IDs of persons with said name"""
 
-    def __init__(self) -> None:
-        if not Path(DATABASE_PATH).exists():
-            DataHandler._build_db()
-        if not Path(DATABASE_GROUPS_PATH).exists():
-            DataHandler._build_groups_db()
+    database: Database
+    """Database connector"""
 
+    def __init__(self, database: Database) -> None:
         log.info("Creating new handler")
-        self.person_names, self.person_names_inverse = DataHandler._load_persons()
+        self.database = database
+        log.info("Databases up and running")
+        self.person_names = self.database.persons_lookup_dict()
+        self.person_names_inverse = _get_person_names_inverse(self.person_names)
         log.info("Loaded Person Info")
-        self.manuscripts = database.ms_lookup_dict(database.create_connection().cursor())
+        self.manuscripts = self.database.ms_lookup_dict()
         log.info("Loaded MS Info")
-        self.texts = database.txt_lookup_list(database.create_connection().cursor())
+        self.texts = self.database.txt_lookup_list()
         log.info("Loaded Text Info")
         log.info("Successfully created a Datahandler instance.")
-        GitUtil.update_handler_state()
-
-    # Static Methods
-    # ==============
 
     @staticmethod
-    def _load_persons() -> Tuple[dict[str, str], dict[str, list[str]]]:
-        """Load person data"""
-        person_names = database.persons_lookup_dict(database.create_connection().cursor())
-        return person_names, _get_person_names_inverse(person_names)
+    def make() -> DataHandler:
+        """Create a DataHandler instance with a readily set-up database"""
+        db = DatabaseSQLiteImpl()
+        db.setup_db()
+        return DataHandler(db)
 
-    @staticmethod
-    def _build_groups_db() -> None:
-        with groups_database.create_connection() as con:
-            groups_db_init.db_set_up(con)
-            log.info("Built groups database")
-
-    @staticmethod
-    def _build_db() -> None:
-        with database.create_connection(":memory:") as db_conn:
-            db_init.db_set_up(db_conn)
-            ppl = tamer.get_ppl_names()
-            db_init.populate_people_table(db_conn, ppl)
-            files = Path(XML_BASE_PATH).rglob('*.xml')
-            # files = list(Path(XML_BASE_PATH).rglob('*.xml'))[:100]
-            ms_meta, msppl, mstxts = tamer.get_metadata_from_files(files)
-            db_init.populate_ms_table(db_conn, ms_meta)
-            ms_ppl = [x for y in msppl for x in y if x[2] != 'N/A']
-            ms_txts = [x for y in mstxts for x in y if x[2] != "N/A"]  # TODO-BL: I'd like to get rid of "N/A"
-            db_init.populate_junction_pxm(db_conn, ms_ppl)
-            db_init.populate_junction_txm(db_conn, ms_txts)
-            unified_metadata = deduplicate.get_unified_metadata(ms_meta)
-            db_init.populate_unified_ms_table(db_conn, unified_metadata)
-            db_init.populate_junction_pxm_unified(db_conn, ms_ppl)
-            db_init.populate_junction_txm_unified(db_conn, ms_txts)
-            with database.create_connection(DATABASE_PATH) as dest_conn:
-                db_conn.backup(dest_conn)
-
-    # Instance Methods
-    # ================
-
-    # API Methods
-    # -----------
-
-    def get_all_ppl_data(self) -> list[Tuple[str, str, str]]:
-        res: list[Tuple[str, str, str]] = []
-        with database.create_connection() as conn:
-            cur = conn.cursor()
-            for row in cur.execute('SELECT * FROM people ORDER BY persID'):
-                res.append(row)
-        return res
-
-    def search_manuscript_data(self, mssIDs: list[str]) -> pd.DataFrame:
-        """Search manuscript metadata for certain manuscripts.
-
-        Basic search function:
-
-        Searches for manuscripts with a certain IDs, and returns the metadata for the respective manuscripts.
-
-        IDs can either be full_id (i.e. a certain catalogue entry),
-        ms_ids (i.e. a certain manuscript that can have catalogue entries in multiple languages)
-        shelfmarks (which will possibly yield multiple results per shelfmark)
-        or filenames (refers to the XML files of the catalogue entry).
-
-        Note: Exactly one of the four optional parameters should be passed.
+    def search_manuscript_data(self, ms_ids: list[str]) -> pd.DataFrame:
+        """Search manuscript metadata for manuscripts, given a list of manuscript IDs.
 
         Args:
-            full_ids (Union[list[str], pd.Series, pd.DataFrame], optional): list/Series/Dataframe of catalogue entry IDs. Defaults to None.
-            ms_ids (Union[list[str], pd.Series, pd.DataFrame], optional): list/Series/Dataframe of manuscript IDs. Defaults to None.
-            shelfmarks (Union[list[str], pd.Series, pd.DataFrame], optional): list/Series/Dataframe of manuscript IDs. Defaults to None.
-            filenames (Union[list[str], pd.Series, pd.DataFrame], optional): list/Series/Dataframe of XML file names. Defaults to None.
+            ms_ids (list[str]): a list of manuscript IDs
 
         Returns:
-            Optional[pd.DataFrame]: A dataframe containing the metadata for the requested manuscripts.
-                Returns None if no manuscript was found or if no parameters were passed.
+            pd.DataFrame: A dataframe containing the metadata for the requested manuscripts.
         """
-        db = database.create_connection()
-        res = database.get_metadata(table_name="manuscriptUnified", column_name="handrit_id", search_criteria=mssIDs, conn=db)
-        # FIXME-BL: docstring got outdated and is now lying
+        res = self.database.get_metadata(ms_ids)
+        log.info(f"Found {len(res.index)} metadata entries for manuscripts: {ms_ids}")
         return res
 
     def search_manuscripts_containing_texts(self, texts: list[str], searchOption: SearchOptions) -> list[str]:
@@ -141,7 +75,7 @@ class DataHandler:
             searchOption (SearchOption): wether to do an AND or an OR search
 
         Returns:
-            list[str]: A list of `full_id`s of manuscripts containing either one or all of the passed texts, depending on the chosen searchOption.
+            list[str]: A list of manuscripts IDs containing either one or all of the passed texts, depending on the chosen searchOption.
                 Returns an empty list, if none were found.
         """
         log.info(f'Searching for manuscripts with texts: {texts} ({searchOption})')
@@ -149,22 +83,11 @@ class DataHandler:
             log.debug('Searched texts are empty list')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ms_x_txts(cursor=database.create_connection().cursor(), txts=texts)
-            return res
+            return _or_search(texts, self.database.ms_x_txts)
         else:
-            sets = []
-            db = database.create_connection()
-            for i in texts:
-                ii = database.ms_x_txts(db.cursor(), [i])
-                sets.append(set(ii))
-            if not sets:
-                log.info('no ms found')
-                return []
-            res = list(set.intersection(*sets))
-            log.info(f'Search result: {res}')
-            return res
+            return _and_search(texts, self.database.ms_x_txts)
 
-    def search_texts_contained_by_manuscripts(self, Inmss: list[str], searchOption: SearchOptions) -> list[str]:
+    def search_texts_contained_by_manuscripts(self, ms_ids: list[str], searchOption: SearchOptions) -> list[str]:
         """Search the texts contained by certain manuscripts.
 
         Search for all texts contained by a given number of manuscripts.
@@ -179,109 +102,98 @@ class DataHandler:
         Returns:
             list[str]: A list of text names.
         """
-        log.info(f'Searching for texts contained by manuscripts: {Inmss} ({searchOption})')
-        if not Inmss:
+        log.info(f'Searching for texts contained by manuscripts: {ms_ids} ({searchOption})')
+        if not ms_ids:
             log.debug('Searched for empty list of mss')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.txts_x_ms(cursor=database.create_connection().cursor(), ms_ids=Inmss)
-            return res
+            return _or_search(ms_ids, self.database.txts_x_ms)
         else:
-            sets: list[set[str]] = []
-            db = database.create_connection()
-            for i in Inmss:
-                sets = []
-                for i in Inmss:
-                    ii = database.txts_x_ms(db.cursor(), [i])
-                    sets.append(set(ii))
-            if not sets:
-                log.info("No Texts found.")
-                return []
-            res = list(set.intersection(*sets))
-            log.info(f'Search result: {res}')
-            return res
+            return _and_search(ms_ids, self.database.txts_x_ms)
 
-    def search_persons_related_to_manuscripts(self, ms_full_ids: list[str], searchOption: SearchOptions) -> list[str]:
-        # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround # TODO: the hacky-whack should live in its own function
-        log.info(f'Searching for persons related to manuscripts: {ms_full_ids} ({searchOption})')
-        if not ms_full_ids:
+    def search_persons_related_to_manuscripts(self, ms_ids: list[str], searchOption: SearchOptions) -> list[str]:
+        """Search for people related to a given list of manuscripts.
+
+        Args:
+            ms_ids (list[str]): Manuscript IDs
+            searchOption (SearchOptions):  wether to do an AND or an OR search
+
+        Returns:
+            list[str]: a list of person IDs
+        """
+        log.info(f'Searching for persons related to manuscripts: {ms_ids} ({searchOption})')
+        if not ms_ids:
             log.debug('Searched for empty list of mss')
             return []
         if searchOption == SearchOptions.CONTAINS_ONE:
-            res = database.ppl_x_mss(cursor=database.create_connection().cursor(), ms_ids=ms_full_ids)
-            return res
+            return _or_search(ms_ids, self.database.ppl_x_mss)
         else:
-            sets = []
-            db = database.create_connection()
-            for i in ms_full_ids:
-                ii = database.ppl_x_mss(db.cursor(), [i])
-                sets.append(set(ii))
-            if not sets:
-                log.info('no ms found')
-                return []
-            res = list(set.intersection(*sets))
-            log.info(f'Search result: {res}')
-            return res
+            return _and_search(ms_ids, self.database.ppl_x_mss)
 
     def search_manuscripts_related_to_persons(self, person_ids: list[str], search_option: SearchOptions) -> list[str]:
-        # CHORE: Document
-        # CHORE: Document 'else' clause: Relational division not implemented in SQL -> python hacky-whacky workaround
-        log.info(f'Searching for manuscript related to people: {person_ids} ({search_option})')
+        """Search for manuscript related to a given list of people.
 
+        Args:
+            person_ids (list[str]):  list of person IDs
+            search_option (SearchOptions): wether to do an AND or an OR search
+
+        Returns:
+            list[str]: a list of manuscript IDs
+        """
+        log.info(f'Searching for manuscript related to people: {person_ids} ({search_option})')
         if not person_ids:
-            log.debug('Searched for empty list of ppl')
+            log.debug('Searched for empty list of people')
             return []
         if search_option == SearchOptions.CONTAINS_ONE:
-            res = database.ms_x_ppl(cursor=database.create_connection().cursor(), pers_ids=person_ids)
-            return res
+            return _or_search(person_ids, self.database.ms_x_ppl)
         else:
-            sets = []
-            db = database.create_connection()
-            for i in person_ids:
-                ii = database.ms_x_ppl(db.cursor(), [i])
-                sets.append(set(ii))
-            if not sets:
-                log.info('no ms found')
-                return []
-            res = list(set.intersection(*sets))
-            log.info(f'Search result: {res}')
-            return res
+            return _and_search(person_ids, self.database.ms_x_ppl)
 
     def get_all_groups(self) -> list[Group]:
-        with groups_database.create_connection() as con:
-            cur = con.cursor()
-            return groups_database.get_all_groups(cur)
+        """Gets all groups from the DB"""
+        return self.database.get_all_groups()
 
     def get_ms_groups(self) -> list[Group]:
-        with groups_database.create_connection() as con:
-            cur = con.cursor()
-            return groups_database.get_ms_groups(cur)
+        """Gets all manuscript groups from the DB"""
+        return self.database.get_ms_groups()
 
     def get_ppl_groups(self) -> list[Group]:
-        with groups_database.create_connection() as con:
-            cur = con.cursor()
-            return groups_database.get_ppl_groups(cur)
+        """Gets all people groups from the DB"""
+        return self.database.get_ppl_groups()
 
     def get_txt_groups(self) -> list[Group]:
-        with groups_database.create_connection() as con:
-            cur = con.cursor()
-            return groups_database.get_txt_groups(cur)
+        """Gets all text groups from the DB"""
+        return self.database.get_txt_groups()
 
     def put_group(self, group: Group) -> None:
-        with groups_database.create_connection() as con:
-            groups_database.put_group(con, group)
+        """Puts a group to the DB, replacing it if it already existed"""
+        self.database.update_group(group, group.group_id)
 
-    # def get_group_names(self, gtype: Optional[GroupType] = None) -> list[str]:
-    #     with groups_database.create_connection() as con:
-    #         return groups_database.get_group_names(con, gtype)
-
-    # def get_group_by_name(self, name: str, gtype: Optional[GroupType] = None) -> Optional[Group]:
-    #     with groups_database.create_connection() as con:
-    #         return groups_database.get_group_by_name(con, name, gtype)
+    def add_group(self, group: Group) -> None:
+        """Adds a new group to the DB."""
+        self.database.add_group(group)
 
 
 def _get_person_names_inverse(person_names: dict[str, str]) -> dict[str, list[str]]:
     res: dict[str, list[str]] = {}
     for k, v in person_names.items():
         res[v] = res.get(v, []) + [k]
+    return res
+
+
+def _and_search(params: list[str], search_fn: Callable[[list[str]], list[str]]) -> list[str]:
+    """Helper method to do a logical AND search, provided a list of search parameters (IDs) and a search function to call."""
+    sets = [set(search_fn([p])) for p in params]
+    if not sets:
+        log.info('nothing found')
+        return []
+    res = list(set.intersection(*sets))
+    log.info(f'Search results: {len(res)}')
+    return res
+
+
+def _or_search(params: list[str], search_fn: Callable[[list[str]], list[str]]) -> list[str]:
+    """Helper method to do a logical OR search, provided a list of search parameters (IDs) and a search function to call."""
+    res = search_fn(params)
+    log.info(f'Search results: {len(res)}')
     return res
