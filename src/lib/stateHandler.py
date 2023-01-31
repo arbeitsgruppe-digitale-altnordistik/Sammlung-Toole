@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
-from src.lib.utils import SearchOptions
+from lib.utils import SearchOptions
 
 
 class Step:

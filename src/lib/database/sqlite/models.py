@@ -6,9 +6,9 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.lib.groups import Group, GroupType
-from src.lib.manuscripts import CatalogueEntry, Manuscript
-from src.lib.people import Person
+from lib.groups import Group, GroupType
+from lib.manuscripts import CatalogueEntry, Manuscript
+from lib.people import Person
 
 
 class Groups(SQLModel, table=True):

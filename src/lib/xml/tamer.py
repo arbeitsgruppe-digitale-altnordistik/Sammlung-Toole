@@ -3,11 +3,11 @@ from typing import Iterable, Iterator, Optional
 
 from lxml import etree
 
-import src.lib.utils as utils
-import src.lib.xml.metadata as metadata
-from src.lib.constants import PERSON_DATA_PATH
-from src.lib.manuscripts import CatalogueEntry
-from src.lib.people import Person
+import lib.utils as utils
+import lib.xml.metadata as metadata
+from lib.constants import PERSON_DATA_PATH
+from lib.manuscripts import CatalogueEntry
+from lib.people import Person
 
 log = utils.get_logger(__name__)
 nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}

@@ -4,8 +4,8 @@ from uuid import uuid4
 
 import pytest
 
-from src.lib.groups import Group, GroupType
-from src.lib.database.sqlite.models import Groups
+from lib.groups import Group, GroupType
+from lib.database.sqlite.models import Groups
 
 
 @pytest.fixture

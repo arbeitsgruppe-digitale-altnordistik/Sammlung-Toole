@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 from lxml import etree as et
-from src.lib.xml import tamer
+from lib.xml import tamer
 
 test_data = Path("tests/testdata")
 

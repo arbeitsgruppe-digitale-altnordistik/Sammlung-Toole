@@ -1,4 +1,4 @@
-from src.lib.utils import Settings
+from lib.utils import Settings
 
 
 def test_nothing() -> None:

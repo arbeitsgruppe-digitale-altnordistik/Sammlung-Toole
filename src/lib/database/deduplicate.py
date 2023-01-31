@@ -3,8 +3,8 @@ from __future__ import annotations
 import statistics
 from logging import Logger
 
-from src.lib import utils
-from src.lib.manuscripts import CatalogueEntry, Manuscript
+from lib import utils
+from lib.manuscripts import CatalogueEntry, Manuscript
 
 log: Logger = utils.get_logger(__name__)
 

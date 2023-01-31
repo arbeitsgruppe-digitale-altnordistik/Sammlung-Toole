@@ -6,17 +6,17 @@ import pandas as pd
 from sqlalchemy.future import Engine
 from sqlmodel import Session, SQLModel, col, create_engine, select
 
-from src.lib import utils
-from src.lib.constants import DATABASE_PATH
-from src.lib.database.sqlite.models import (CatalogueEntries, Groups,
-                                            Manuscripts, People,
-                                            PersonCatalogueJunction,
-                                            PersonManuscriptJunction,
-                                            TextCatalogueJunction,
-                                            TextManuscriptJunction, Texts)
-from src.lib.groups import Group, GroupType
-from src.lib.manuscripts import CatalogueEntry, Manuscript
-from src.lib.people import Person
+from lib import utils
+from lib.constants import DATABASE_PATH
+from lib.database.sqlite.models import (CatalogueEntries, Groups,
+                                        Manuscripts, People,
+                                        PersonCatalogueJunction,
+                                        PersonManuscriptJunction,
+                                        TextCatalogueJunction,
+                                        TextManuscriptJunction, Texts)
+from lib.groups import Group, GroupType
+from lib.manuscripts import CatalogueEntry, Manuscript
+from lib.people import Person
 
 log: Logger = utils.get_logger(__name__)
 

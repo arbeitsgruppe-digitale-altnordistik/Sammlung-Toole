@@ -1,6 +1,6 @@
 import pytest
-from src.lib import stateHandler
-from src.lib.utils import SearchOptions
+from lib import stateHandler
+from lib.utils import SearchOptions
 
 
 @pytest.fixture

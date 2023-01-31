@@ -4,13 +4,13 @@ from logging import Logger
 from pathlib import Path
 from typing import Iterable
 
-from src.lib import utils
-from src.lib.constants import DATABASE_PATH, XML_BASE_PATH
-from src.lib.database import deduplicate
-from src.lib.database.database import Database
-from src.lib.database.sqlite.database_sqlite_impl import (DatabaseSQLiteImpl,
-                                                          get_engine)
-from src.lib.xml import tamer
+from lib import utils
+from lib.constants import DATABASE_PATH, XML_BASE_PATH
+from lib.database import deduplicate
+from lib.database.database import Database
+from lib.database.sqlite.database_sqlite_impl import (DatabaseSQLiteImpl,
+                                                      get_engine)
+from lib.xml import tamer
 
 log: Logger = utils.get_logger(__name__)
 

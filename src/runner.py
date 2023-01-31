@@ -24,10 +24,10 @@ def run() -> None:
         log.info("Starting Streamlit app...")
         # The following try-except is a very inelegant solution to the problem of pipenv not being on path
         try:
-            process = subprocess.run("pipenv run python -m streamlit run src/gui/Home.py".split())
+            process = subprocess.run("pipenv run python -m streamlit run src/Home.py".split())
         except Exception:
             log.debug("pipenv not on path?")
-            process = subprocess.run("python3 -m pipenv run python -m streamlit run src/gui/Home.py".split(), shell=True)
+            process = subprocess.run("python3 -m pipenv run python -m streamlit run src/Home.py".split(), shell=True)
         log.info(f"Process terminated with status code: {process.returncode}")
         code = process.returncode
     except KeyboardInterrupt:

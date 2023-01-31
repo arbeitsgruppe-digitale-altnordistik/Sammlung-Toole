@@ -1,1 +1,1 @@
-from src.lib.xml import metadata
+from lib.xml import metadata

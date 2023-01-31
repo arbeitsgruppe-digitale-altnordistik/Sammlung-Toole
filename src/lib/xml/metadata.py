@@ -5,8 +5,8 @@ from typing import List, Optional, Tuple
 
 from lxml import etree
 
-import src.lib.xml.tamer as tamer
-from src.lib import utils
+import lib.xml.tamer as tamer
+from lib import utils
 
 log = utils.get_logger(__name__)
 nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}

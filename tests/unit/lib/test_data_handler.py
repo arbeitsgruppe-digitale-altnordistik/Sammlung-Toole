@@ -1,1 +1,1 @@
-from src.lib import datahandler
+from lib import datahandler

@@ -1,7 +1,7 @@
 import subprocess
 
-from src.lib.utils import get_logger
-from src.ops.db_init import db_init
+from lib.utils import get_logger
+from ops.db_init import db_init
 
 log = get_logger(__name__)
 

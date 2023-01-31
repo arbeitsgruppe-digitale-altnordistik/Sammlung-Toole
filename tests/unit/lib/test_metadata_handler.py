@@ -1,1 +1,1 @@
-from src.lib import metadatahandler
+from lib import metadatahandler

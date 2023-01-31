@@ -4,10 +4,10 @@ import pytest
 from sqlalchemy.future import Engine
 from sqlmodel import Session, SQLModel
 
-from src.lib.database.sqlite import database_sqlite_impl as database
-from src.lib.database.sqlite.database_sqlite_impl import \
+from lib.database.sqlite import database_sqlite_impl as database
+from lib.database.sqlite.database_sqlite_impl import \
     DatabaseSQLiteImpl as Database
-from src.lib.groups import Group, GroupType
+from lib.groups import Group, GroupType
 
 
 @pytest.fixture
