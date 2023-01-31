@@ -4,7 +4,7 @@ import pytest
 from lxml import etree as et
 from lib.xml import tamer
 
-test_data = Path("tests/testdata")
+test_data = Path("src/tests/testdata")
 
 
 def test_load_xml_contents() -> None:

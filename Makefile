@@ -51,11 +51,11 @@ test: docs-build test-unit test-integration ## run all tests
 
 .PHONY: test-unit
 test-unit: ## run unit tests
-	pipenv run coverage run -m pytest tests/unit/
+	pipenv run coverage run -m pytest src/tests/unit/
 
 .PHONY: test-integration
 test-integration: ## run integration tests
-	pipenv run coverage run -m pytest tests/integration/
+	pipenv run coverage run -m pytest src/tests/integration/
 
 .PHONY: coverage-report
 coverage-report: ## run end-to-end tests
