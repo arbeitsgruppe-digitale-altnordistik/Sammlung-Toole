@@ -3,8 +3,6 @@ import re
 import statistics
 from typing import List, Optional, Tuple
 
-from bs4 import BeautifulSoup
-from bs4.element import Tag
 from lxml import etree
 
 import src.lib.xml.tamer as tamer
@@ -16,27 +14,6 @@ nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998
 
 # Utlity Functions
 # ----------------
-
-
-def get_cleaned_text(carrot: Tag) -> str:
-    """Get human-readable text from xml-tag.
-
-    Args:
-        carrot (bs4.element.Tag): xml-tag
-
-    Returns:
-        str: human-readable text
-    """
-    if not carrot:
-        return ""
-    res: Optional[str] = carrot.get_text()
-    if not res:
-        return ""
-    res = res.replace('\n', ' ')
-    res = res.replace('\t', ' ')
-    res = ' '.join(res.split())
-
-    return res
 
 
 def _get_digits(text: str) -> int:
@@ -560,14 +537,3 @@ def get_ms_origin(root: etree._Element) -> Tuple[str, str, str]:
         except Exception:
             repository = ""
     return country, settlement, repository
-
-
-def check_graphic(soup: BeautifulSoup) -> bool:
-    graphic = soup.find('graphic')
-
-    if graphic:
-        g = True
-    else:
-        g = False
-
-    return g
