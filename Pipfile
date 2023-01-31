@@ -32,6 +32,6 @@ python_version = "3"
 [scripts]
 docs-serve = "mkdocs serve"
 init = "git submodule update --init --remote --recursive"
-quick = "python -m streamlit run src/gui/Home.py"
-run = "python src/runner.py"
+rebuild = "python src/rebuild.py"
+run = "python -m streamlit run src/Home.py"
 update = "git submodule update --remote --recursive"
