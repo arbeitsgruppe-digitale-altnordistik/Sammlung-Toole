@@ -1,12 +1,24 @@
 import subprocess
 import sys
+import argparse
 
 from lib.utils import get_logger
+from ops.build import build_db
 
 log = get_logger(__name__)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Runs the web app, unless the --build flag is chosen, in which case the DB will be rebuilt.")
+    parser.add_argument("--build", "-b", "-db", action="store_true", help="Wipe and re-build the database from the Handrit.is XML files")
+    args = parser.parse_args()
+    if args.build:
+        build_db()
+    else:
+        run()
+
+
+def run() -> None:
     # run streamlit app
     try:
         log.info("Starting Streamlit app...")
