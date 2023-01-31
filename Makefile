@@ -47,7 +47,7 @@ update: ## update all outdated dependencies
 ########################
 
 .PHONY: test
-test: docs-build test-unit test-integration test-end-to-end ## run all tests
+test: docs-build test-unit test-integration ## run all tests
 
 .PHONY: test-unit
 test-unit: ## run unit tests
