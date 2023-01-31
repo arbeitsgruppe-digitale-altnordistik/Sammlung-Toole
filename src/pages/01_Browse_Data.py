@@ -1,6 +1,6 @@
 import streamlit as st
 
-from src.gui.gui_utils import get_handler
+from gui_utils import get_handler
 
 
 handler = get_handler()

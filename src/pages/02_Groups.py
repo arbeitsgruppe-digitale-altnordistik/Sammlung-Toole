@@ -1,11 +1,11 @@
 from uuid import UUID
 
 import streamlit as st
-from src.gui.gui_utils import get_handler, get_log, get_state
-from src.lib import metadatahandler
-from src.lib.groups import Group
-from src.lib.stateHandler import Step
-from src.lib.utils import SearchOptions
+from gui_utils import get_handler, get_log, get_state
+from lib import metadatahandler
+from lib.groups import Group
+from lib.stateHandler import Step
+from lib.utils import SearchOptions
 
 log = get_log()
 state = get_state()

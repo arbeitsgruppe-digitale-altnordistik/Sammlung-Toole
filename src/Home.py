@@ -1,5 +1,5 @@
 import streamlit as st
-from src.lib.constants import IMAGE_HOME
+from lib.constants import IMAGE_HOME
 
 
 st.title("Welcome to Sammlung Toole")

@@ -34,5 +34,5 @@ st.title("Advanced Options")
 st.warning("You may have to wait for a bit...")
 
 if st.button("Clear Streamlit Cache"):
-    st.experimental_singleton.clear()  # type: ignore
+    st.experimental_singleton.clear()
     nav_page("")

@@ -2,9 +2,9 @@ from logging import Logger
 
 import streamlit as st
 
-from src.lib import utils
-from src.lib.datahandler import DataHandler
-from src.lib.stateHandler import StateHandler
+from lib import utils
+from lib.datahandler import DataHandler
+from lib.stateHandler import StateHandler
 
 
 @st.experimental_singleton
