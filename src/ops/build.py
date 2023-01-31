@@ -18,7 +18,11 @@ def update() -> None:
     log.info("Updated data from handrit")
 
 
-def build_db() -> None:
+def build() -> None:
+    db_init()
+
+
+def update_and_build() -> None:
     initialize()
     update()
     db_init()
