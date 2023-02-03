@@ -41,7 +41,7 @@ It is recommended to use pipenv for virtual environment management.
 As an IDE, Visual Studio Code is recommended.
 
 To minimize errors, linting with `mypy` is recommended. This will enforce strict typing, which can be a major source of bugs in python code.  
-To minimize formatting differences (and therewith noise in the git diffs), `auopep8` is recommended as a formatter.  
+To minimize formatting differences (and therewith noise in the git diffs), `autopep8` is recommended as a formatter.  
 Both linter and formatter can be activated in VS Code.
 
 ### Dependencies and Automation
