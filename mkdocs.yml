@@ -8,7 +8,9 @@ nav:
       - Groups: simple/groups.md
       - Visualization: simple/visualization.md
   - Advanced Usage: advanced-usage.md
-  - Technical Details: technicalities.md
+  - Technical Details:
+      - Overview: technicalities/overview.md
+      - Database Model: technicalities/db_model.md
   - Development: development.md
   - Contributing: contributing.md
 
@@ -24,3 +26,10 @@ theme:
       toggle:
         icon: material/toggle-switch-off-outline
         name: Switch to dark mode
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
