@@ -1,43 +1,37 @@
 [[source]]
+name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
-name = "pypi"
 
 [packages]
-beautifulsoup4 = "*"
 lxml = "*"
 numpy = "*"
 pandas = "*"
 plotly = "*"
-requests = "*"
-scipy = "*"
+sqlmodel = "*"
+statsmodels = "*"
 streamlit = "*"
 streamlit-aggrid = "*"
-networkx = "*"
-colorama = "*"
-statsmodels = "*"
-sqlmodel = "*"
 
 [dev-packages]
-mypy = "*"
 autopep8 = "*"
-types-markdown = "*"
-types-requests = "*"
+coverage = "*"
+markdown = "~=3.3"
 mkdocs = "*"
 mkdocs-material = "*"
-pytest = "*"
-coverage = "*"
-pytest-cov = "*"
-markdown = "~=3.3"
-types-python-dateutil = "*"
+mypy = "*"
 pipenv = "*"
+pytest = "*"
+pytest-cov = "*"
+types-markdown = "*"
+types-python-dateutil = "*"
 
 [requires]
 python_version = "3"
 
 [scripts]
-run = "python src/runner.py"
-quick = "python -m streamlit run src/gui/Home.py"
-init = "git submodule update --init --remote --recursive"
-update = "git submodule update --remote --recursive"
 docs-serve = "mkdocs serve"
+init = "git submodule update --init --remote --recursive"
+rebuild = "python src/rebuild.py"
+run = "python -m streamlit run src/Home.py"
+update = "git submodule update --remote --recursive"

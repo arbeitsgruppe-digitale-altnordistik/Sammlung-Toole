@@ -8,11 +8,11 @@ from typing import Callable
 
 import pandas as pd
 
-from src.lib import utils
-from src.lib.database.database import Database
-from src.lib.database.sqlite.database_sqlite_impl import DatabaseSQLiteImpl
-from src.lib.groups import Group
-from src.lib.utils import SearchOptions
+from lib import utils
+from lib.database.database import Database
+from lib.database.sqlite.database_sqlite_impl import DatabaseSQLiteImpl
+from lib.groups import Group
+from lib.utils import SearchOptions
 
 log = utils.get_logger(__name__)
 

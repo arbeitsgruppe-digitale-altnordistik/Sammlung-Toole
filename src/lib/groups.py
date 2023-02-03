@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Set
 
-from src.lib import utils
+from lib import utils
 
 log = utils.get_logger(__name__)
 

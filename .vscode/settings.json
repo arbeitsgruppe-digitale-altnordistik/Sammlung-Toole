@@ -1,6 +1,9 @@
 {
     "editor.formatOnSave": true,
     "files.insertFinalNewline": true,
+    "python.analysis.extraPaths": [
+        "src"
+    ],
     "python.formatting.autopep8Args": [
         "--max-line-length",
         "180",
@@ -15,7 +18,7 @@
     ],
     "python.formatting.provider": "autopep8",
     "python.testing.pytestArgs": [
-        "tests"
+        "src/tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

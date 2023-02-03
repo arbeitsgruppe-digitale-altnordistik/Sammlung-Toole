@@ -1,37 +1,35 @@
 # Sammlung-Toole
 
-Some useful tools for digital Old Norse studies.
+A new and shiny look on data from [Handrit.is](https://handrit.is/).
 
 
-## Getting started
+## Usage
 
-Follow these steps, in order to be able to use the `Sammlung Toole`.
-
-1. Be sure to have Python installed.
-   - to verify your python installation, run `python --version` in the terminal. This should return a version number, not an error message.
-2. Ensure you have `pipenv` installed.
-   - to check if you you have it installed, run `pip list` and see if it's in the list.
-   - if you don't have it installed, run `pip install pipenv`
-3. Let pipenv install everything necessary for you
-   - normally running `pipenv install` in a terminal that's opened in the root folder of this repository, should do.
-   - if you want to develop, you'll also need the dev-dependencies installed, so run `pipenv install --dev` instead.
-4. Run the script.
-   - simply run `pipenv run run` for normal use cases. This will first update the data according to the latest stage of the handrit.is github repository, and then start the tool.
-   - if you are sure that your local data is up to date, you can also run `pipenv run quick` which will skip synchronizing the data.
-   - if you need more specific command, run `pipenv run <your-command>`  
-     (e.g. `pipenv run python -m streamlit run interface.py --server.port 80`)
-   - if you want to run multiple commands within the pipenv context, run `pipenv shell`. This will turn your terminal into a pipenv shell until you execute `exit`. (I.e. all commands will behave as if they had the perfix `pipenv run`.)
+Be sure to have Python installed.
+Optionally, `pipenv` or `make` can be used.
+Install all requirements (`pipenv install` or `pip install -r requirements.txt`).
 
 
-All commands that need running, should be executed from a terminal/command-line-interface that is opened in the root folder of this repo (i.e. the same folder as this file is located).
+### Running the web App
 
-To open a terminal in this folder, use one of the following options:
+To run the web app locally, execute `pipenv run run` or `streamlit run src/Home.py`. 
+Once the app is started up, it should automatically open up in the browser. 
+If not, follow the link displayed in the terminal 
+(normally `http://localhost:8501`).
 
-- Open the folder in windows explorer, and in the navigation bar, replace the file path with `cmd` and hit enter.
-- In Github Desktop, click `Repository > Open in Command Prompt`.
-- Open the folder in VS Code and click `View > Terminal`.
-- Download and install "Windows Terminal", which enables you to right-click on a folder and select `Open in Windows Terminal`.
-- Open a command prompt and navigate to the desired folder using the command `cd` (google how it works).
+
+### Re-building the Database
+
+To re-build the database from the handrit.is XML files, 
+execute `pipenv run rebuild` or `python src/rebuild.py`.
+
+This will initialize and update the git submodule containing all the XML data form handrit.is, 
+before building the database content from those XML files.
+
+If this is not the intended behaviour, 
+e.g., if you have checked out a particular version of the handrit data,
+from which you want to build the database, 
+execute `pipenv run rebuild --no-update` or `python src/rebuild.py --no-update`.
 
 
 ## Development

@@ -3,9 +3,9 @@ from uuid import UUID
 
 import pandas as pd
 
-from src.lib.groups import Group
-from src.lib.manuscripts import CatalogueEntry, Manuscript
-from src.lib.people import Person
+from lib.groups import Group
+from lib.manuscripts import CatalogueEntry, Manuscript
+from lib.people import Person
 
 
 class Database(Protocol):

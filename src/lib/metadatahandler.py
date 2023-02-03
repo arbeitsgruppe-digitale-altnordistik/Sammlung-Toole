@@ -2,8 +2,8 @@ from datetime import datetime as dt
 
 import pandas as pd
 import streamlit as st
-from src.lib import utils
-from src.lib.datahandler import DataHandler
+from lib import utils
+from lib.datahandler import DataHandler
 from st_aggrid import AgGrid as ag
 from st_aggrid import GridUpdateMode
 
