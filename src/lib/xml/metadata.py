@@ -509,31 +509,3 @@ def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
         yearrange = int(ta) - int(tp)
 
     return date, tp, ta, meandate, yearrange
-
-
-def get_ms_origin(root: etree._Element) -> Tuple[str, str, str]:
-    ms_id = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
-
-    if ms_id is None:
-        return "", "", ""
-    else:
-        co = ms_id.find("country", nsmap)
-        try:
-            country = co.text
-        except Exception:
-            country = ""
-        se = ms_id.find("settlement", nsmap)
-        # settlement = se.text if se else ""
-        # This should be working. This should result in settlement = se.text. But it doesnt. It ALWAYS fucking results in settlement = ""
-        # WHY? /SK
-        # TODO-BL: tidy up
-        try:
-            settlement = se.text
-        except Exception:
-            settlement = ""
-        re = ms_id.find("repository", nsmap)
-        try:
-            repository = re.text
-        except Exception:
-            repository = ""
-    return country, settlement, repository

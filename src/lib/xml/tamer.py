@@ -9,32 +9,67 @@ from lib.constants import PERSON_DATA_PATH
 from lib.manuscripts import CatalogueEntry
 from lib.people import Person
 
+
 log = utils.get_logger(__name__)
 nsmap = {None: "http://www.tei-c.org/ns/1.0", 'xml': 'http://www.w3.org/XML/1998/namespace'}
 
 
-def _load_xml_contents(path: Path) -> Optional[etree._Element]:
-    try:
-        log.info(f"Loading XML file: {path}")
-        tree: etree._ElementTree = etree.parse(path, None)
-        root: etree._Element = tree.getroot()
-        return root
-    except etree.XMLSyntaxError:
-        if path.is_relative_to('data/handrit'):  # it's a real file not a test file
-            log.exception(f"{path}: Broken XML!")
-        return None
-    except OSError:
-        if path.is_relative_to('data/handrit'):  # it's a real file not a test file
-            log.exception(f"{path}: Non existent XML!")
-        return None
+# Region: Persons extracted and delivered
+
+def get_ppl_names() -> list[Person]:
+    # This works and gives the correct number of people /SK
+    """Delivers the names found in the handrit names authority file.
+    Returns list of Person value objects.
+    """
+    res: list[Person] = []
+    tree = etree.parse(PERSON_DATA_PATH, None)
+    root = tree.getroot()
+    ppl = root.findall(".//person", nsmap)
+    for pers in ppl:
+        id_ = pers.get('{http://www.w3.org/XML/1998/namespace}id')
+        name_tag = pers.find('persName', nsmap)
+        all_first_names = name_tag.findall('forename', nsmap)
+        all_last_names = name_tag.findall('surname', nsmap)
+        first_name_clean = [name.text for name in all_first_names if name.text]
+        if first_name_clean:
+            first_name = " ".join(first_name_clean)
+        else:
+            first_name = ""
+        last_name = " ".join([name.text for name in all_last_names])
+        if not first_name and not last_name and name_tag.text:
+            last_name = name_tag.text
+        current_pers = Person(id_, first_name, last_name)
+        res.append(current_pers)
+    return res
+
+
+# End Region
+
+# Region: Catalog data delivery
+
+def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[CatalogueEntry]:
+    for f in files:
+        ele = _load_xml_contents(f)
+        filename = f.name
+        if ele is not None:
+            yield _parse_xml_content(ele, filename)
+
+
+def get_metadata_from_files(files: Iterable[Path]) -> list[CatalogueEntry]:
+    data = _get_all_data_from_files(files)
+    return list(data)
+
+
+# End Region
+# Region: XML parser
 
 
 def _parse_xml_content(root: etree._Element, filename: str) -> CatalogueEntry:
     log.info(f"Parsing metadata: {filename}")
-    shelfmark = _get_shelfmark(root)
+    shelfmark = _get_shelfmark(root, filename)
     full_id = _find_full_id(root)
     ms_nickname = _get_shorttitle(root, full_id)
-    country, settlement, repository = metadata.get_ms_origin(root)
+    country, settlement, repository = _get_ms_location(root, full_id)
     origin = metadata.get_origin(root)
     date, tp, ta, meandate, yearrange = metadata.get_date(root)
     support = metadata.get_support(root)
@@ -74,6 +109,26 @@ def _parse_xml_content(root: etree._Element, filename: str) -> CatalogueEntry:
         texts=txts,
         people=ppl
     )
+
+
+# End Region
+# Region: XML utils
+
+
+def _load_xml_contents(path: Path) -> Optional[etree._Element]:
+    try:
+        log.info(f"Loading XML file: {path}")
+        tree: etree._ElementTree = etree.parse(path, None)
+        root: etree._Element = tree.getroot()
+        return root
+    except etree.XMLSyntaxError:
+        if path.is_relative_to('data/handrit'):  # it's a real file not a test file
+            log.warning(f"{path}: Broken XML!")
+        return None
+    except OSError:
+        if path.is_relative_to('data/handrit'):  # it's a real file not a test file
+            log.warning(f"{path}: Non existent XML!")
+        return None
 
 
 def _get_ppl_from_ms(root: etree._Element) -> list[str]:
@@ -117,46 +172,29 @@ def _get_txt_list_from_ms(root: etree._Element) -> list[str]:
     return list(set(txts))
 
 
-def _get_shorttitle(root: etree._Element, ms_id: str) -> str:
+def _get_shorttitle(root: etree._Element, ms_id: str) -> str | None:
+    # It appears that all warnings are correct, i.e. that those MSs really don't have a shorttitle /SK
     head = root.find(".//head", root.nsmap)
     summary = root.find(".//summary", root.nsmap)
-    if head is None and summary is None:
-        log.warn(f"{ms_id} has no nickname or it is stored in a weird way")
-        return "N/A"
-    if head is not None:
-        title_raw = head.find("title", root.nsmap)
-    else:
-        title_raw = summary.find("title", root.nsmap)
-    if title_raw is None:
-        log.debug(f"No title present in manuscript: {ms_id}")
-        return "N/A"
-    title = title_raw.text
-    if not title:
-        return "N/A"
     try:
-        res = title.replace('\n', ' ')
-        res = res.replace('\t', ' ')
-        res = ' '.join(res.split())
-        return str(res)
+        if head:
+            title_raw = head.find("title", root.nsmap)
+        else:
+            title_raw = summary.find("title", root.nsmap)
+        if title_raw:
+            title = title_raw.text
+            if title:
+                res = title.replace('\n', ' ')
+                res = res.replace('\t', ' ')
+                res = ' '.join(res.split())
+                return str(res)
     except Exception:
-        log.exception("Weird stuff going on in getting 'shorttitle'")
-        return str(title)
+        log.warning(f"{ms_id} title extraction failed.")
+        return None
 
 
-def _get_all_data_from_files(files: Iterable[Path]) -> Iterator[CatalogueEntry]:
-    for f in files:
-        ele = _load_xml_contents(f)
-        filename = f.name
-        if ele is not None:
-            yield _parse_xml_content(ele, filename)
-
-
-def get_metadata_from_files(files: Iterable[Path]) -> list[CatalogueEntry]:
-    data = _get_all_data_from_files(files)
-    return list(data)
-
-
-def _get_shelfmark(root: etree._Element) -> str:
+def _get_shelfmark(root: etree._Element, log_id: str) -> str:
+    # This works without fail on Feb 2, 2023; no errors in logs /SK
     try:
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
         if idno is not None:
@@ -164,34 +202,8 @@ def _get_shelfmark(root: etree._Element) -> str:
         else:
             return ""
     except Exception:
-        log.exception(f"Faild to load Shelfmark XML: {root}")
+        log.warning(f"Faild to load Shelfmark XML: {log_id}")
         return ""
-
-
-def get_ppl_names() -> list[Person]:
-    """Delivers the names found in the handrit names authority file.
-    Returns list of Person value objects.
-    """
-    res: list[Person] = []
-    tree = etree.parse(PERSON_DATA_PATH, None)
-    root = tree.getroot()
-    ppl = root.findall(".//person", nsmap)
-    for pers in ppl:
-        id_ = pers.get('{http://www.w3.org/XML/1998/namespace}id')
-        name_tag = pers.find('persName', nsmap)
-        firstNameS = name_tag.findall('forename', nsmap)
-        lastNameS = name_tag.findall('surname', nsmap)
-        firstNameClean = [name.text for name in firstNameS if name.text]
-        if firstNameClean:
-            firstName = " ".join(firstNameClean)
-        else:
-            firstName = ""
-        lastName = " ".join([name.text for name in lastNameS])
-        if not firstName and not lastName and name_tag.text:
-            lastName = name_tag.text
-        currPers = Person(id_, firstName, lastName)
-        res.append(currPers)
-    return res
 
 
 def _find_id(root: etree._Element) -> str:
@@ -203,10 +215,39 @@ def _find_id(root: etree._Element) -> str:
 
 
 def _find_full_id(root: etree._Element) -> str:
+    # This also produces no errors on Feb 3 23 /SK
     id_raw = root.find('.//msDesc', root.nsmap)
     try:
         id_ = id_raw.attrib['{http://www.w3.org/XML/1998/namespace}id']
+        return str(id_)
     except Exception:
-        id_ = 'ID-ERR-01'
-        log.exception("Some soups are to salty. An unkown error occured.")
-    return str(id_)
+        log.warning(f"Failed to find the ID of {id_raw}")
+
+
+def _get_ms_location(root: etree._Element, xml_id: str) -> tuple[str | None, str | None, str | None]:
+    # Feb 03 23: This seems to be working fine as of today; exceptions caught do not have the req'd infos in their XMLs /SK
+    ms_id = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
+
+    if ms_id:
+        co = ms_id.find("country", nsmap)
+        try:
+            country = co.text
+        except Exception:
+            country = None
+            log.debug(f"No country info found for {xml_id}")
+        se = ms_id.find("settlement", nsmap)
+        try:
+            settlement = se.text
+        except Exception:
+            settlement = None
+            log.debug(f"No settlement info found for {xml_id}")
+        re = ms_id.find("repository", nsmap)
+        try:
+            repository = re.text
+        except Exception:
+            repository = None
+            log.debug(f"No repo info found for {xml_id}")
+        return country, settlement, repository
+    else:
+        log.debug(f"No location info found for {xml_id}")
+        return None, None, None
