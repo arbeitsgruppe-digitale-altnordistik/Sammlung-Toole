@@ -41,65 +41,6 @@ def _get_digits(text: str) -> int:
 # ---------------
 
 
-def _get_key(leek: etree._Element) -> Optional[str]:
-    """Find key identifying the country and return country name.
-
-    Args:
-        leek (bs4.element.Tag): xml-tag
-
-    Returns:
-        str: country name
-    """
-    key = leek.get('key', None)
-    if not key:
-        return None
-    key = leek.attrib['key']
-    key = key.lower()
-    if key == "is":
-        pretty_key = "Iceland"
-    elif key == "dk":
-        pretty_key = "Denmark"
-    elif key == "fo":
-        pretty_key = "Faroe Islands"
-    elif key == "no":
-        pretty_key = "Norway"
-    elif key == "se":
-        pretty_key = "Sweden"
-    elif key == "ka":
-        pretty_key = "Canada"
-    else:
-        log.warning(f"unknown country key: {key}. (Fix function get_key)")
-        return None
-    return pretty_key
-
-
-def get_origin(root: etree._Element) -> str:
-    """Get manuscript's place of origin.
-
-    Args:
-        root: 
-
-    Returns:
-        str: country name
-    """
-    # TODO-BL: tidy up
-    origPlace = root.find(".//origPlace", root.nsmap)
-    if origPlace is None:
-        return "Origin unknown"
-    try:
-        try:
-            pretty_origPlace = _get_key(origPlace)
-            if not pretty_origPlace:
-                return "Origin unknown"
-        except Exception:
-            log.exception("Issue with getting origin - a")
-            pretty_origPlace = str(origPlace.text)
-    except Exception:
-        log.exception("Issue with getting origin - b")
-        pretty_origPlace = "Origin unknown"
-    return pretty_origPlace
-
-
 def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that works with foreign keys
     """Get creator(s). Function for new SQLite backend.
 

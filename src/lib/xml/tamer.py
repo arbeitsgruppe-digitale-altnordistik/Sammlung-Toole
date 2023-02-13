@@ -68,9 +68,9 @@ def _parse_xml_content(root: etree._Element, filename: str) -> CatalogueEntry:
     log.info(f"Parsing metadata: {filename}")
     shelfmark = _get_shelfmark(root, filename)
     full_id = _find_full_id(root)
-    ms_nickname = _get_shorttitle(root, full_id)
+    ms_nickname = _get_shorttitle(root, full_id, shelfmark)
     country, settlement, repository = _get_ms_location(root, full_id)
-    origin = metadata.get_origin(root)
+    origin = get_origin(root, full_id)
     date, tp, ta, meandate, yearrange = metadata.get_date(root)
     support = metadata.get_support(root)
     folio = metadata.get_folio(root)
@@ -172,8 +172,9 @@ def _get_txt_list_from_ms(root: etree._Element) -> list[str]:
     return list(set(txts))
 
 
-def _get_shorttitle(root: etree._Element, ms_id: str) -> str | None:
+def _get_shorttitle(root: etree._Element, ms_id: str, shelfmark: str) -> str | None:
     # It appears that all warnings are correct, i.e. that those MSs really don't have a shorttitle /SK
+    # TODO: Remove comment
     head = root.find(".//head", root.nsmap)
     summary = root.find(".//summary", root.nsmap)
     try:
@@ -190,11 +191,12 @@ def _get_shorttitle(root: etree._Element, ms_id: str) -> str | None:
                 return str(res)
     except Exception:
         log.warning(f"{ms_id} title extraction failed.")
-        return None
+        return shelfmark
 
 
 def _get_shelfmark(root: etree._Element, log_id: str) -> str:
     # This works without fail on Feb 2, 2023; no errors in logs /SK
+    # TODO: Remove comment
     try:
         idno = root.find('.//msDesc/msIdentifier/idno', root.nsmap)
         if idno is not None:
@@ -216,6 +218,7 @@ def _find_id(root: etree._Element) -> str:
 
 def _find_full_id(root: etree._Element) -> str:
     # This also produces no errors on Feb 3 23 /SK
+    # TODO: Remove comment
     id_raw = root.find('.//msDesc', root.nsmap)
     try:
         id_ = id_raw.attrib['{http://www.w3.org/XML/1998/namespace}id']
@@ -226,6 +229,7 @@ def _find_full_id(root: etree._Element) -> str:
 
 def _get_ms_location(root: etree._Element, xml_id: str) -> tuple[str | None, str | None, str | None]:
     # Feb 03 23: This seems to be working fine as of today; exceptions caught do not have the req'd infos in their XMLs /SK
+    # TODO: Remove comment
     ms_id = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
 
     if ms_id:
@@ -251,3 +255,65 @@ def _get_ms_location(root: etree._Element, xml_id: str) -> tuple[str | None, str
     else:
         log.debug(f"No location info found for {xml_id}")
         return None, None, None
+
+
+def get_origin(root: etree._Element, msid: str) -> str | None:
+    """Get manuscript's place of origin.
+
+    Args:
+        root: 
+
+    Returns:
+        str: country name
+    """
+    # TODO: Implement handling of none /SK
+    unkown_msg = "origin unkown"
+    orig_place = root.find(".//origPlace", root.nsmap)
+    if orig_place:
+        pretty_place = _get_key(orig_place)
+        if pretty_place:
+            return pretty_place
+        if orig_place.text:
+            return orig_place.text
+    else:
+        log.info(f"No place of origin found for{msid}")
+        return unkown_msg
+    if orig_place is None:
+        return unkown_msg
+
+
+# End Region
+# Region: Helper Functions
+
+
+def _get_key(leek: etree._Element) -> str | None:
+    """Find key identifying the country and return country name.
+
+    Args:
+        leek (bs4.element.Tag): xml-tag
+
+    Returns:
+        str: country name
+    """
+    # TODO: Replace key_dict with dict from authority file
+    key = leek.get('key', None)
+    if not key:
+        return None
+    key = str(leek.attrib['key'])
+    key = key.lower().replace(".", "")
+    key_dict: dict[str, str] = {
+        "is": "Iceland",
+        "dk": "Denmark",
+        "fo": "Faroe Islands",
+        "no": "Norway",
+        "se": "Sweden",
+        "ka": "Canada",
+        "copen01": "Copenhagen",
+        "reykj01": "Reykjavík",
+        "fr": "France",
+        "usa": "USA"
+    }
+    if key in key_dict.keys():
+        return key_dict[key]
+    else:
+        return "origin unkown"

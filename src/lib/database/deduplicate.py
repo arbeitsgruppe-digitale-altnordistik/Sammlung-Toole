@@ -80,6 +80,7 @@ def combine_strs(s: str, *ss: str) -> str:
 
 
 def combine_str(x: str, y: str) -> str:
+    # TODO: Implement handling of None
     """
     Combine two strings into a "unified" string.
 
@@ -96,23 +97,32 @@ def combine_str(x: str, y: str) -> str:
     disregard = {"origin unknown", "n/a", "null"}
     dk = {"Danmark", "Denmark"}
     cph = {"København", "Copenhagen"}
-    if x == y:
+    if x and y:
+        if x == y:
+            return x
+        if y in x:
+            return x
+        if x in y:
+            return y
+        if x.lower() in disregard:
+            return y
+        if y.lower() in disregard:
+            return x
+        if {x, y} == dk:
+            return "Denmark"
+        if {x, y} == cph:
+            return "Copenhagen"
+        if not x:
+            return y
+        if not y:
+            return x
+        r = ' | '.join((x, y))
+        print(f"Failed to unify: {r}")
+        return r
+    if x:
         return x
-    if y in x:
-        return x
-    if x in y:
+    if y:
         return y
-    if x.lower() in disregard:
-        return y
-    if y.lower() in disregard:
-        return x
-    if {x, y} == dk:
-        return "Denmark"
-    if {x, y} == cph:
-        return "Copenhagen"
-    r = ' | '.join((x, y))
-    print(f"Failed to unify: {r}")
-    return r
 
 
 def combine_ints(x: int, *xx: int) -> int:
