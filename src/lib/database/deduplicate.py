@@ -40,7 +40,7 @@ def _unify_metadata_entries(entries: list[CatalogueEntry]) -> Manuscript:
         log.warning(f"Trouble deduplicating '{len(entries)}' entries for {ms_id} ({cat_ids})")
     tps = [e.terminus_post_quem for e in entries]
     tas = [e.terminus_ante_quem for e in entries]
-    return Manuscript(
+    res = Manuscript(
         manuscript_id=combine_strs(*[e.manuscript_id for e in entries]),
         shelfmark=combine_strs(*[e.shelfmark for e in entries]),
         catalogue_entries=len(entries),
@@ -68,6 +68,10 @@ def _unify_metadata_entries(entries: list[CatalogueEntry]) -> Manuscript:
         texts=list(set.union(*[set(e.texts) for e in entries])),
         people=list(set.union(*[set(e.people) for e in entries]))
     )
+    if res.support is None:
+        import pdb
+        pdb.set_trace()
+    return res
 
 
 def combine_strs(s: str, *ss: str) -> str:

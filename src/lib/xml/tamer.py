@@ -172,23 +172,35 @@ def _get_txt_list_from_ms(root: etree._Element) -> list[str]:
     return list(set(txts))
 
 
-def _get_shorttitle(root: etree._Element, ms_id: str, shelfmark: str) -> str | None:
+def _get_shorttitle(root: etree._Element, ms_id: str, shelfmark: str) -> str:
     # It appears that all warnings are correct, i.e. that those MSs really don't have a shorttitle /SK
+    # 14-Feb caught some more weird exceptions that f*d up rebuild
     # TODO: Remove comment
     head = root.find(".//head", root.nsmap)
     summary = root.find(".//summary", root.nsmap)
     try:
         if head:
-            title_raw = head.find("title", root.nsmap)
+            title_raw = head.findall("title", root.nsmap)
         else:
-            title_raw = summary.find("title", root.nsmap)
+            title_raw = summary.findall("title", root.nsmap)
         if title_raw:
-            title = title_raw.text
+            if len(title_raw) > 1:
+                ttls = []
+                for i in title_raw:
+                    ttl = i.text
+                    ttls.append(ttl)
+                title = " ".join(ttls)
+            else:
+                title = title_raw[0].text
             if title:
                 res = title.replace('\n', ' ')
                 res = res.replace('\t', ' ')
                 res = ' '.join(res.split())
                 return str(res)
+            else:
+                return shelfmark
+        else:
+            return shelfmark
     except Exception:
         log.warning(f"{ms_id} title extraction failed.")
         return shelfmark
@@ -229,7 +241,8 @@ def _find_full_id(root: etree._Element) -> str:
 
 def _get_ms_location(root: etree._Element, xml_id: str) -> tuple[str | None, str | None, str | None]:
     # Feb 03 23: This seems to be working fine as of today; exceptions caught do not have the req'd infos in their XMLs /SK
-    # TODO: Remove comment
+    # TODO: Remove above
+    # TODO: Implement none handling. I am very sorry for doing "None", I know its a massive smell /SK
     ms_id = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
 
     if ms_id:
@@ -237,24 +250,24 @@ def _get_ms_location(root: etree._Element, xml_id: str) -> tuple[str | None, str
         try:
             country = co.text
         except Exception:
-            country = None
+            country = "None"
             log.debug(f"No country info found for {xml_id}")
         se = ms_id.find("settlement", nsmap)
         try:
             settlement = se.text
         except Exception:
-            settlement = None
+            settlement = "None"
             log.debug(f"No settlement info found for {xml_id}")
         re = ms_id.find("repository", nsmap)
         try:
             repository = re.text
         except Exception:
-            repository = None
+            repository = "None"
             log.debug(f"No repo info found for {xml_id}")
         return country, settlement, repository
     else:
         log.debug(f"No location info found for {xml_id}")
-        return None, None, None
+        return "None", "None", "None"
 
 
 def get_origin(root: etree._Element, msid: str) -> str | None:
@@ -266,6 +279,8 @@ def get_origin(root: etree._Element, msid: str) -> str | None:
     Returns:
         str: country name
     """
+    # Feb-23: Working
+    # TODO: remove note
     # TODO: Implement handling of none /SK
     unkown_msg = "origin unkown"
     orig_place = root.find(".//origPlace", root.nsmap)
@@ -298,7 +313,7 @@ def _get_key(leek: etree._Element) -> str | None:
     # TODO: Replace key_dict with dict from authority file
     key = leek.get('key', None)
     if not key:
-        return None
+        return "None"
     key = str(leek.attrib['key'])
     key = key.lower().replace(".", "")
     key_dict: dict[str, str] = {

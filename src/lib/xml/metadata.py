@@ -80,6 +80,7 @@ def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that 
 
 
 def get_support(root: etree._Element) -> str:
+    # TODO: Implement handling of None, I feel horrible about "None" /SK
     """Get supporting material (paper or parchment).
 
     Args:
@@ -88,22 +89,22 @@ def get_support(root: etree._Element) -> str:
     Returns:
         str: supporting material
     """
-    supportDesc = root.find('.//supportDesc', root.nsmap)
-    if supportDesc is not None:
-        support = supportDesc.attrib['material']
+    support_desc = root.find('.//supportDesc', root.nsmap)
+    if support_desc is not None:
+        support = support_desc.attrib['material']
         if support == "chart":
             pretty_support = "Paper"
         elif support == "perg":
             pretty_support = "Parchment"
         else:
-            pretty_support = support
             try:
                 pretty_support = support.text
             except Exception:
-                pretty_support = ""
+                pretty_support = "None"
     else:
-        pretty_support = ""
-
+        pretty_support = "None"
+    if not pretty_support:
+        pretty_support = "None"
     return pretty_support
 
 
@@ -396,8 +397,9 @@ def get_description(root: etree._Element) -> tuple[str, str, str, str]:
 
 def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
     # TODO: Redesign /SK
+    # TODO: Implement None
     tag = root.find(".//origDate", root.nsmap)
-    date = ""
+    date = "None"
     ta = 0
     tp = 0
     meandate = 0
