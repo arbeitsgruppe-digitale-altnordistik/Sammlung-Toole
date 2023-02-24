@@ -27,7 +27,7 @@ types-markdown = "*"
 types-python-dateutil = "*"
 
 [requires]
-python_version = "3"
+python_version = "3.10"
 
 [scripts]
 docs-serve = "mkdocs serve"
