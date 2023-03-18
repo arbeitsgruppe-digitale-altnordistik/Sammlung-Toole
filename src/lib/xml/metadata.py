@@ -1,6 +1,5 @@
 import copy
 import re
-import statistics
 from typing import List, Optional, Tuple
 
 from lxml import etree
@@ -393,62 +392,3 @@ def get_description(root: etree._Element) -> tuple[str, str, str, str]:
 #     pretty_signature = get_cleaned_text(signature)
 
 #     return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature
-
-
-def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
-    # TODO: Redesign /SK
-    # TODO: Implement None
-    tag = root.find(".//origDate", root.nsmap)
-    date = "None"
-    ta = 0
-    tp = 0
-    meandate = 0
-    yearrange = 0
-    if tag is None:
-        return date, tp, ta, meandate, yearrange
-
-    if tag.get("notBefore") is not None and tag.get("notAfter") is not None:
-        notBefore = str(tag.attrib["notBefore"])
-        notAfter = str(tag.attrib["notAfter"])
-
-        # TODO: give indication why this happened
-        # Snibbel Snibbel
-        if len(notBefore) >= 5:
-            notBefore = notBefore[0:4]
-
-        if len(notAfter) >= 5:
-            notAfter = notAfter[0:4]
-        # Snibbel Snibbel Ende
-
-        date = f"{notBefore}-{notAfter}"
-        tp = int(notBefore)
-        ta = int(notAfter)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta) - int(tp)
-
-    elif tag.get("when"):
-        date = str(tag.attrib["when"])
-        normalized_date = date
-        if len(normalized_date) > 4:
-            normalized_date = normalized_date[:4]
-        tp = int(normalized_date)
-        ta = int(normalized_date)
-        meandate = tp
-        yearrange = 0
-
-    elif tag.get("from") and tag.get("to"):
-        fr = str(tag.attrib["from"])
-        to = str(tag.attrib["to"])
-        date = f"{fr}-{to}"
-        n = fr
-        if len(n) > 4:
-            n = n[:4]
-        tp = int(n)
-        n = to
-        if len(n) > 4:
-            n = n[:4]
-        ta = int(n)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta) - int(tp)
-
-    return date, tp, ta, meandate, yearrange

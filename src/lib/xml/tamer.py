@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Iterable, Iterator, Optional
-
+from typing import Iterable, Iterator, Optional, Tuple
 from lxml import etree
-
+import statistics
 import lib.utils as utils
 import lib.xml.metadata as metadata
 from lib.constants import PERSON_DATA_PATH
@@ -71,7 +70,7 @@ def _parse_xml_content(root: etree._Element, filename: str) -> CatalogueEntry:
     ms_nickname = _get_shorttitle(root, full_id, shelfmark)
     country, settlement, repository = _get_ms_location(root, full_id)
     origin = get_origin(root, full_id)
-    date, tp, ta, meandate, yearrange = metadata.get_date(root)
+    date, tp, ta, meandate, yearrange = get_date(root, full_id)
     support = metadata.get_support(root)
     folio = metadata.get_folio(root)
     height, width, extent, description = metadata.get_description(root)
@@ -270,11 +269,11 @@ def _get_ms_location(root: etree._Element, xml_id: str) -> tuple[str | None, str
         return "None", "None", "None"
 
 
-def get_origin(root: etree._Element, msid: str) -> str | None:
+def get_origin(root: etree._Element, msid: str) -> str:
     """Get manuscript's place of origin.
 
     Args:
-        root: 
+        root:
 
     Returns:
         str: country name
@@ -289,13 +288,29 @@ def get_origin(root: etree._Element, msid: str) -> str | None:
         if pretty_place:
             return pretty_place
         if orig_place.text:
-            return orig_place.text
+            return str(orig_place.text)
     else:
         log.info(f"No place of origin found for{msid}")
         return unkown_msg
     if orig_place is None:
         return unkown_msg
 
+
+def get_date(root: etree._Element, msid: str) -> Tuple[str, int, int, int, int]:
+    # TODO: Redesign /SK
+    # TODO: Implement None
+    tags = root.findall(".//origDate", root.nsmap)
+    if len(tags) > 1:
+        for t in tags:
+            try:
+                res = _find_dates(t, msid)
+                if res:
+                    return res
+            except Exception:
+                print("This didn`t work")
+    else:
+        tag = root.find(".//origDate", root.nsmap)
+        return _find_dates(tag=tag, msid=msid)
 
 # End Region
 # Region: Helper Functions
@@ -305,30 +320,122 @@ def _get_key(leek: etree._Element) -> str | None:
     """Find key identifying the country and return country name.
 
     Args:
-        leek (bs4.element.Tag): xml-tag
+        leek (etree._element): xml-tag
 
     Returns:
         str: country name
     """
     # TODO: Replace key_dict with dict from authority file
-    key = leek.get('key', None)
-    if not key:
-        return "None"
-    key = str(leek.attrib['key'])
-    key = key.lower().replace(".", "")
-    key_dict: dict[str, str] = {
-        "is": "Iceland",
-        "dk": "Denmark",
-        "fo": "Faroe Islands",
-        "no": "Norway",
-        "se": "Sweden",
-        "ka": "Canada",
-        "copen01": "Copenhagen",
-        "reykj01": "Reykjavík",
-        "fr": "France",
-        "usa": "USA"
-    }
-    if key in key_dict.keys():
-        return key_dict[key]
+    # TODO: Implement handling of None
+    if leek.get('key') is not None:
+        country_key = str(leek.attrib['key'])
+        country_key = country_key.lower().replace(".", "")
+        key_dict: dict[str, str] = {
+            "is": "Iceland",
+            "dk": "Denmark",
+            "fo": "Faroe Islands",
+            "no": "Norway",
+            "se": "Sweden",
+            "ka": "Canada",
+            "copen01": "Copenhagen",
+            "reykj01": "Reykjavík",
+            "fr": "France",
+            "usa": "USA"
+        }
+        return key_dict.get(country_key, country_key)
     else:
-        return "origin unkown"
+        return "None"
+
+
+def tp_ta_tag_cleaner(tag: etree._Element.tag) -> Tuple[str, int, int, int, int]:
+    not_before = str(tag.attrib["notBefore"])
+    not_after = str(tag.attrib["notAfter"])
+
+    """Sometimes dates will be given with greater specificity than just a year
+    i.e. '1699-01-01'. Then we want to get just the year.
+    We just need to make sure we catch dates like '01-01-1699' as well."""
+    if len(not_before) >= 5:
+        not_before = date_normalizer(not_before)
+
+    if len(not_after) >= 5:
+        not_after = date_normalizer(not_after)
+
+    date = f"{not_before}-{not_after}"
+    tp = int(not_before)
+    ta = int(not_after)
+    meandate = int(statistics.mean([int(tp), int(ta)]))
+    yearrange = int(ta) - int(tp)
+
+    return date, tp, ta, meandate, yearrange
+
+
+def date_normalizer(input_date: str) -> str:
+    date_parts = None
+    if "." in input_date:
+        date_parts = input_date.split(".")
+    if "-" in input_date:
+        date_parts = input_date.split("-")
+    res = "0"
+    if date_parts is not None:
+        for x in date_parts:
+            if len(x) == 4:
+                res = x
+                break
+    return res
+
+
+def when_tag_cleaner(tag: etree._Element.tag) -> Tuple[str, int, int, int, int]:
+    date = str(tag.attrib["when"])
+    normalized_date = date
+    if len(normalized_date) > 4:
+        normalized_date = date_normalizer(normalized_date)
+    tp = int(normalized_date)
+    ta = int(normalized_date)
+    meandate = tp
+    yearrange = 0
+    return date, tp, ta, meandate, yearrange
+
+
+def from_to_tag_cleaner(tag: etree._Element.tag) -> Tuple[str, int, int, int, int]:
+    _tp = str(tag.attrib["from"])
+    _ta = str(tag.attrib["to"])
+
+    if len(_tp) > 4:
+        _tp = date_normalizer(_tp)
+    if len(_ta) > 4:
+        _ta = date_normalizer(_ta)
+
+    date = f"{_tp}-{_ta}"
+    tp = int(_tp)
+    ta = int(_ta)
+    meandate = int(statistics.mean([int(tp), int(ta)]))
+    yearrange = int(ta) - int(tp)
+
+    return date, tp, ta, meandate, yearrange
+
+
+def _find_dates(tag: etree._Element.tag, msid: str) -> Tuple[str, int, int, int, int]:
+    backstop_res = "None", 0, 0, 0, 0
+    if tag is None:
+        return backstop_res
+    try:
+        if tag.get("notBefore") is not None and tag.get("notAfter") is not None:
+            res = tp_ta_tag_cleaner(tag=tag)
+        elif tag.get("when") is not None:
+            res = when_tag_cleaner(tag=tag)
+        elif tag.get("from") and tag.get("to") is not None:
+            res = from_to_tag_cleaner(tag=tag)
+        else:
+            date_raw = tag.text
+            if date_raw is not None:
+                if len(date_raw) > 4:
+                    date = date_normalizer(date_raw)
+                else:
+                    date = date_raw
+                res = date, int(date), int(date), int(date), 0
+            else:
+                res = backstop_res
+        return res
+    except Exception:
+        log.debug(f"{msid}: Date extraction failed.")
+        return backstop_res
