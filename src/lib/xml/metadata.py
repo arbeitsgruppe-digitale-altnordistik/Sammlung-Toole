@@ -78,35 +78,6 @@ def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that 
     return res
 
 
-def get_support(root: etree._Element) -> str:
-    # TODO: Implement handling of None, I feel horrible about "None" /SK
-    """Get supporting material (paper or parchment).
-
-    Args:
-        root (etree._Element): etree XML element object
-
-    Returns:
-        str: supporting material
-    """
-    support_desc = root.find('.//supportDesc', root.nsmap)
-    if support_desc is not None:
-        support = support_desc.attrib['material']
-        if support == "chart":
-            pretty_support = "Paper"
-        elif support == "perg":
-            pretty_support = "Parchment"
-        else:
-            try:
-                pretty_support = support.text
-            except Exception:
-                pretty_support = "None"
-    else:
-        pretty_support = "None"
-    if not pretty_support:
-        pretty_support = "None"
-    return pretty_support
-
-
 def get_folio(root: etree._Element) -> int:
     # TODO: Update docstring! /SK
     """Returns: total of folios.

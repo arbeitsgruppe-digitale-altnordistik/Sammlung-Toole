@@ -70,8 +70,8 @@ def _parse_xml_content(root: etree._Element, filename: str) -> CatalogueEntry:
     ms_nickname = _get_shorttitle(root, full_id, shelfmark)
     country, settlement, repository = _get_ms_location(root, full_id)
     origin = get_origin(root, full_id)
-    date, tp, ta, meandate, yearrange = get_date(root, full_id)
-    support = metadata.get_support(root)
+    date, tp, ta, meandate, yearrange = get_date(root, full_id)  # DONE!
+    support = get_support(root)
     folio = metadata.get_folio(root)
     height, width, extent, description = metadata.get_description(root)
     handrit_id = _find_id(root)
@@ -311,6 +311,36 @@ def get_date(root: etree._Element, msid: str) -> Tuple[str, int, int, int, int]:
     else:
         tag = root.find(".//origDate", root.nsmap)
         return _find_dates(tag=tag, msid=msid)
+
+
+def get_support(root: etree._Element) -> str:
+    # TODO: Implement handling of None, I feel horrible about "None" /SK
+    """Get supporting material (paper or parchment).
+
+    Args:
+        root (etree._Element): etree XML element object
+
+    Returns:
+        str: supporting material
+    """
+    support_desc = root.find('.//supportDesc', root.nsmap)
+    if support_desc is not None:
+        support = support_desc.attrib['material']
+        if support == "chart":
+            pretty_support = "Paper"
+        elif support == "perg":
+            pretty_support = "Parchment"
+        else:
+            try:
+                pretty_support = support.text
+            except Exception:
+                pretty_support = "None"
+    else:
+        pretty_support = "None"
+    if not pretty_support:
+        pretty_support = "None"
+    return pretty_support
+
 
 # End Region
 # Region: Helper Functions
