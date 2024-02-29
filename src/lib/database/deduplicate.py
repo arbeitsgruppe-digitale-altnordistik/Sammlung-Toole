@@ -40,7 +40,7 @@ def _unify_metadata_entries(entries: list[CatalogueEntry]) -> Manuscript:
         log.warning(f"Trouble deduplicating '{len(entries)}' entries for {ms_id} ({cat_ids})")
     tps = [e.terminus_post_quem for e in entries]
     tas = [e.terminus_ante_quem for e in entries]
-    return Manuscript(
+    res = Manuscript(
         manuscript_id=combine_strs(*[e.manuscript_id for e in entries]),
         shelfmark=combine_strs(*[e.shelfmark for e in entries]),
         catalogue_entries=len(entries),
@@ -68,6 +68,10 @@ def _unify_metadata_entries(entries: list[CatalogueEntry]) -> Manuscript:
         texts=list(set.union(*[set(e.texts) for e in entries])),
         people=list(set.union(*[set(e.people) for e in entries]))
     )
+    if res.support is None:
+        import pdb
+        pdb.set_trace()
+    return res
 
 
 def combine_strs(s: str, *ss: str) -> str:
@@ -80,6 +84,7 @@ def combine_strs(s: str, *ss: str) -> str:
 
 
 def combine_str(x: str, y: str) -> str:
+    # TODO: Implement handling of None
     """
     Combine two strings into a "unified" string.
 
@@ -96,23 +101,32 @@ def combine_str(x: str, y: str) -> str:
     disregard = {"origin unknown", "n/a", "null"}
     dk = {"Danmark", "Denmark"}
     cph = {"København", "Copenhagen"}
-    if x == y:
+    if x and y:
+        if x == y:
+            return x
+        if y in x:
+            return x
+        if x in y:
+            return y
+        if x.lower() in disregard:
+            return y
+        if y.lower() in disregard:
+            return x
+        if {x, y} == dk:
+            return "Denmark"
+        if {x, y} == cph:
+            return "Copenhagen"
+        if not x:
+            return y
+        if not y:
+            return x
+        r = ' | '.join((x, y))
+        print(f"Failed to unify: {r}")
+        return r
+    if x:
         return x
-    if y in x:
-        return x
-    if x in y:
+    if y:
         return y
-    if x.lower() in disregard:
-        return y
-    if y.lower() in disregard:
-        return x
-    if {x, y} == dk:
-        return "Denmark"
-    if {x, y} == cph:
-        return "Copenhagen"
-    r = ' | '.join((x, y))
-    print(f"Failed to unify: {r}")
-    return r
 
 
 def combine_ints(x: int, *xx: int) -> int:

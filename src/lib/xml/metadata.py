@@ -1,6 +1,5 @@
 import copy
 import re
-import statistics
 from typing import List, Optional, Tuple
 
 from lxml import etree
@@ -41,65 +40,6 @@ def _get_digits(text: str) -> int:
 # ---------------
 
 
-def _get_key(leek: etree._Element) -> Optional[str]:
-    """Find key identifying the country and return country name.
-
-    Args:
-        leek (bs4.element.Tag): xml-tag
-
-    Returns:
-        str: country name
-    """
-    key = leek.get('key', None)
-    if not key:
-        return None
-    key = leek.attrib['key']
-    key = key.lower()
-    if key == "is":
-        pretty_key = "Iceland"
-    elif key == "dk":
-        pretty_key = "Denmark"
-    elif key == "fo":
-        pretty_key = "Faroe Islands"
-    elif key == "no":
-        pretty_key = "Norway"
-    elif key == "se":
-        pretty_key = "Sweden"
-    elif key == "ka":
-        pretty_key = "Canada"
-    else:
-        log.warning(f"unknown country key: {key}. (Fix function get_key)")
-        return None
-    return pretty_key
-
-
-def get_origin(root: etree._Element) -> str:
-    """Get manuscript's place of origin.
-
-    Args:
-        root: 
-
-    Returns:
-        str: country name
-    """
-    # TODO-BL: tidy up
-    origPlace = root.find(".//origPlace", root.nsmap)
-    if origPlace is None:
-        return "Origin unknown"
-    try:
-        try:
-            pretty_origPlace = _get_key(origPlace)
-            if not pretty_origPlace:
-                return "Origin unknown"
-        except Exception:
-            log.exception("Issue with getting origin - a")
-            pretty_origPlace = str(origPlace.text)
-    except Exception:
-        log.exception("Issue with getting origin - b")
-        pretty_origPlace = "Origin unknown"
-    return pretty_origPlace
-
-
 def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that works with foreign keys
     """Get creator(s). Function for new SQLite backend.
 
@@ -136,34 +76,6 @@ def get_creators(root: etree._Element) -> str:  # TODO: Implement a method that 
         pplIDs.append(fKey)
     res = "; ".join(set(pplIDs))
     return res
-
-
-def get_support(root: etree._Element) -> str:
-    """Get supporting material (paper or parchment).
-
-    Args:
-        root (etree._Element): etree XML element object
-
-    Returns:
-        str: supporting material
-    """
-    supportDesc = root.find('.//supportDesc', root.nsmap)
-    if supportDesc is not None:
-        support = supportDesc.attrib['material']
-        if support == "chart":
-            pretty_support = "Paper"
-        elif support == "perg":
-            pretty_support = "Parchment"
-        else:
-            pretty_support = support
-            try:
-                pretty_support = support.text
-            except Exception:
-                pretty_support = ""
-    else:
-        pretty_support = ""
-
-    return pretty_support
 
 
 def get_folio(root: etree._Element) -> int:
@@ -451,89 +363,3 @@ def get_description(root: etree._Element) -> tuple[str, str, str, str]:
 #     pretty_signature = get_cleaned_text(signature)
 
 #     return pretty_country, pretty_settlement, pretty_institution, pretty_repository, pretty_collection, pretty_signature
-
-
-def get_date(root: etree._Element) -> Tuple[str, int, int, int, int]:
-    # TODO: Redesign /SK
-    tag = root.find(".//origDate", root.nsmap)
-    date = ""
-    ta = 0
-    tp = 0
-    meandate = 0
-    yearrange = 0
-    if tag is None:
-        return date, tp, ta, meandate, yearrange
-
-    if tag.get("notBefore") is not None and tag.get("notAfter") is not None:
-        notBefore = str(tag.attrib["notBefore"])
-        notAfter = str(tag.attrib["notAfter"])
-
-        # TODO: give indication why this happened
-        # Snibbel Snibbel
-        if len(notBefore) >= 5:
-            notBefore = notBefore[0:4]
-
-        if len(notAfter) >= 5:
-            notAfter = notAfter[0:4]
-        # Snibbel Snibbel Ende
-
-        date = f"{notBefore}-{notAfter}"
-        tp = int(notBefore)
-        ta = int(notAfter)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta) - int(tp)
-
-    elif tag.get("when"):
-        date = str(tag.attrib["when"])
-        normalized_date = date
-        if len(normalized_date) > 4:
-            normalized_date = normalized_date[:4]
-        tp = int(normalized_date)
-        ta = int(normalized_date)
-        meandate = tp
-        yearrange = 0
-
-    elif tag.get("from") and tag.get("to"):
-        fr = str(tag.attrib["from"])
-        to = str(tag.attrib["to"])
-        date = f"{fr}-{to}"
-        n = fr
-        if len(n) > 4:
-            n = n[:4]
-        tp = int(n)
-        n = to
-        if len(n) > 4:
-            n = n[:4]
-        ta = int(n)
-        meandate = int(statistics.mean([int(tp), int(ta)]))
-        yearrange = int(ta) - int(tp)
-
-    return date, tp, ta, meandate, yearrange
-
-
-def get_ms_origin(root: etree._Element) -> Tuple[str, str, str]:
-    ms_id = root.find(".teiHeader/fileDesc/sourceDesc/msDesc/msIdentifier", nsmap)
-
-    if ms_id is None:
-        return "", "", ""
-    else:
-        co = ms_id.find("country", nsmap)
-        try:
-            country = co.text
-        except Exception:
-            country = ""
-        se = ms_id.find("settlement", nsmap)
-        # settlement = se.text if se else ""
-        # This should be working. This should result in settlement = se.text. But it doesnt. It ALWAYS fucking results in settlement = ""
-        # WHY? /SK
-        # TODO-BL: tidy up
-        try:
-            settlement = se.text
-        except Exception:
-            settlement = ""
-        re = ms_id.find("repository", nsmap)
-        try:
-            repository = re.text
-        except Exception:
-            repository = ""
-    return country, settlement, repository

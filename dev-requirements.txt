@@ -1,4 +1,4 @@
--i https://pypi.org/simple
+# -i https://pypi.org/simple
 attrs==22.2.0 ; python_version >= '3.6'
 autopep8==2.0.1
 certifi==2022.12.7 ; python_version >= '3.6'
